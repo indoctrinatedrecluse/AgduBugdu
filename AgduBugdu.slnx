@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/plugins/">
+    <Project Path="plugins/AgduBugdu.Plugin.MarkdownLive/AgduBugdu.Plugin.MarkdownLive.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/AgduBugdu.App/AgduBugdu.App.csproj" />
     <Project Path="src/AgduBugdu.Core/AgduBugdu.Core.csproj" />

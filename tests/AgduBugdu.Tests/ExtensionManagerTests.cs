@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
+using AgduBugdu.Plugin.MarkdownLive;
 using AgduBugdu.PluginContracts;
 using Xunit;
 
@@ -104,6 +105,60 @@ public class ExtensionManagerTests
 
         await extension.DeactivateAsync();
         Assert.True(extension.Deactivated);
+    }
+
+    [Fact]
+    public async Task MarkdownLive_Extension_Initializes_And_Registers_Endpoints()
+    {
+        var commands = new CommandRegistry();
+        var tools = new ToolWindowRegistry();
+        var editor = new MockEditorService();
+        var workspace = new MockWorkspaceService();
+        var context = new ExtensionContext(commands, tools, editor, workspace);
+
+        var plugin = new MarkdownLiveExtension();
+        Assert.Equal("agdubugdu.plugin.markdownlive", plugin.Id);
+        Assert.Equal("Markdown Live Viewer", plugin.Name);
+
+        plugin.Initialize(context);
+        await plugin.ActivateAsync();
+
+        // 1. Verify command registered in host command registry
+        var registeredCommands = commands.GetRegisteredCommands();
+        Assert.True(registeredCommands.ContainsKey("markdown.preview"));
+        Assert.Equal("Markdown: Toggle Live Preview", registeredCommands["markdown.preview"].Title);
+
+        // 2. Verify tool window registered in host tool registry
+        var registeredTools = tools.GetRegisteredTools();
+        Assert.True(registeredTools.ContainsKey("markdown.preview.tool"));
+        Assert.Equal("Markdown Live Preview", registeredTools["markdown.preview.tool"].Title);
+
+        // 3. Test Markdown Live Document conversion on document events
+        var tempMd = Path.ChangeExtension(Path.GetTempFileName(), ".md");
+        try
+        {
+            File.WriteAllText(tempMd, "# Heading 1\n**Bold Text**\n- List item\n`code block`");
+            editor.OpenFile(tempMd);
+
+            var toolDescriptor = registeredTools["markdown.preview.tool"];
+            var vm = toolDescriptor.ViewModelFactory() as MarkdownPreviewViewModel;
+            Assert.NotNull(vm);
+
+            vm.UpdateDocument(tempMd);
+            Assert.Contains("<h1>Heading 1</h1>", vm.HtmlPreview);
+            Assert.Contains("<b>Bold Text</b>", vm.HtmlPreview);
+            Assert.Contains("<li>List item</li>", vm.HtmlPreview);
+            Assert.Contains("<code>code block</code>", vm.HtmlPreview);
+        }
+        finally
+        {
+            if (File.Exists(tempMd))
+            {
+                File.Delete(tempMd);
+            }
+        }
+
+        await plugin.DeactivateAsync();
     }
 
     [Fact]

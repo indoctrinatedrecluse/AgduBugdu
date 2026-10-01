@@ -4,6 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using AgduBugdu.App.Docking;
 using AgduBugdu.App.ViewModels.Documents;
+using AgduBugdu.Extensibility;
+using AgduBugdu.Extensibility.Registries;
+using AgduBugdu.Plugin.MarkdownLive;
+using AgduBugdu.PluginContracts;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
@@ -14,9 +18,80 @@ using Dock.Model.Core;
 
 namespace AgduBugdu.App.ViewModels;
 
+public class AppWorkspaceService : IWorkspaceService
+{
+    private readonly Action<string> _openFolderAction;
+    public string? CurrentDirectory { get; private set; }
+    public event EventHandler<WorkspaceChangedEventArgs>? WorkspaceChanged;
+
+    public AppWorkspaceService(Action<string> openFolderAction)
+    {
+        _openFolderAction = openFolderAction;
+    }
+
+    public void OpenFolder(string folderPath)
+    {
+        CurrentDirectory = folderPath;
+        WorkspaceChanged?.Invoke(this, new WorkspaceChangedEventArgs(folderPath));
+        _openFolderAction(folderPath);
+    }
+
+    public void SetWorkspaceDirect(string folderPath)
+    {
+        CurrentDirectory = folderPath;
+        WorkspaceChanged?.Invoke(this, new WorkspaceChangedEventArgs(folderPath));
+    }
+}
+
+public class AppEditorService : IEditorService
+{
+    private readonly Action<string> _openFileAction;
+    public string? ActiveDocumentPath { get; private set; }
+    public event EventHandler<DocumentEventArgs>? DocumentOpened;
+    public event EventHandler<DocumentEventArgs>? DocumentSaved;
+    public event EventHandler<DocumentEventArgs>? DocumentClosed;
+
+    public AppEditorService(Action<string> openFileAction)
+    {
+        _openFileAction = openFileAction;
+    }
+
+    public void OpenFile(string filePath)
+    {
+        _openFileAction(filePath);
+    }
+
+    public void NotifyOpened(string path)
+    {
+        ActiveDocumentPath = path;
+        DocumentOpened?.Invoke(this, new DocumentEventArgs(path));
+    }
+
+    public void NotifySaved(string path)
+    {
+        DocumentSaved?.Invoke(this, new DocumentEventArgs(path));
+    }
+
+    public void NotifyClosed(string path)
+    {
+        DocumentClosed?.Invoke(this, new DocumentEventArgs(path));
+    }
+
+    public void SetActive(string path)
+    {
+        ActiveDocumentPath = path;
+    }
+}
+
 public partial class MainViewModel : ViewModelBase
 {
     private readonly MainDockFactory _dockFactory;
+    private readonly ExtensionManager _extensionManager;
+    private readonly CommandRegistry _commandRegistry;
+    private readonly ToolWindowRegistry _toolRegistry;
+    private readonly AppEditorService _editorService;
+    private readonly AppWorkspaceService _workspaceService;
+    private readonly ExtensionContext _extensionContext;
 
     [ObservableProperty]
     private IRootDock? _layout;
@@ -42,9 +117,43 @@ public partial class MainViewModel : ViewModelBase
         Layout = _dockFactory.CreateLayout();
         _dockFactory.InitLayout(Layout);
 
+        // Extensibility Subsystem Initialization
+        _commandRegistry = new CommandRegistry();
+        _toolRegistry = new ToolWindowRegistry();
+        _editorService = new AppEditorService(path => OpenFile(path));
+        _workspaceService = new AppWorkspaceService(path => OpenFolder(path));
+        _extensionContext = new ExtensionContext(_commandRegistry, _toolRegistry, _editorService, _workspaceService);
+        _extensionManager = new ExtensionManager(_extensionContext);
+
         HookActiveDocument();
         HookExplorer();
         RegisterDefaultCommands();
+
+        // Load built-in and directory plugins
+        _ = InitializeExtensionsAsync();
+    }
+
+    private async Task InitializeExtensionsAsync()
+    {
+        try
+        {
+            // Register built-in sample Markdown Live extension
+            var mdExtension = new MarkdownLiveExtension();
+            mdExtension.Initialize(_extensionContext);
+            await mdExtension.ActivateAsync();
+
+            // Sync registered plugin commands into the Command Palette
+            foreach (var cmd in _commandRegistry.GetRegisteredCommands())
+            {
+                CommandPalette.RegisterCommand(cmd.Key, cmd.Value.Title, () => cmd.Value.Execute(), cmd.Value.Shortcut);
+            }
+
+            StatusMessage = "AgduBugdu Ready (Markdown Live Viewer Loaded)";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Extension error: {ex.Message}";
+        }
     }
 
     private void HookActiveDocument()
@@ -81,6 +190,10 @@ public partial class MainViewModel : ViewModelBase
             CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
         };
         CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
+        if (!string.IsNullOrEmpty(doc.FilePath))
+        {
+            _editorService.SetActive(doc.FilePath);
+        }
     }
 
     private void RegisterDefaultCommands()
@@ -169,6 +282,7 @@ public partial class MainViewModel : ViewModelBase
         ActiveWorkspaceName = folderName;
         StatusMessage = $"Workspace: {folderName}";
 
+        _workspaceService.SetWorkspaceDirect(folderPath);
         _dockFactory.ExplorerTool?.LoadFolder(folderPath);
     }
 
@@ -189,6 +303,7 @@ public partial class MainViewModel : ViewModelBase
                 _dockFactory.SetActiveDockable(existing);
                 AttachDocumentEvents(existing);
                 StatusMessage = $"Switched to {existing.FileName}";
+                _editorService.NotifyOpened(filePath);
                 return;
             }
 
@@ -197,6 +312,7 @@ public partial class MainViewModel : ViewModelBase
             _dockFactory.AddDockable(_dockFactory.DocumentDock, doc);
             _dockFactory.SetActiveDockable(doc);
             StatusMessage = $"Opened {doc.FileName}";
+            _editorService.NotifyOpened(filePath);
         }
     }
 
@@ -213,6 +329,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 activeDoc.Save();
                 StatusMessage = $"Saved {activeDoc.FileName}";
+                _editorService.NotifySaved(activeDoc.FilePath);
             }
         }
     }
@@ -237,6 +354,7 @@ public partial class MainViewModel : ViewModelBase
                 var newPath = file.Path.LocalPath;
                 activeDoc.SaveAs(newPath);
                 StatusMessage = $"Saved as {activeDoc.FileName}";
+                _editorService.NotifySaved(newPath);
             }
         }
     }

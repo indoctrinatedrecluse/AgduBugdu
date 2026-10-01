@@ -1,25 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Folder Include="Models\" />
-    <AvaloniaResource Include="Assets\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.2" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.2" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.2">
-      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
-      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
-    </PackageReference>
+    <!-- Condition below is needed to remove diagnostics in IDE: https://preview.avaloniaui.net/docs/guides/development-guides/setting-up-a-development-environment#guidelines -->
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.2" />
+    
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.1.0" />
     <PackageReference Include="AvaloniaEdit.TextMate" Version="11.1.0" />
     <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.1.1" />
@@ -33,9 +30,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AgduBugdu.PluginContracts\AgduBugdu.PluginContracts.csproj" />
     <ProjectReference Include="..\AgduBugdu.Core\AgduBugdu.Core.csproj" />
-    <ProjectReference Include="..\AgduBugdu.Infrastructure\AgduBugdu.Infrastructure.csproj" />
     <ProjectReference Include="..\AgduBugdu.Extensibility\AgduBugdu.Extensibility.csproj" />
+    <ProjectReference Include="..\AgduBugdu.Infrastructure\AgduBugdu.Infrastructure.csproj" />
+    <ProjectReference Include="..\AgduBugdu.PluginContracts\AgduBugdu.PluginContracts.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.MarkdownLive\AgduBugdu.Plugin.MarkdownLive.csproj" />
   </ItemGroup>
+
 </Project>

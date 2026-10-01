@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:plugin="using:AgduBugdu.Plugin.MarkdownLive"
+             x:Class="AgduBugdu.App.Views.Tools.MarkdownPreviewToolView"
+             x:DataType="plugin:MarkdownPreviewViewModel">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Padding="12,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="MARKDOWN PREVIEW"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Foreground="#888888"
+                           VerticalAlignment="Center" />
+                <TextBlock Text="Live HTML Output"
+                           FontSize="11"
+                           Foreground="#AAAAAA"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Preview Body -->
+        <ScrollViewer Grid.Row="1" Padding="16">
+            <TextBox Text="{Binding HtmlPreview}"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                     FontSize="13"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Foreground="#CCCCCC" />
+        </ScrollViewer>
+    </Grid>
+</UserControl>
