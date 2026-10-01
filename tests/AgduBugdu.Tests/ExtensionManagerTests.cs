@@ -191,32 +191,38 @@ public class ExtensionManagerTests
     {
         using var terminal = new LocalTerminalSession();
         var outputReceived = new AutoResetEvent(false);
-        string received = string.Empty;
+        var sb = new System.Text.StringBuilder();
 
         terminal.OutputReceived += (s, text) =>
         {
-            received += text;
+            lock (sb)
+            {
+                sb.Append(text);
+            }
             outputReceived.Set();
         };
 
         terminal.Start();
         Assert.True(terminal.IsRunning);
 
-        // Wait for initial shell banner
-        outputReceived.WaitOne(TimeSpan.FromSeconds(3));
-
-        // Write an echo command
+        // Send a simple, non-interactive echo
+        await Task.Delay(150);
         await terminal.WriteInputAsync("echo AGDU_TERMINAL_TEST");
-        var matched = false;
 
-        for (int i = 0; i < 10; i++)
+        var matched = false;
+        var timeoutAt = DateTime.UtcNow.AddSeconds(10);
+
+        while (DateTime.UtcNow < timeoutAt)
         {
-            if (received.Contains("AGDU_TERMINAL_TEST"))
+            lock (sb)
             {
-                matched = true;
-                break;
+                if (sb.ToString().Contains("AGDU_TERMINAL_TEST"))
+                {
+                    matched = true;
+                    break;
+                }
             }
-            outputReceived.WaitOne(TimeSpan.FromMilliseconds(300));
+            outputReceived.WaitOne(TimeSpan.FromMilliseconds(200));
         }
 
         Assert.True(matched);

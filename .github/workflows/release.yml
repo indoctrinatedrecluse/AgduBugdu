@@ -37,21 +37,9 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore AgduBugdu.slnx
-
-      - name: Run Test Suite
-        run: dotnet test AgduBugdu.slnx --no-restore -c Release
-
-      # Publish portable binary bundle
-      - name: Publish Binaries (${{ matrix.rid }})
-        run: >
-          dotnet publish src/AgduBugdu.App/AgduBugdu.App.csproj
-          -c Release
-          -r ${{ matrix.rid }}
-          --self-contained true
-          -p:PublishSingleFile=false
-          -o publish/${{ matrix.rid }}
+      - name: Build, Test and Publish via CI Runner Script
+        shell: pwsh
+        run: ./tools/ci-build.ps1 -Rid ${{ matrix.rid }} -Configuration Release -RunTests
 
       # Windows specific: Create Portable ZIP and Inno Setup Installer EXE
       - name: Package Windows Artifacts (.zip and setup .exe)
