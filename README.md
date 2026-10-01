@@ -20,39 +20,39 @@
 
 ### 2.2 Scope & Capabilities
 
-| Capability | In Scope (MVP & Near-Term) | Future Roadmap |
+| Capability | In Scope (Current & Near-Term) | Future Roadmap |
 | :--- | :--- | :--- |
-| **Workspace & Docking** | Dockable tool windows, document tabs, splitters, saved layouts | Multi-window detachment, remote workspaces |
-| **Editing** | AvalonEdit buffer, line numbers, folding, bracket matching, caret multi-selection | Inline diff editor, minimap |
-| **Syntax Highlighting** | VS Code TextMate grammars & themes via `AvalonEdit.TextMate` | Semantic token highlighting |
-| **File Management** | High-performance virtualized tree view (`TreeDataGrid`), lazy loading, file system watcher | Integrated Git staging/blame tree |
-| **Extensions** | Dynamic discovery, `AssemblyLoadContext` loading, extension manager UI, endpoint registration | Extension marketplace, out-of-process RPC plugins |
+| **Workspace & Docking** | Dockable tool windows, document tabs, splitters, layout serialization (`Dock.Avalonia`) | Multi-window detachment, remote workspaces |
+| **Editing** | AvalonEdit buffer, line numbers, word wrap, caret tracking, Ctrl+Wheel zoom, context menu | Inline diff editor, minimap |
+| **Syntax Highlighting** | VS Code TextMate grammars & themes via `AvaloniaEdit.TextMate` | Semantic token highlighting |
+| **File Management** | Workspace Explorer with lazy subdirectory expansion, file double-click opening, Open Folder dialog | Live file system watcher, Git staging badges |
+| **Extensions** | Collectible `PluginLoadContext` (ALC), runtime command palette contribution, tool windows | Extension marketplace, out-of-process RPC plugins |
+| **Command Palette** | Modal command search (`Ctrl+P` / `Ctrl+Shift+P`) with hotkeys and dynamic execution | Fuzzy file navigation, symbol picker |
 | **Terminal** | Integrated shell via `Pty.Net` (PowerShell, Bash, Zsh) | Multiplexed terminal tabs, split terminals |
-| **Language Features** | Basic completions and snippets | Language Server Protocol (LSP) client integration |
 
 ---
 
-## 3. Proposed Technology Stack
+## 3. Technology Stack
 
 AgduBugdu leverages best-of-breed libraries across the Avalonia and .NET ecosystems:
 
-| Component | Library / Package | Role & Justification |
-| :--- | :--- | :--- |
-| **Target Runtime** | `.NET 8` / `.NET 10` | High-performance JIT/AOT capabilities, modern C# language features, cross-platform runtime. |
-| **UI Framework** | `Avalonia` (v11.x+) | Cross-platform, hardware-accelerated UI framework with flexible styling and XAML/code-behind support. |
-| **Window Chrome & Styles** | `FluentAvalonia` | WinUI 3 controls, Mica/Acrylic glass backdrops, custom seamless titlebar, and theme management. |
-| **Docking System** | `Dock.Avalonia` + `Dock.Model.Mvvm` | VS Code/Visual Studio-grade docking, floating tool windows, tabbed document groups, layout serialization. |
-| **Editor Core** | `Avalonia.AvalonEdit` | High-performance `Rope<T>` text buffer, virtualized text rendering, folding, margin decorations. |
-| **Syntax & Theming** | `AvalonEdit.TextMate` | Direct support for VS Code `.tmLanguage` grammars and JSON themes across 100+ languages. |
-| **File Explorer** | `Avalonia.Controls.TreeDataGrid` | Virtualized hierarchical grid capable of rendering 100,000+ files and folders with near-zero latency. |
-| **Iconography** | `FluentIcons.Avalonia` | Scalable vector glyphs for explorer nodes, actions, status indicators, and tabs. |
-| **MVVM & Reactivity** | `CommunityToolkit.Mvvm` + `System.Reactive` | Source-generated viewmodels (`[ObservableProperty]`, `[RelayCommand]`), Rx event debouncing for watchers and search. |
-| **Terminal Host** | `Pty.Net` | Spawns pseudo-terminals for native shells with bidirectional ANSI/VT100 streams. |
-| **Dependency Injection** | `Microsoft.Extensions.DependencyInjection` | Industry-standard inversion of control container for services and plugin resolution. |
+| Component | Library / Package | Version | Role & Justification |
+| :--- | :--- | :--- | :--- |
+| **Target Runtime** | `.NET 8` (`net8.0`) | `8.0` | High-performance JIT/AOT capabilities, modern C# language features, cross-platform runtime. |
+| **UI Framework** | `Avalonia` & `Avalonia.Desktop` | `11.3.2` | Cross-platform, hardware-accelerated UI framework with flexible styling and XAML/code-behind support. |
+| **Window Chrome & Styles** | `FluentAvaloniaUI` | `2.1.0` | WinUI 3 controls, dark/light theme management, and fluent styling. |
+| **Docking System** | `Dock.Avalonia` + `Dock.Model.Mvvm` | `11.3.2` | Professional docking, floating tool windows, tabbed document groups, layout serialization. |
+| **Editor Core** | `Avalonia.AvalonEdit` | `11.1.0` | High-performance `Rope<T>` text buffer, virtualized text rendering, caret tracking. |
+| **Syntax & Theming** | `AvaloniaEdit.TextMate` | `11.1.0` | Direct support for VS Code `.tmLanguage` grammars and JSON themes across 100+ languages. |
+| **Tree Data Grid** | `Avalonia.Controls.TreeDataGrid` | `11.1.1` | MIT-licensed virtualized hierarchical grid for file trees without commercial locks. |
+| **Iconography** | `FluentIcons.Avalonia` | `1.1.225` | Scalable vector glyphs for explorer nodes, actions, status indicators, and tabs. |
+| **MVVM & Reactivity** | `CommunityToolkit.Mvvm` | `8.4.0` | Source-generated viewmodels (`[ObservableProperty]`, `[RelayCommand]`). |
+| **Extensibility Host** | Isolated `AssemblyLoadContext` | Native | Clean memory management and collectible assembly unloading. |
+| **Dependency Injection** | `Microsoft.Extensions.DependencyInjection` | `8.0.1` | Inversion of control container for services and plugin resolution. |
 
 ---
 
-## 4. Proposed System Architecture
+## 4. System Architecture
 
 AgduBugdu is designed around decoupled layers: an agnostic Core Domain, a dedicated Extensibility Contract, Infrastructure implementations, an Extension Host, and the Presentation Shell.
 
@@ -60,36 +60,34 @@ AgduBugdu is designed around decoupled layers: an agnostic Core Domain, a dedica
 graph TD
     subgraph UI ["Presentation Layer (AgduBugdu.App)"]
         MainWindow["MainWindow (DockHost, TitleBar, CommandPalette)"]
-        DockManager["Dock Layout & DockFactory"]
+        DockManager["Dock Layout & MainDockFactory"]
         EditorView["Editor Tabs (AvalonEdit + TextMate)"]
-        ExplorerView["File Explorer (TreeDataGrid)"]
-        ToolPanels["Tool Windows (Output, Terminal, Diagnostics)"]
+        ExplorerView["Workspace Explorer (TreeView + Lazy Loading)"]
+        ToolPanels["Tool Windows (Output, Preview)"]
     end
 
-    subgraph ExtMgr ["Extension Subsystem"]
+    subgraph ExtMgr ["Extension Subsystem (AgduBugdu.Extensibility)"]
         ExtensionManager["ExtensionManager & Loader"]
-        ALCRegistry["AssemblyLoadContext Registry"]
-        PluginCatalog["Plugin Catalog & Manifest Parser"]
+        ALCRegistry["PluginLoadContext (Collectible ALC)"]
+        CommandReg["CommandRegistry"]
+        ToolReg["ToolWindowRegistry"]
     end
 
     subgraph Contracts ["Extensibility Contracts (AgduBugdu.PluginContracts)"]
         IExtension["IExtension Lifecycle Interface"]
         ICommandRegistry["ICommandRegistry & Menu Items"]
         IToolWindowRegistry["IToolWindowRegistry"]
-        ILanguageProviderRegistry["ILanguageProviderRegistry"]
         IEditorService["IEditorService & Document Hooks"]
+        IWorkspaceService["IWorkspaceService"]
     end
 
     subgraph Core ["Core Domain & Services (AgduBugdu.Core)"]
-        Workspace["Workspace & Project Service"]
-        FileWatch["File System Watcher"]
+        Workspace["Workspace & Project State"]
         Config["Configuration & Keybindings"]
-        EventBus["Global Event Aggregator"]
     end
 
-    subgraph Plugins ["External Extension Assemblies (.dll)"]
-        ExtA["Plugin A (.dll)"]
-        ExtB["Plugin B (.dll)"]
+    subgraph Plugins ["External Extension Assemblies"]
+        MarkdownPlugin["Markdown Live Viewer Plugin (.dll)"]
     end
 
     MainWindow --> DockManager
@@ -97,8 +95,8 @@ graph TD
     MainWindow --> ExtensionManager
     ExtensionManager --> ALCRegistry
     ALCRegistry --> Plugins
-    Plugins -.implements.-> IExtension
-    Plugins -.uses.-> Contracts
+    MarkdownPlugin -.implements.-> IExtension
+    MarkdownPlugin -.uses.-> Contracts
     ExtensionManager --> Contracts
     UI --> Core
     Contracts --> Core
@@ -121,39 +119,21 @@ flowchart LR
     HostApp["AgduBugdu Host Application"]
     Contracts["AgduBugdu.PluginContracts (Shared Assembly)"]
     
-    subgraph ALC1 ["Isolated ALC (Extension A)"]
-        ExtA["ExtensionA.dll"]
-        DepA["ThirdParty.Json v13.0"]
+    subgraph ALC1 ["Isolated ALC (Markdown Plugin)"]
+        MarkdownExt["AgduBugdu.Plugin.MarkdownLive.dll"]
     end
     
-    subgraph ALC2 ["Isolated ALC (Extension B)"]
-        ExtB["ExtensionB.dll"]
-        DepB["ThirdParty.Json v12.0"]
+    subgraph ALC2 ["Isolated ALC (Custom Plugin)"]
+        CustomExt["CustomPlugin.dll"]
     end
 
     HostApp -->|Loads| ALC1
     HostApp -->|Loads| ALC2
-    ExtA -->|References| Contracts
-    ExtB -->|References| Contracts
+    MarkdownExt -->|References| Contracts
+    CustomExt -->|References| Contracts
 ```
 
-### 5.2 Extension Manifest (`extension.json`)
-Each extension is distributed as a directory containing an `extension.json` descriptor and its binary assets:
-
-```json
-{
-  "id": "com.agdubugdu.git-integration",
-  "name": "Git Status Badges",
-  "version": "1.0.0",
-  "entryPoint": "AgduBugdu.GitPlugin.dll",
-  "mainClass": "AgduBugdu.GitPlugin.GitExtension",
-  "author": "Community",
-  "description": "Displays git branch and uncommitted markers in file explorer.",
-  "dependencies": []
-}
-```
-
-### 5.3 Exposed Extension Endpoints & Interfaces
+### 5.2 Exposed Extension Endpoints & Interfaces
 
 The `AgduBugdu.PluginContracts` project defines points of integration:
 
@@ -163,6 +143,7 @@ public interface IExtension
 {
     string Id { get; }
     string Name { get; }
+    string Version { get; }
     void Initialize(IExtensionContext context);
     Task ActivateAsync();
     Task DeactivateAsync();
@@ -175,41 +156,34 @@ public interface IExtensionContext
     IToolWindowRegistry ToolWindows { get; }
     IEditorService EditorService { get; }
     IWorkspaceService WorkspaceService { get; }
-    IStatusBarService StatusBar { get; }
-    ILogger Logger { get; }
+    void Log(string message, string level = "Info");
 }
 
 // 3. Command registration endpoint
 public interface ICommandRegistry
 {
-    void RegisterCommand(string commandId, string title, Func<Task> execute, KeyGesture? defaultShortcut = null);
+    void RegisterCommand(string id, string title, Func<Task> execute, string? shortcut = null);
     void RegisterMenuItem(string menuPath, string commandId, int order = 0);
+    IReadOnlyDictionary<string, CommandDescriptor> GetRegisteredCommands();
 }
 
 // 4. Custom tool panels (dockable tools)
 public interface IToolWindowRegistry
 {
-    void RegisterToolWindow<TViewModel, TView>(string toolId, string title, DockPosition defaultPosition)
-        where TViewModel : class
-        where TView : Control;
+    void RegisterToolWindow(string id, string title, Func<object> viewModelFactory, Func<object, object> viewFactory);
+    IReadOnlyDictionary<string, ToolWindowDescriptor> GetRegisteredTools();
 }
 
 // 5. Editor hooks and document interceptors
 public interface IEditorService
 {
-    event EventHandler<IDocumentOpenedEventArgs> DocumentOpened;
-    event EventHandler<IDocumentSavedEventArgs> DocumentSaved;
-    void RegisterTextDecorator(ITextDecorator decorator);
+    event EventHandler<DocumentEventArgs>? DocumentOpened;
+    event EventHandler<DocumentEventArgs>? DocumentSaved;
+    event EventHandler<DocumentEventArgs>? DocumentClosed;
+    string? ActiveDocumentPath { get; }
+    void OpenFile(string filePath);
 }
 ```
-
-### 5.4 Extension Lifecycle
-1. **Discovery**: `ExtensionManager` scans configured directories (e.g., `%APPDATA%/AgduBugdu/extensions/` and local `./extensions/`).
-2. **Validation**: Reads `extension.json`, validates API version compatibility and required dependencies.
-3. **Load**: Instantiates an isolated `PluginAssemblyLoadContext` and resolves referenced assemblies.
-4. **Initialization**: Instantiates the entry type implementing `IExtension` and invokes `Initialize(context)`.
-5. **Activation**: Calls `ActivateAsync()`; the extension binds its commands, tool windows, and event handlers.
-6. **Teardown**: On application exit or plugin disable, calls `DeactivateAsync()`, unhooks registered endpoints, and releases the ALC for garbage collection.
 
 ---
 
@@ -223,58 +197,85 @@ AgduBugdu/
 │   │   ├── IExtensionContext.cs
 │   │   ├── ICommandRegistry.cs
 │   │   ├── IToolWindowRegistry.cs
-│   │   └── IEditorService.cs
+│   │   ├── IEditorService.cs
+│   │   └── IWorkspaceService.cs
 │   │
 │   ├── AgduBugdu.Core/                 # Core domain logic
-│   │   ├── Models/                     # FileNode, TextBufferInfo, WorkspaceConfig
-│   │   ├── Services/                   # WorkspaceService, FileService
-│   │   └── Events/                     # EventAggregator and domain events
 │   │
 │   ├── AgduBugdu.Infrastructure/       # System I/O and process hosting
-│   │   ├── FileSystem/                 # TreeDataGrid adapters, FileWatcher
-│   │   ├── Terminal/                   # Pty.Net pseudo-terminal host
-│   │   └── Lsp/                        # LSP client communication
 │   │
 │   ├── AgduBugdu.Extensibility/        # Extension manager engine
-│   │   ├── PluginAssemblyLoadContext.cs
-│   │   ├── ExtensionManager.cs
-│   │   ├── ExtensionCatalog.cs
-│   │   └── Registries/                 # Concrete implementations of contracts
+│   │   ├── PluginLoadContext.cs        # Collectible AssemblyLoadContext
+│   │   ├── ExtensionManager.cs         # Assembly scanner, loader, and unloader
+│   │   ├── ExtensionContext.cs         # Concrete implementation of IExtensionContext
+│   │   └── Registries/                 # Thread-safe Command & Tool registries
 │   │
 │   └── AgduBugdu.App/                  # Avalonia desktop application
-│       ├── Views/                      # MainWindow, EditorView, ExplorerView
-│       ├── ViewModels/                 # MainViewModel, DocumentViewModel
-│       ├── Dock/                       # CustomDockFactory, Dock templates
-│       ├── Editor/                     # AvalonEdit configuration & TextMate setup
-│       ├── App.axaml                   # FluentAvalonia theme resources
-│       └── Program.cs                  # Bootstrapper & DI setup
+│       ├── Views/                      # MainWindow, CommandPalette, Editor, Explorer, Output
+│       ├── ViewModels/                 # MainViewModel, CommandPaletteViewModel, Documents, Tools
+│       ├── Docking/                    # MainDockFactory (Dock.Avalonia layout wiring)
+│       ├── Models/                     # FileSystemItem (lazy loading hierarchical model)
+│       ├── App.axaml                   # Theme configuration (FluentAvalonia, Dock, TreeDataGrid)
+│       └── Program.cs                  # Bootstrapper
 │
-├── extensions/                         # Built-in or sample extensions
-│   └── AgduBugdu.SamplePlugin/         # Example plugin demonstrating endpoints
+├── plugins/
+│   └── AgduBugdu.Plugin.MarkdownLive/  # Live Markdown Preview sample plugin
+│       ├── MarkdownLiveExtension.cs    # Implements IExtension, registers preview tool & command
+│       └── AgduBugdu.Plugin.MarkdownLive.csproj
 │
-└── tests/
-    └── AgduBugdu.Tests/                # Unit and integration test suite
+├── tests/
+│   └── AgduBugdu.Tests/                # Fast xUnit test suite (lifecycle, registries, documents)
+│       └── ExtensionManagerTests.cs
+│
+└── tools/
+    └── run.ps1                         # Dependency check, auto-repair, build, and test runner
 ```
 
 ---
 
-## 7. Roadmap & Milestones
+## 7. Build, Dependency Check & Run
 
-- [ ] **Milestone 1: Project Scaffolding & Core Shell**
-  - Solution creation targeting `.NET 8` / `.NET 10`.
-  - Avalonia 11 + FluentAvalonia setup with custom window chrome and theme switcher.
-  - Basic MVVM configuration with Microsoft Dependency Injection.
-- [ ] **Milestone 2: Docking & Text Editing**
-  - Integrate `Dock.Avalonia` with document tabs and tool panels.
-  - Integrate `Avalonia.AvalonEdit` with `AvalonEdit.TextMate` for syntax highlighting.
-  - Basic file open, edit, save, and dirty-state tracking.
-- [ ] **Milestone 3: File Explorer & Workspace System**
-  - Implement high-performance `TreeDataGrid` file tree with lazy loading.
-  - Live file watcher integration to refresh changes in real time.
-- [ ] **Milestone 4: Extensibility Infrastructure**
-  - Implement `AgduBugdu.PluginContracts` and `AgduBugdu.Extensibility`.
-  - Create isolated `AssemblyLoadContext` loader with lifecycle management.
-  - Build sample plugin demonstrating custom menu items and dockable tool panels.
-- [ ] **Milestone 5: Terminal & Polishing**
+Use the provided PowerShell script in `tools/` to check prerequisites, restore missing dependencies, and run:
+
+```powershell
+# 1. Check dependencies and build local solution
+.\tools\run.ps1
+
+# 2. Check dependencies, build, and run the test suite
+.\tools\run.ps1 -RunTests
+
+# 3. Build and launch the AgduBugdu editor desktop app
+.\tools\run.ps1 -LaunchApp
+
+# 4. Verbose logging / diagnose issues
+.\tools\run.ps1 -VerboseLogging
+```
+
+---
+
+## 8. Implementation Roadmap & Current Status
+
+- [x] **Milestone 1: Project Scaffolding & Core Shell**
+  - Modular solution setup (`slnx`) targeting `.NET 8`.
+  - Pinned stable LTS Avalonia `11.3.2` + `FluentAvaloniaUI` `2.1.0`.
+  - `tools/run.ps1` automated dependency validator and runner.
+- [x] **Milestone 2: Docking Architecture & IDE Shell**
+  - Integrated `Dock.Avalonia` with left tool panel, center document dock, and bottom output pane.
+  - Interactive Command Palette overlay (`Ctrl+P` / `Ctrl+Shift+P`) with real-time filtering.
+  - Modern bottom status bar tracking cursor position, encoding, and workspace state.
+- [x] **Milestone 3: Core Editor Experience (AvalonEdit)**
+  - `AvaloniaEdit.TextMate` integration with `DarkPlus` theme and automatic language grammar detection.
+  - Native file I/O: Open (`Ctrl+O`), Save (`Ctrl+S`), Save As (`Ctrl+Shift+S`), and New File (`Ctrl+N`).
+  - Dirty buffer tracking (`*` indicator) and duplicate tab prevention.
+  - Editor enhancements: Current line highlight, smart indentation, context menu (Cut/Copy/Paste/Select All), and `Ctrl+MouseWheel` font zoom.
+- [x] **Milestone 4: Workspace File Explorer**
+  - Hierarchical workspace explorer with lazy-loading directory expansion.
+  - Native folder selection via Avalonia `StorageProvider.OpenFolderPickerAsync`.
+  - Double-click file opening into dock tabs.
+- [x] **Milestone 5: Extensibility Subsystem & Markdown Live Plugin**
+  - Collectible `PluginLoadContext` with shared contracts isolation.
+  - Dynamic command registration and synchronization into host Command Palette.
+  - End-to-end sample plugin: `AgduBugdu.Plugin.MarkdownLive` live-updating HTML output from markdown documents.
+- [ ] **Milestone 6: Integrated Terminal & Language Features**
   - Embedded pseudo-terminal panel via `Pty.Net`.
-  - Command palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and quick file open (`Ctrl+P` / `Cmd+P`).
+  - Language Server Protocol (LSP) client integration.
