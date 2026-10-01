@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AgduBugdu.App/AgduBugdu.App.csproj" />
+    <Project Path="src/AgduBugdu.Core/AgduBugdu.Core.csproj" />
+    <Project Path="src/AgduBugdu.Extensibility/AgduBugdu.Extensibility.csproj" />
+    <Project Path="src/AgduBugdu.Infrastructure/AgduBugdu.Infrastructure.csproj" />
+    <Project Path="src/AgduBugdu.PluginContracts/AgduBugdu.PluginContracts.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AgduBugdu.Tests/AgduBugdu.Tests.csproj" />
+  </Folder>
+</Solution>
