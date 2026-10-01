@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             x:Class="AgduBugdu.App.Views.Tools.OutputToolView"
+             x:DataType="vm:OutputToolViewModel">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Output Header -->
+        <Border Grid.Row="0"
+                Padding="12,6"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="OUTPUT"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="#888888"
+                           VerticalAlignment="Center" />
+                <TextBlock Text="AgduBugdu System Log"
+                           FontSize="11"
+                           Foreground="#AAAAAA"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Log Display -->
+        <TextBox Grid.Row="1"
+                 IsReadOnly="True"
+                 FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                 FontSize="12"
+                 Background="#141414"
+                 Foreground="#CCCCCC"
+                 BorderThickness="0"
+                 Text="[System] AgduBugdu IDE initialized.&#x0a;[Extensibility] Extension subsystem ready.&#x0a;[Theme] FluentAvalonia Dark theme active."
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap" />
+    </Grid>
+</UserControl>

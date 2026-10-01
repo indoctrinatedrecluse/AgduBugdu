@@ -1,22 +1,130 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:AgduBugdu.App.ViewModels"
+        xmlns:views="using:AgduBugdu.App.Views"
+        xmlns:dock="using:Dock.Avalonia.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
         x:Class="AgduBugdu.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="AgduBugdu.App">
+        Title="AgduBugdu"
+        Width="1280" Height="760"
+        WindowStartupLocation="CenterScreen">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainViewModel />
-    </Design.DataContext>
+    <!-- Keyboard Hotkeys -->
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+P" Command="{Binding OpenCommandPaletteCommand}" />
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding NewFileCommand}" />
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
+    </Window.KeyBindings>
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+    <Grid>
+        <!-- IDE Main Shell Layout -->
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+            
+            <!-- Menu Bar -->
+            <Menu Grid.Row="0" Background="#1E1E1E">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_New File" InputGesture="Ctrl+N" Command="{Binding NewFileCommand}" />
+                    <MenuItem Header="_Open File..." InputGesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Save" InputGesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
+                </MenuItem>
+                <MenuItem Header="_Edit">
+                    <MenuItem Header="Undo" InputGesture="Ctrl+Z" />
+                    <MenuItem Header="Redo" InputGesture="Ctrl+Y" />
+                    <Separator />
+                    <MenuItem Header="Cut" InputGesture="Ctrl+X" />
+                    <MenuItem Header="Copy" InputGesture="Ctrl+C" />
+                    <MenuItem Header="Paste" InputGesture="Ctrl+V" />
+                </MenuItem>
+                <MenuItem Header="_View">
+                    <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
+                    <Separator />
+                    <MenuItem Header="Explorer" />
+                    <MenuItem Header="Output" />
+                </MenuItem>
+                <MenuItem Header="_Help">
+                    <MenuItem Header="About AgduBugdu" />
+                </MenuItem>
+            </Menu>
 
+            <!-- Quick Action / Search Header Bar -->
+            <Border Grid.Row="1"
+                    Background="#252526"
+                    BorderBrush="#333333"
+                    BorderThickness="0,1,0,1"
+                    Padding="12,6">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <!-- Workspace Title -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="AgduBugdu" FontWeight="Bold" Foreground="#3B82F6" />
+                        <TextBlock Text="—" Foreground="#666666" />
+                        <TextBlock Text="{Binding ActiveWorkspaceName}" Foreground="#AAAAAA" />
+                    </StackPanel>
+
+                    <!-- Center Command Palette Trigger -->
+                    <Button Grid.Column="1"
+                            HorizontalAlignment="Center"
+                            Width="360"
+                            Padding="10,4"
+                            Background="#1E1E1E"
+                            BorderBrush="#3F3F46"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Command="{Binding OpenCommandPaletteCommand}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="Search files, commands (Ctrl+P)..."
+                                       FontSize="12"
+                                       Foreground="#71717A"
+                                       VerticalAlignment="Center" />
+                            <Border Grid.Column="1"
+                                    Background="#27272A"
+                                    CornerRadius="3"
+                                    Padding="4,1">
+                                <TextBlock Text="Ctrl+P" FontSize="10" Foreground="#A1A1AA" />
+                            </Border>
+                        </Grid>
+                    </Button>
+
+                    <!-- Right Quick Status -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#888888" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Docking Host (Explorer, Editor Tabs, Output Pane) -->
+            <dock:DockControl Grid.Row="2"
+                              Layout="{Binding Layout}"
+                              Margin="0" />
+
+            <!-- Modern Bottom Status Bar -->
+            <Border Grid.Row="3"
+                    Background="#007ACC"
+                    Padding="12,3"
+                    Height="24">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <!-- Left status -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="#FFFFFF" />
+                    </StackPanel>
+
+                    <!-- Right details -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CursorPosition}" FontSize="11" Foreground="#FFFFFF" />
+                        <TextBlock Text="{Binding Encoding}" FontSize="11" Foreground="#FFFFFF" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Command Palette Overlay -->
+        <views:CommandPaletteView DataContext="{Binding CommandPalette}" />
+    </Grid>
 </Window>

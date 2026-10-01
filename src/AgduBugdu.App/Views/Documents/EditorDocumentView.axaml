@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Documents"
+             xmlns:ae="using:AvaloniaEdit"
+             x:Class="AgduBugdu.App.Views.Documents.EditorDocumentView"
+             x:DataType="vm:EditorDocumentViewModel">
+
+    <Grid>
+        <ae:TextEditor Document="{Binding TextDocument}"
+                       ShowLineNumbers="True"
+                       FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                       FontSize="14"
+                       WordWrap="False"
+                       HorizontalScrollBarVisibility="Auto"
+                       VerticalScrollBarVisibility="Visible"
+                       Background="#1E1E1E"
+                       Foreground="#D4D4D4" />
+    </Grid>
+</UserControl>
