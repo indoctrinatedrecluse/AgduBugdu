@@ -426,7 +426,7 @@ public partial class MainViewModel : ViewModelBase
             return;
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {\n            Title = "Open File",
+        {            Title = "Open File",
             AllowMultiple = false
         });
 
