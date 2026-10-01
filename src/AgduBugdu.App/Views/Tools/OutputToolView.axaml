@@ -8,19 +8,32 @@
         <!-- Output Header -->
         <Border Grid.Row="0"
                 Padding="12,6"
+                Background="#252526"
                 BorderBrush="#333333"
                 BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Text="OUTPUT"
-                           FontSize="11"
-                           FontWeight="SemiBold"
-                           Foreground="#888888"
-                           VerticalAlignment="Center" />
-                <TextBlock Text="AgduBugdu System Log"
-                           FontSize="11"
-                           Foreground="#AAAAAA"
-                           VerticalAlignment="Center" />
-            </StackPanel>
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="OUTPUT"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#888888"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="AgduBugdu System Log"
+                               FontSize="11"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="🗕 Minimize"
+                        ToolTip.Tip="Reset pane to original size"
+                        FontSize="10"
+                        Padding="6,2"
+                        Background="#333333"
+                        Foreground="#EEEEEE"
+                        CornerRadius="3"
+                        Command="{Binding ResetSizeCommand}" />
+            </Grid>
         </Border>
 
         <!-- Log Display -->

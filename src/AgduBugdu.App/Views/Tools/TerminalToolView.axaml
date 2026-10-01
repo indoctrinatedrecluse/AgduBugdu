@@ -24,14 +24,23 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Content="Clear"
-                        FontSize="10"
-                        Padding="6,2"
-                        Background="#333333"
-                        Foreground="#EEEEEE"
-                        CornerRadius="3"
-                        Command="{Binding ClearTerminalCommand}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <Button Content="Clear"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding ClearTerminalCommand}" />
+                    <Button Content="🗕 Minimize"
+                            ToolTip.Tip="Reset pane to original size"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding ResetSizeCommand}" />
+                </StackPanel>
             </Grid>
         </Border>
 

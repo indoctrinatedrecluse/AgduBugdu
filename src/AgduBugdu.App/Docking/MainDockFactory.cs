@@ -14,6 +14,7 @@ public class MainDockFactory : Factory
     private IDocumentDock? _documentDock;
     private ToolDock? _bottomDock;
     private ToolDock? _leftDock;
+    private ProportionalDock? _centerLayout;
     private ExplorerToolViewModel? _explorerTool;
     private OutputToolViewModel? _outputTool;
     private TerminalToolViewModel? _terminalTool;
@@ -62,7 +63,7 @@ public class MainDockFactory : Factory
         {
             Id = "DocumentsPane",
             Title = "Documents",
-            Proportion = double.NaN,
+            Proportion = 0.72,
             VisibleDockables = CreateList<IDockable>(doc1),
             ActiveDockable = doc1,
             CanCreateDocument = true
@@ -78,6 +79,7 @@ public class MainDockFactory : Factory
                 bottomDock
             )
         };
+        _centerLayout = centerLayout;
 
         var mainLayout = new ProportionalDock
         {
@@ -104,13 +106,17 @@ public class MainDockFactory : Factory
         {
             _bottomDock.Proportion = 0.28;
         }
+        if (_documentDock != null)
+        {
+            _documentDock.Proportion = 0.72;
+        }
         if (_leftDock != null)
         {
             _leftDock.Proportion = 0.22;
         }
-        if (_documentDock != null)
+        if (_centerLayout != null)
         {
-            _documentDock.Proportion = double.NaN;
+            _centerLayout.Proportion = 0.78;
         }
     }
 

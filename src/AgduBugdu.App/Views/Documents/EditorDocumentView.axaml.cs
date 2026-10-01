@@ -60,6 +60,17 @@ public partial class EditorDocumentView : UserControl
             {
                 Editor.Document = doc.TextDocument;
             }
+
+            doc.PropertyChanged += (s, args) =>
+            {
+                if (args.PropertyName == nameof(EditorDocumentViewModel.TextDocument))
+                {
+                    if (Editor.Document != doc.TextDocument)
+                    {
+                        Editor.Document = doc.TextDocument;
+                    }
+                }
+            };
         }
         SetupSyntaxHighlighting();
     }

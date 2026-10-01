@@ -168,6 +168,7 @@ public partial class MainViewModel : ViewModelBase
 
         HookActiveDocument();
         HookExplorer();
+        HookPanes();
         RegisterDefaultCommands();
 
         // Load built-in extensions & check for updates in background
@@ -238,6 +239,18 @@ public partial class MainViewModel : ViewModelBase
             {
                 AttachDocumentEvents(activeDoc);
             }
+        }
+    }
+
+    private void HookPanes()
+    {
+        if (_dockFactory.TerminalTool != null)
+        {
+            _dockFactory.TerminalTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
+        }
+        if (_dockFactory.OutputTool != null)
+        {
+            _dockFactory.OutputTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
     }
 
@@ -426,7 +439,8 @@ public partial class MainViewModel : ViewModelBase
             return;
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {            Title = "Open File",
+        {
+            Title = "Open File",
             AllowMultiple = false
         });
 

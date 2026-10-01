@@ -121,18 +121,28 @@ public partial class ExplorerToolViewModel : Tool
     }
 }
 
-public class OutputToolViewModel : Tool
+public partial class OutputToolViewModel : Tool
 {
+    public event EventHandler? ResetSizeRequested;
+
     public OutputToolViewModel()
     {
         Id = "Output";
         Title = "Output";
+    }
+
+    [RelayCommand]
+    public void ResetSize()
+    {
+        ResetSizeRequested?.Invoke(this, EventArgs.Empty);
     }
 }
 
 public partial class TerminalToolViewModel : Tool
 {
     private readonly ITerminalSession _session;
+
+    public event EventHandler? ResetSizeRequested;
 
     [ObservableProperty]
     private string _terminalOutput = string.Empty;
@@ -167,6 +177,12 @@ public partial class TerminalToolViewModel : Tool
         _session.Stop();
         TerminalOutput = string.Empty;
         _session.Start(workingDirectory);
+    }
+
+    [RelayCommand]
+    public void ResetSize()
+    {
+        ResetSizeRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
