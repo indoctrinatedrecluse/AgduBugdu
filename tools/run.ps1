@@ -109,8 +109,15 @@ if ($RunTests) {
 # 6. Optional launch
 if ($LaunchApp) {
     Write-Host "`n[4/4] Launching AgduBugdu.App..." -ForegroundColor Cyan
-    $appCsproj = Join-Path $RepoRoot "src\AgduBugdu.App\AgduBugdu.App.csproj"
-    dotnet run --project $appCsproj -c $Configuration --no-build
+    $appExe = Join-Path $RepoRoot "src\AgduBugdu.App\bin\$Configuration\net8.0\AgduBugdu.App.exe"
+    if (Test-Path $appExe) {
+        Write-Host "Starting GUI process: $appExe" -ForegroundColor Green
+        Start-Process -FilePath $appExe -WorkingDirectory (Join-Path $RepoRoot "src\AgduBugdu.App")
+        Write-Host "AgduBugdu window launched successfully!" -ForegroundColor Green
+    } else {
+        $appCsproj = Join-Path $RepoRoot "src\AgduBugdu.App\AgduBugdu.App.csproj"
+        dotnet run --project $appCsproj -c $Configuration --no-build
+    }
 } else {
     Write-Host "`nBuild complete. To launch the editor, pass -LaunchApp or run: dotnet run --project src/AgduBugdu.App" -ForegroundColor Gray
 }

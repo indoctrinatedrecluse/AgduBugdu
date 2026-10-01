@@ -47,7 +47,7 @@
                     <MenuItem Header="Paste" InputGesture="Ctrl+V" />
                 </MenuItem>
                 <MenuItem Header="_Terminal">
-                    <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+`" Command="{Binding RestartTerminalCommand}" />
+                    <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
