@@ -51,16 +51,25 @@ jobs:
           Compress-Archive -Path "publish/${{ matrix.rid }}/*" -DestinationPath "publish/$zipName" -Force
           Write-Host "Created portable archive: publish/$zipName"
 
-          # 2. Build Inno Setup installer exe
-          $innoUrl = "https://files.jrsoftware.org/is/6/innosetup-6.3.3.exe"
-          Invoke-WebRequest -Uri $innoUrl -OutFile "is-setup.exe"
-          Start-Process -FilePath ".\is-setup.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          # 2. Install Inno Setup via Chocolatey
+          choco install innosetup -y --no-progress
+
+          # 3. Locate ISCC compiler and build installer
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          if (Test-Path $iscc) {
+          if (-not (Test-Path $iscc)) {
+            $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command iscc -ErrorAction SilentlyContinue)?.Source
+          }
+
+          if ($iscc -and (Test-Path $iscc)) {
+            Write-Host "Compiling installer with: $iscc"
             & $iscc tools/installer.iss
-            Write-Host "Setup exe generated successfully."
+            Write-Host "Setup exe generated successfully in publish/installer/"
           } else {
-            Write-Warning "Inno Setup compiler not found in standard path."
+            Write-Error "ISCC compiler could not be located after Chocolatey installation."
+            exit 1
           }
 
       # Linux/macOS specific: Create .tar.gz bundle
