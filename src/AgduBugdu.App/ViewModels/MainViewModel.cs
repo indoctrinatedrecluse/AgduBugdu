@@ -43,6 +43,7 @@ public partial class MainViewModel : ViewModelBase
         _dockFactory.InitLayout(Layout);
 
         HookActiveDocument();
+        HookExplorer();
         RegisterDefaultCommands();
     }
 
@@ -54,6 +55,22 @@ public partial class MainViewModel : ViewModelBase
             {
                 AttachDocumentEvents(activeDoc);
             }
+        }
+    }
+
+    private void HookExplorer()
+    {
+        if (_dockFactory.ExplorerTool != null)
+        {
+            _dockFactory.ExplorerTool.FileSelected += (s, path) =>
+            {
+                OpenFile(path);
+            };
+
+            _dockFactory.ExplorerTool.OpenFolderRequested += (s, e) =>
+            {
+                _ = OpenFolderAsync();
+            };
         }
     }
 
@@ -70,6 +87,7 @@ public partial class MainViewModel : ViewModelBase
     {
         CommandPalette.RegisterCommand("file.new", "File: New File", () => NewFile(), "Ctrl+N");
         CommandPalette.RegisterCommand("file.open", "File: Open File...", () => { _ = OpenFileAsync(); }, "Ctrl+O");
+        CommandPalette.RegisterCommand("file.openFolder", "File: Open Folder...", () => { _ = OpenFolderAsync(); }, "Ctrl+K, Ctrl+O");
         CommandPalette.RegisterCommand("file.save", "File: Save", () => { _ = SaveFileAsync(); }, "Ctrl+S");
         CommandPalette.RegisterCommand("file.saveAs", "File: Save As...", () => { _ = SaveFileAsAsync(); }, "Ctrl+Shift+S");
         CommandPalette.RegisterCommand("view.commandpalette", "View: Open Command Palette", () => CommandPalette.Open(), "Ctrl+P");
@@ -120,6 +138,38 @@ public partial class MainViewModel : ViewModelBase
             var filePath = files[0].Path.LocalPath;
             OpenFile(filePath);
         }
+    }
+
+    [RelayCommand]
+    public async Task OpenFolderAsync()
+    {
+        var topLevel = GetTopLevel();
+        if (topLevel?.StorageProvider == null)
+            return;
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Open Workspace Folder",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0)
+        {
+            var folderPath = folders[0].Path.LocalPath;
+            OpenFolder(folderPath);
+        }
+    }
+
+    public void OpenFolder(string folderPath)
+    {
+        if (!Directory.Exists(folderPath))
+            return;
+
+        var folderName = Path.GetFileName(folderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        ActiveWorkspaceName = folderName;
+        StatusMessage = $"Workspace: {folderName}";
+
+        _dockFactory.ExplorerTool?.LoadFolder(folderPath);
     }
 
     public void OpenFile(string filePath)

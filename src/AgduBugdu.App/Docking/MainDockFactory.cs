@@ -12,19 +12,23 @@ public class MainDockFactory : Factory
 {
     private IRootDock? _rootDock;
     private IDocumentDock? _documentDock;
+    private ExplorerToolViewModel? _explorerTool;
+    private OutputToolViewModel? _outputTool;
 
     public IDocumentDock? DocumentDock => _documentDock;
+    public ExplorerToolViewModel? ExplorerTool => _explorerTool;
+    public OutputToolViewModel? OutputTool => _outputTool;
 
     public override IRootDock CreateLayout()
     {
-        var explorerTool = new ExplorerToolViewModel();
-        var outputTool = new OutputToolViewModel();
+        _explorerTool = new ExplorerToolViewModel();
+        _outputTool = new OutputToolViewModel();
 
         var doc1 = new EditorDocumentViewModel
         {
             FileName = "Welcome.txt",
             Title = "Welcome.txt",
-            TextDocument = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open to view source files.\nDock panels are draggable and re-arrangeable.\n")
+            TextDocument = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels are draggable and re-arrangeable.\n")
         };
 
         var leftDock = new ToolDock
@@ -32,8 +36,8 @@ public class MainDockFactory : Factory
             Id = "LeftPane",
             Title = "Explorer",
             Proportion = 0.22,
-            VisibleDockables = CreateList<IDockable>(explorerTool),
-            ActiveDockable = explorerTool
+            VisibleDockables = CreateList<IDockable>(_explorerTool),
+            ActiveDockable = _explorerTool
         };
 
         var bottomDock = new ToolDock
@@ -41,8 +45,8 @@ public class MainDockFactory : Factory
             Id = "BottomPane",
             Title = "Output",
             Proportion = 0.25,
-            VisibleDockables = CreateList<IDockable>(outputTool),
-            ActiveDockable = outputTool
+            VisibleDockables = CreateList<IDockable>(_outputTool),
+            ActiveDockable = _outputTool
         };
 
         var documentDock = new DocumentDock

@@ -1,27 +1,41 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:models="using:AgduBugdu.App.Models"
              x:Class="AgduBugdu.App.Views.Tools.ExplorerToolView"
              x:DataType="vm:ExplorerToolViewModel">
 
     <Grid RowDefinitions="Auto,*">
-        <!-- Explorer Header -->
+        <!-- Explorer Header Bar -->
         <Border Grid.Row="0"
                 Padding="12,8"
+                Background="#252526"
                 BorderBrush="#333333"
                 BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Text="WORKSPACE EXPLORER"
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding WorkspaceName}"
                            FontSize="11"
-                           FontWeight="SemiBold"
-                           Foreground="#888888"
-                           VerticalAlignment="Center" />
-            </StackPanel>
+                           FontWeight="Bold"
+                           Foreground="#CCCCCC"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1"
+                        Content="Open"
+                        FontSize="10"
+                        Padding="6,2"
+                        Background="#333333"
+                        Foreground="#EEEEEE"
+                        CornerRadius="3"
+                        Command="{Binding OpenFolderCommand}" />
+            </Grid>
         </Border>
 
-        <!-- Placeholder for TreeDataGrid file system view -->
-        <Border Grid.Row="1" Padding="16">
-            <StackPanel Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <!-- No folder opened state -->
+        <Border Grid.Row="1"
+                Padding="16"
+                IsVisible="{Binding !HasWorkspace}">
+            <StackPanel Spacing="10" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock Text="No folder opened"
                            Foreground="#888888"
                            FontSize="13"
@@ -29,8 +43,38 @@
                 <Button Content="Open Folder..."
                         HorizontalAlignment="Center"
                         FontSize="12"
-                        Padding="12,6" />
+                        Padding="12,6"
+                        Command="{Binding OpenFolderCommand}" />
             </StackPanel>
         </Border>
+
+        <!-- Tree View of Workspace files -->
+        <TreeView Grid.Row="1"
+                  ItemsSource="{Binding RootItems}"
+                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                  Background="Transparent"
+                  IsVisible="{Binding HasWorkspace}"
+                  Margin="4">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate DataType="models:FileSystemItem" ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="2,1">
+                        <!-- Icon (📁 or 📄) -->
+                        <TextBlock Text="📁"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding IsDirectory}" />
+                        <TextBlock Text="📄"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding !IsDirectory}" />
+                        <!-- File/Directory Name -->
+                        <TextBlock Text="{Binding Name}"
+                                   FontSize="13"
+                                   Foreground="#D4D4D4"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
     </Grid>
 </UserControl>

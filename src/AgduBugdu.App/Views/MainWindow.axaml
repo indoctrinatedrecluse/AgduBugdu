@@ -32,6 +32,7 @@
                 <MenuItem Header="_File">
                     <MenuItem Header="_New File" InputGesture="Ctrl+N" Command="{Binding NewFileCommand}" />
                     <MenuItem Header="_Open File..." InputGesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
+                    <MenuItem Header="Open _Folder..." Command="{Binding OpenFolderCommand}" />
                     <Separator />
                     <MenuItem Header="_Save" InputGesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
                     <MenuItem Header="Save _As..." InputGesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
