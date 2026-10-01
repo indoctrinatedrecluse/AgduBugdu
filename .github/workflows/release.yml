@@ -46,10 +46,12 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          # 1. Create portable .zip
+          New-Item -ItemType Directory -Force -Path "dist" | Out-Null
+
+          # 1. Create portable .zip in dist/
           $zipName = "${{ matrix.asset_prefix }}-portable.zip"
-          Compress-Archive -Path "publish/${{ matrix.rid }}/*" -DestinationPath "publish/$zipName" -Force
-          Write-Host "Created portable archive: publish/$zipName"
+          Compress-Archive -Path "publish/${{ matrix.rid }}/*" -DestinationPath "dist/$zipName" -Force
+          Write-Host "Created portable archive: dist/$zipName"
 
           # 2. Install Inno Setup via Chocolatey
           choco install innosetup -y --no-progress
@@ -66,28 +68,30 @@ jobs:
           if ($iscc -and (Test-Path $iscc)) {
             Write-Host "Compiling installer with: $iscc"
             & $iscc tools/installer.iss
-            Write-Host "Setup exe generated successfully in publish/installer/"
+            # Move compiled setup exe from publish/installer/ into flat dist/ folder
+            Get-ChildItem -Path "publish/installer" -Filter "*.exe" | ForEach-Object {
+              Move-Item -Path $_.FullName -Destination "dist/" -Force
+            }
+            Write-Host "Setup exe moved to dist/"
           } else {
             Write-Error "ISCC compiler could not be located after Chocolatey installation."
             exit 1
           }
 
-      # Linux/macOS specific: Create .tar.gz bundle
+      # Linux/macOS specific: Create .tar.gz bundle in dist/
       - name: Package Unix Archive (.tar.gz)
         if: matrix.os != 'windows-latest'
         run: |
+          mkdir -p dist
           cd publish/${{ matrix.rid }}
-          tar -czvf "../${{ matrix.asset_prefix }}.tar.gz" *
+          tar -czvf "../../dist/${{ matrix.asset_prefix }}.tar.gz" *
           cd ../..
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: assets-${{ matrix.rid }}
-          path: |
-            publish/*.zip
-            publish/*.tar.gz
-            publish/installer/*.exe
+          path: dist/*
 
   release:
     name: Create GitHub Release
@@ -106,7 +110,8 @@ jobs:
       - name: Generate Checksums
         run: |
           cd release-assets
-          sha256sum * > SHA256SUMS.txt
+          find . -maxdepth 1 -type f ! -name "SHA256SUMS.txt" -exec sha256sum {} + > SHA256SUMS.txt
+          cat SHA256SUMS.txt
           cd ..
 
       - name: Create Release
