@@ -6,7 +6,8 @@
              x:DataType="vm:EditorDocumentViewModel">
 
     <Grid>
-        <ae:TextEditor Document="{Binding TextDocument}"
+        <ae:TextEditor x:Name="Editor"
+                       Document="{Binding TextDocument}"
                        ShowLineNumbers="True"
                        FontFamily="Cascadia Code, Consolas, Courier New, monospace"
                        FontSize="14"

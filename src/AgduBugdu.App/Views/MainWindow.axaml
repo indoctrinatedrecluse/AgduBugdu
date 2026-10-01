@@ -20,6 +20,7 @@
         <KeyBinding Gesture="Ctrl+N" Command="{Binding NewFileCommand}" />
         <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
     </Window.KeyBindings>
 
     <Grid>
@@ -33,6 +34,7 @@
                     <MenuItem Header="_Open File..." InputGesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
                     <Separator />
                     <MenuItem Header="_Save" InputGesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
+                    <MenuItem Header="Save _As..." InputGesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Edit">
                     <MenuItem Header="Undo" InputGesture="Ctrl+Z" />

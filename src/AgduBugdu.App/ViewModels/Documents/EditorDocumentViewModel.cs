@@ -26,10 +26,22 @@ public partial class EditorDocumentViewModel : Document
     [ObservableProperty]
     private int _column = 1;
 
+    public event EventHandler? CaretMoved;
+
     public EditorDocumentViewModel()
     {
         Id = Guid.NewGuid().ToString();
         Title = FileName;
+    }
+
+    partial void OnLineChanged(int value)
+    {
+        CaretMoved?.Invoke(this, EventArgs.Empty);
+    }
+
+    partial void OnColumnChanged(int value)
+    {
+        CaretMoved?.Invoke(this, EventArgs.Empty);
     }
 
     public static EditorDocumentViewModel FromFile(string path)
@@ -49,5 +61,23 @@ public partial class EditorDocumentViewModel : Document
         }
 
         return vm;
+    }
+
+    public void Save()
+    {
+        if (string.IsNullOrEmpty(FilePath))
+            return;
+
+        File.WriteAllText(FilePath, TextDocument.Text);
+        IsModified = false;
+        Title = FileName;
+    }
+
+    public void SaveAs(string newPath)
+    {
+        FilePath = newPath;
+        FileName = Path.GetFileName(newPath);
+        Id = newPath;
+        Save();
     }
 }

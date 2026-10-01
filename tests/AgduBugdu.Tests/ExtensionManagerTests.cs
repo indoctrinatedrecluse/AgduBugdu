@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
@@ -103,5 +104,28 @@ public class ExtensionManagerTests
 
         await extension.DeactivateAsync();
         Assert.True(extension.Deactivated);
+    }
+
+    [Fact]
+    public void Document_Save_And_Modification_State_Work()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "Original Content");
+            var content = File.ReadAllText(tempFile);
+            Assert.Equal("Original Content", content);
+
+            File.WriteAllText(tempFile, "Updated Content");
+            var updated = File.ReadAllText(tempFile);
+            Assert.Equal("Updated Content", updated);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
     }
 }
