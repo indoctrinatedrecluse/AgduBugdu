@@ -11,10 +11,20 @@
                        ShowLineNumbers="True"
                        FontFamily="Cascadia Code, Consolas, Courier New, monospace"
                        FontSize="14"
-                       WordWrap="False"
+                       WordWrap="{Binding WordWrap}"
                        HorizontalScrollBarVisibility="Auto"
                        VerticalScrollBarVisibility="Visible"
                        Background="#1E1E1E"
-                       Foreground="#D4D4D4" />
+                       Foreground="#D4D4D4">
+            <ae:TextEditor.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Cut" Command="{Binding $parent[ae:TextEditor].Cut}" InputGesture="Ctrl+X" />
+                    <MenuItem Header="Copy" Command="{Binding $parent[ae:TextEditor].Copy}" InputGesture="Ctrl+C" />
+                    <MenuItem Header="Paste" Command="{Binding $parent[ae:TextEditor].Paste}" InputGesture="Ctrl+V" />
+                    <Separator />
+                    <MenuItem Header="Select All" Command="{Binding $parent[ae:TextEditor].SelectAll}" InputGesture="Ctrl+A" />
+                </ContextMenu>
+            </ae:TextEditor.ContextMenu>
+        </ae:TextEditor>
     </Grid>
 </UserControl>

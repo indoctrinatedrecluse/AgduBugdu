@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Avalonia.Controls;
+using Avalonia.Input;
 using AvaloniaEdit;
 using AvaloniaEdit.TextMate;
 using AgduBugdu.App.ViewModels.Documents;
@@ -17,9 +18,37 @@ public partial class EditorDocumentView : UserControl
     {
         InitializeComponent();
 
+        Editor.Options.EnableHyperlinks = true;
+        Editor.Options.EnableEmailHyperlinks = true;
+        Editor.Options.ConvertTabsToSpaces = true;
+        Editor.Options.IndentationSize = 4;
+        Editor.Options.HighlightCurrentLine = true;
+        Editor.Options.ShowBoxForControlCharacters = true;
+
         DataContextChanged += OnDataContextChanged;
         Editor.TextArea.Caret.PositionChanged += OnCaretPositionChanged;
         Editor.TextChanged += OnTextChanged;
+
+        // Ctrl + MouseWheel to zoom font size
+        Editor.PointerWheelChanged += OnPointerWheelChanged;
+    }
+
+    private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            if (e.Delta.Y > 0)
+            {
+                if (Editor.FontSize < 36)
+                    Editor.FontSize += 1;
+            }
+            else if (e.Delta.Y < 0)
+            {
+                if (Editor.FontSize > 8)
+                    Editor.FontSize -= 1;
+            }
+            e.Handled = true;
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

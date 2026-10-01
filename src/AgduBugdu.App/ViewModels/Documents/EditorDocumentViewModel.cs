@@ -26,6 +26,9 @@ public partial class EditorDocumentViewModel : Document
     [ObservableProperty]
     private int _column = 1;
 
+    [ObservableProperty]
+    private bool _wordWrap = false;
+
     public event EventHandler? CaretMoved;
 
     public EditorDocumentViewModel()
