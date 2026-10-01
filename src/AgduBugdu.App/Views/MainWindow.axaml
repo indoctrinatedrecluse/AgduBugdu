@@ -21,6 +21,7 @@
         <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
+        <KeyBinding Gesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
     </Window.KeyBindings>
 
     <Grid>
@@ -45,10 +46,14 @@
                     <MenuItem Header="Copy" InputGesture="Ctrl+C" />
                     <MenuItem Header="Paste" InputGesture="Ctrl+V" />
                 </MenuItem>
+                <MenuItem Header="_Terminal">
+                    <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+`" Command="{Binding RestartTerminalCommand}" />
+                </MenuItem>
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
                     <Separator />
                     <MenuItem Header="Explorer" />
+                    <MenuItem Header="Terminal" />
                     <MenuItem Header="Output" />
                 </MenuItem>
                 <MenuItem Header="_Help">
@@ -102,7 +107,7 @@
                 </Grid>
             </Border>
 
-            <!-- Docking Host (Explorer, Editor Tabs, Output Pane) -->
+            <!-- Docking Host (Explorer, Editor Tabs, Terminal, Output Pane) -->
             <dock:DockControl Grid.Row="2"
                               Layout="{Binding Layout}"
                               Margin="0" />

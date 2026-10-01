@@ -1,8 +1,10 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
+using AgduBugdu.Infrastructure.Terminal;
 using AgduBugdu.Plugin.MarkdownLive;
 using AgduBugdu.PluginContracts;
 using Xunit;
@@ -182,5 +184,44 @@ public class ExtensionManagerTests
                 File.Delete(tempFile);
             }
         }
+    }
+
+    [Fact]
+    public async Task LocalTerminalSession_CanStart_SendInput_And_ReceiveOutput()
+    {
+        using var terminal = new LocalTerminalSession();
+        var outputReceived = new AutoResetEvent(false);
+        string received = string.Empty;
+
+        terminal.OutputReceived += (s, text) =>
+        {
+            received += text;
+            outputReceived.Set();
+        };
+
+        terminal.Start();
+        Assert.True(terminal.IsRunning);
+
+        // Wait for initial shell banner
+        outputReceived.WaitOne(TimeSpan.FromSeconds(3));
+
+        // Write an echo command
+        await terminal.WriteInputAsync("echo AGDU_TERMINAL_TEST");
+        var matched = false;
+
+        for (int i = 0; i < 10; i++)
+        {
+            if (received.Contains("AGDU_TERMINAL_TEST"))
+            {
+                matched = true;
+                break;
+            }
+            outputReceived.WaitOne(TimeSpan.FromMilliseconds(300));
+        }
+
+        Assert.True(matched);
+
+        terminal.Stop();
+        Assert.False(terminal.IsRunning);
     }
 }

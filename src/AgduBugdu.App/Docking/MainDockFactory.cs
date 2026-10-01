@@ -14,21 +14,24 @@ public class MainDockFactory : Factory
     private IDocumentDock? _documentDock;
     private ExplorerToolViewModel? _explorerTool;
     private OutputToolViewModel? _outputTool;
+    private TerminalToolViewModel? _terminalTool;
 
     public IDocumentDock? DocumentDock => _documentDock;
     public ExplorerToolViewModel? ExplorerTool => _explorerTool;
     public OutputToolViewModel? OutputTool => _outputTool;
+    public TerminalToolViewModel? TerminalTool => _terminalTool;
 
     public override IRootDock CreateLayout()
     {
         _explorerTool = new ExplorerToolViewModel();
         _outputTool = new OutputToolViewModel();
+        _terminalTool = new TerminalToolViewModel();
 
         var doc1 = new EditorDocumentViewModel
         {
             FileName = "Welcome.txt",
             Title = "Welcome.txt",
-            TextDocument = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels are draggable and re-arrangeable.\n")
+            TextDocument = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output) are draggable and re-arrangeable.\n")
         };
 
         var leftDock = new ToolDock
@@ -43,10 +46,10 @@ public class MainDockFactory : Factory
         var bottomDock = new ToolDock
         {
             Id = "BottomPane",
-            Title = "Output",
-            Proportion = 0.25,
-            VisibleDockables = CreateList<IDockable>(_outputTool),
-            ActiveDockable = _outputTool
+            Title = "Panel",
+            Proportion = 0.28,
+            VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool),
+            ActiveDockable = _terminalTool
         };
 
         var documentDock = new DocumentDock
@@ -95,6 +98,7 @@ public class MainDockFactory : Factory
         {
             ["Explorer"] = () => layout,
             ["Output"] = () => layout,
+            ["Terminal"] = () => layout,
             ["Documents"] = () => layout
         };
 

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading.Tasks;
 using AgduBugdu.App.Models;
+using AgduBugdu.Infrastructure.Terminal;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
@@ -115,5 +117,56 @@ public class OutputToolViewModel : Tool
     {
         Id = "Output";
         Title = "Output";
+    }
+}
+
+public partial class TerminalToolViewModel : Tool
+{
+    private readonly ITerminalSession _session;
+
+    [ObservableProperty]
+    private string _terminalOutput = string.Empty;
+
+    [ObservableProperty]
+    private string _commandInput = string.Empty;
+
+    public TerminalToolViewModel()
+    {
+        Id = "Terminal";
+        Title = "Terminal";
+        _session = new LocalTerminalSession();
+        _session.OutputReceived += (s, text) =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                TerminalOutput += text;
+            });
+        };
+        _session.Start();
+    }
+
+    public void Restart(string? workingDirectory = null)
+    {
+        _session.Stop();
+        TerminalOutput = string.Empty;
+        _session.Start(workingDirectory);
+    }
+
+    [RelayCommand]
+    public async Task SendCommandAsync()
+    {
+        if (string.IsNullOrWhiteSpace(CommandInput))
+            return;
+
+        var cmd = CommandInput;
+        CommandInput = string.Empty;
+        TerminalOutput += $"> {cmd}{Environment.NewLine}";
+        await _session.WriteInputAsync(cmd);
+    }
+
+    [RelayCommand]
+    public void ClearTerminal()
+    {
+        TerminalOutput = string.Empty;
     }
 }

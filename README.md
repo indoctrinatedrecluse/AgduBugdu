@@ -20,7 +20,7 @@
 
 ### 2.2 Scope & Capabilities
 
-| Capability | In Scope (Current & Near-Term) | Future Roadmap |
+| Capability | In Scope (Current & Implemented) | Future Roadmap |
 | :--- | :--- | :--- |
 | **Workspace & Docking** | Dockable tool windows, document tabs, splitters, layout serialization (`Dock.Avalonia`) | Multi-window detachment, remote workspaces |
 | **Editing** | AvalonEdit buffer, line numbers, word wrap, caret tracking, Ctrl+Wheel zoom, context menu | Inline diff editor, minimap |
@@ -28,7 +28,7 @@
 | **File Management** | Workspace Explorer with lazy subdirectory expansion, file double-click opening, Open Folder dialog | Live file system watcher, Git staging badges |
 | **Extensions** | Collectible `PluginLoadContext` (ALC), runtime command palette contribution, tool windows | Extension marketplace, out-of-process RPC plugins |
 | **Command Palette** | Modal command search (`Ctrl+P` / `Ctrl+Shift+P`) with hotkeys and dynamic execution | Fuzzy file navigation, symbol picker |
-| **Terminal** | Integrated shell via `Pty.Net` (PowerShell, Bash, Zsh) | Multiplexed terminal tabs, split terminals |
+| **Integrated Terminal** | Embedded interactive terminal session (PowerShell/Bash) synchronized with active workspace (`Ctrl+\``) | Multiplexed terminal tabs, split terminals |
 
 ---
 
@@ -48,6 +48,7 @@ AgduBugdu leverages best-of-breed libraries across the Avalonia and .NET ecosyst
 | **Iconography** | `FluentIcons.Avalonia` | `1.1.225` | Scalable vector glyphs for explorer nodes, actions, status indicators, and tabs. |
 | **MVVM & Reactivity** | `CommunityToolkit.Mvvm` | `8.4.0` | Source-generated viewmodels (`[ObservableProperty]`, `[RelayCommand]`). |
 | **Extensibility Host** | Isolated `AssemblyLoadContext` | Native | Clean memory management and collectible assembly unloading. |
+| **Terminal Host** | Process standard I/O streaming & pseudoterminal abstraction | Native / Cross-platform | Interactive shell execution synchronized with workspace changes. |
 | **Dependency Injection** | `Microsoft.Extensions.DependencyInjection` | `8.0.1` | Inversion of control container for services and plugin resolution. |
 
 ---
@@ -63,6 +64,7 @@ graph TD
         DockManager["Dock Layout & MainDockFactory"]
         EditorView["Editor Tabs (AvalonEdit + TextMate)"]
         ExplorerView["Workspace Explorer (TreeView + Lazy Loading)"]
+        TerminalView["Terminal Panel (Interactive Shell)"]
         ToolPanels["Tool Windows (Output, Preview)"]
     end
 
@@ -71,6 +73,10 @@ graph TD
         ALCRegistry["PluginLoadContext (Collectible ALC)"]
         CommandReg["CommandRegistry"]
         ToolReg["ToolWindowRegistry"]
+    end
+
+    subgraph Infra ["Infrastructure Layer (AgduBugdu.Infrastructure)"]
+        TerminalSession["LocalTerminalSession & Process Stream"]
     end
 
     subgraph Contracts ["Extensibility Contracts (AgduBugdu.PluginContracts)"]
@@ -91,7 +97,8 @@ graph TD
     end
 
     MainWindow --> DockManager
-    DockManager --> EditorView & ExplorerView & ToolPanels
+    DockManager --> EditorView & ExplorerView & TerminalView & ToolPanels
+    TerminalView --> TerminalSession
     MainWindow --> ExtensionManager
     ExtensionManager --> ALCRegistry
     ALCRegistry --> Plugins
@@ -203,6 +210,7 @@ AgduBugdu/
 │   ├── AgduBugdu.Core/                 # Core domain logic
 │   │
 │   ├── AgduBugdu.Infrastructure/       # System I/O and process hosting
+│   │   └── Terminal/                   # LocalTerminalSession & process streaming
 │   │
 │   ├── AgduBugdu.Extensibility/        # Extension manager engine
 │   │   ├── PluginLoadContext.cs        # Collectible AssemblyLoadContext
@@ -211,7 +219,7 @@ AgduBugdu/
 │   │   └── Registries/                 # Thread-safe Command & Tool registries
 │   │
 │   └── AgduBugdu.App/                  # Avalonia desktop application
-│       ├── Views/                      # MainWindow, CommandPalette, Editor, Explorer, Output
+│       ├── Views/                      # MainWindow, CommandPalette, Editor, Explorer, Terminal, Output
 │       ├── ViewModels/                 # MainViewModel, CommandPaletteViewModel, Documents, Tools
 │       ├── Docking/                    # MainDockFactory (Dock.Avalonia layout wiring)
 │       ├── Models/                     # FileSystemItem (lazy loading hierarchical model)
@@ -224,7 +232,7 @@ AgduBugdu/
 │       └── AgduBugdu.Plugin.MarkdownLive.csproj
 │
 ├── tests/
-│   └── AgduBugdu.Tests/                # Fast xUnit test suite (lifecycle, registries, documents)
+│   └── AgduBugdu.Tests/                # Fast xUnit test suite (lifecycle, registries, terminal, documents)
 │       └── ExtensionManagerTests.cs
 │
 └── tools/
@@ -276,6 +284,8 @@ Use the provided PowerShell script in `tools/` to check prerequisites, restore m
   - Collectible `PluginLoadContext` with shared contracts isolation.
   - Dynamic command registration and synchronization into host Command Palette.
   - End-to-end sample plugin: `AgduBugdu.Plugin.MarkdownLive` live-updating HTML output from markdown documents.
-- [ ] **Milestone 6: Integrated Terminal & Language Features**
-  - Embedded pseudo-terminal panel via `Pty.Net`.
-  - Language Server Protocol (LSP) client integration.
+- [x] **Milestone 6: Integrated Terminal & Workspace Synchronization**
+  - Cross-platform process shell hosting (`LocalTerminalSession`) in `AgduBugdu.Infrastructure`.
+  - Interactive terminal dock tool panel (`TerminalToolView` + `TerminalToolViewModel`) with input line and clear screen.
+  - Dynamic workspace synchronization: automatically re-targets working directory to newly opened workspace folders (`Ctrl+\``).
+  - Terminal commands exposed in menu bar, hotkeys, and Command Palette.

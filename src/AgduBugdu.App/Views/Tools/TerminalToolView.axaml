@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             x:Class="AgduBugdu.App.Views.Tools.TerminalToolView"
+             x:DataType="vm:TerminalToolViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Terminal Header -->
+        <Border Grid.Row="0"
+                Padding="12,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="TERMINAL"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#888888"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="Interactive Shell"
+                               FontSize="11"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="Clear"
+                        FontSize="10"
+                        Padding="6,2"
+                        Background="#333333"
+                        Foreground="#EEEEEE"
+                        CornerRadius="3"
+                        Command="{Binding ClearTerminalCommand}" />
+            </Grid>
+        </Border>
+
+        <!-- Terminal Output View -->
+        <TextBox Grid.Row="1"
+                 x:Name="OutputBox"
+                 Text="{Binding TerminalOutput}"
+                 IsReadOnly="True"
+                 FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                 FontSize="12"
+                 Background="#0C0C0C"
+                 Foreground="#CCCCCC"
+                 BorderThickness="0"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap" />
+
+        <!-- Command Input Line -->
+        <Border Grid.Row="2"
+                Background="#181818"
+                BorderBrush="#333333"
+                BorderThickness="0,1,0,0"
+                Padding="6,4">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="$ "
+                           FontFamily="Cascadia Code, Consolas, monospace"
+                           FontWeight="Bold"
+                           Foreground="#10B981"
+                           VerticalAlignment="Center"
+                           Margin="4,0,4,0" />
+                <TextBox Grid.Column="1"
+                         x:Name="InputBox"
+                         Text="{Binding CommandInput, Mode=TwoWay}"
+                         Watermark="Enter command..."
+                         FontFamily="Cascadia Code, Consolas, monospace"
+                         FontSize="12"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         VerticalAlignment="Center" />
+                <Button Grid.Column="2"
+                        Content="Send"
+                        FontSize="11"
+                        Padding="8,4"
+                        Background="#2563EB"
+                        Foreground="#FFFFFF"
+                        CornerRadius="3"
+                        Command="{Binding SendCommandCommand}" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

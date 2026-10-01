@@ -148,7 +148,7 @@ public partial class MainViewModel : ViewModelBase
                 CommandPalette.RegisterCommand(cmd.Key, cmd.Value.Title, () => cmd.Value.Execute(), cmd.Value.Shortcut);
             }
 
-            StatusMessage = "AgduBugdu Ready (Markdown Live Viewer Loaded)";
+            StatusMessage = "AgduBugdu Ready (Terminal & Markdown Live Loaded)";
         }
         catch (Exception ex)
         {
@@ -203,9 +203,12 @@ public partial class MainViewModel : ViewModelBase
         CommandPalette.RegisterCommand("file.openFolder", "File: Open Folder...", () => { _ = OpenFolderAsync(); }, "Ctrl+K, Ctrl+O");
         CommandPalette.RegisterCommand("file.save", "File: Save", () => { _ = SaveFileAsync(); }, "Ctrl+S");
         CommandPalette.RegisterCommand("file.saveAs", "File: Save As...", () => { _ = SaveFileAsAsync(); }, "Ctrl+Shift+S");
+        CommandPalette.RegisterCommand("terminal.restart", "Terminal: Restart Shell in Workspace", () => RestartTerminal(), "Ctrl+`");
+        CommandPalette.RegisterCommand("terminal.clear", "Terminal: Clear Screen", () => _dockFactory.TerminalTool?.ClearTerminal());
         CommandPalette.RegisterCommand("view.commandpalette", "View: Open Command Palette", () => CommandPalette.Open(), "Ctrl+P");
-        CommandPalette.RegisterCommand("view.toggleExplorer", "View: Toggle Explorer", () => StatusMessage = "Explorer toggled");
-        CommandPalette.RegisterCommand("view.toggleOutput", "View: Toggle Output", () => StatusMessage = "Output pane toggled");
+        CommandPalette.RegisterCommand("view.toggleExplorer", "View: Focus Explorer", () => FocusDockable(_dockFactory.ExplorerTool));
+        CommandPalette.RegisterCommand("view.toggleTerminal", "View: Focus Terminal", () => FocusDockable(_dockFactory.TerminalTool));
+        CommandPalette.RegisterCommand("view.toggleOutput", "View: Focus Output", () => FocusDockable(_dockFactory.OutputTool));
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => StatusMessage = "AgduBugdu Editor v0.1.0 - Powered by Avalonia UI & AvalonEdit");
     }
 
@@ -213,6 +216,21 @@ public partial class MainViewModel : ViewModelBase
     public void OpenCommandPalette()
     {
         CommandPalette.Open();
+    }
+
+    [RelayCommand]
+    public void RestartTerminal()
+    {
+        _dockFactory.TerminalTool?.Restart(_workspaceService.CurrentDirectory);
+        StatusMessage = "Terminal restarted";
+    }
+
+    private void FocusDockable(IDockable? dockable)
+    {
+        if (dockable != null)
+        {
+            _dockFactory.SetActiveDockable(dockable);
+        }
     }
 
     [RelayCommand]
@@ -284,6 +302,7 @@ public partial class MainViewModel : ViewModelBase
 
         _workspaceService.SetWorkspaceDirect(folderPath);
         _dockFactory.ExplorerTool?.LoadFolder(folderPath);
+        _dockFactory.TerminalTool?.Restart(folderPath);
     }
 
     public void OpenFile(string filePath)
