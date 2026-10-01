@@ -8,9 +8,10 @@
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
         x:Class="AgduBugdu.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="AgduBugdu"
+        Icon="/Assets/agdubugdu-logo.ico"
+        Title="{Binding AppTitle}"
         Width="1280" Height="760"
+        Background="{Binding WindowBackground}"
         WindowStartupLocation="CenterScreen">
 
     <!-- Keyboard Hotkeys -->
@@ -29,7 +30,7 @@
         <Grid RowDefinitions="Auto,Auto,*,Auto">
             
             <!-- Menu Bar -->
-            <Menu Grid.Row="0" Background="#1E1E1E">
+            <Menu Grid.Row="0" Background="{Binding WindowBackground}">
                 <MenuItem Header="_File">
                     <MenuItem Header="_New File" InputGesture="Ctrl+N" Command="{Binding NewFileCommand}" />
                     <MenuItem Header="_Open File..." InputGesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
@@ -49,6 +50,12 @@
                 <MenuItem Header="_Terminal">
                     <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
                 </MenuItem>
+                <MenuItem Header="_Preferences">
+                    <MenuItem Header="Color Theme">
+                        <MenuItem Header="Lonely Dark" Command="{Binding SetLonelyDarkThemeCommand}" />
+                        <MenuItem Header="Solarized Contrast" Command="{Binding SetSolarizedContrastThemeCommand}" />
+                    </MenuItem>
+                </MenuItem>
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
                     <Separator />
@@ -57,20 +64,23 @@
                     <MenuItem Header="Output" />
                 </MenuItem>
                 <MenuItem Header="_Help">
+                    <MenuItem Header="Check for _Updates..." Command="{Binding CheckForUpdatesExplicitCommand}" />
+                    <Separator />
                     <MenuItem Header="About AgduBugdu" />
                 </MenuItem>
             </Menu>
 
             <!-- Quick Action / Search Header Bar -->
             <Border Grid.Row="1"
-                    Background="#252526"
-                    BorderBrush="#333333"
+                    Background="{Binding HeaderBackground}"
+                    BorderBrush="{Binding BorderBrush}"
                     BorderThickness="0,1,0,1"
                     Padding="12,6">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <!-- Workspace Title -->
+                    <!-- Workspace Title with Custom App Logo -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <TextBlock Text="AgduBugdu" FontWeight="Bold" Foreground="#3B82F6" />
+                        <Image Source="/Assets/agdubugdu-logo.png" Width="20" Height="20" />
+                        <TextBlock Text="AgduBugdu" FontWeight="Bold" Foreground="{Binding AccentBrush}" />
                         <TextBlock Text="—" Foreground="#666666" />
                         <TextBlock Text="{Binding ActiveWorkspaceName}" Foreground="#AAAAAA" />
                     </StackPanel>
@@ -80,8 +90,8 @@
                             HorizontalAlignment="Center"
                             Width="360"
                             Padding="10,4"
-                            Background="#1E1E1E"
-                            BorderBrush="#3F3F46"
+                            Background="{Binding WindowBackground}"
+                            BorderBrush="{Binding BorderBrush}"
                             BorderThickness="1"
                             CornerRadius="4"
                             Command="{Binding OpenCommandPaletteCommand}">
@@ -102,6 +112,8 @@
 
                     <!-- Right Quick Status -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CurrentThemeName}" FontSize="11" Foreground="#71717A" />
+                        <TextBlock Text="|" Foreground="#444444" />
                         <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#888888" />
                     </StackPanel>
                 </Grid>
@@ -112,21 +124,21 @@
                               Layout="{Binding Layout}"
                               Margin="0" />
 
-            <!-- Modern Bottom Status Bar -->
+            <!-- Dynamic Bottom Status Bar -->
             <Border Grid.Row="3"
-                    Background="#007ACC"
+                    Background="{Binding StatusBarBackground}"
                     Padding="12,3"
                     Height="24">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <!-- Left status -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="#FFFFFF" />
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
                     </StackPanel>
 
                     <!-- Right details -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CursorPosition}" FontSize="11" Foreground="#FFFFFF" />
-                        <TextBlock Text="{Binding Encoding}" FontSize="11" Foreground="#FFFFFF" />
+                        <TextBlock Text="{Binding CursorPosition}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+                        <TextBlock Text="{Binding Encoding}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -134,5 +146,8 @@
 
         <!-- Command Palette Overlay -->
         <views:CommandPaletteView DataContext="{Binding CommandPalette}" />
+
+        <!-- Auto-Updater Modal Overlay -->
+        <views:UpdateModalView DataContext="{Binding UpdateModal}" />
     </Grid>
 </Window>

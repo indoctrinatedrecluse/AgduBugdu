@@ -1,0 +1,57 @@
+# Changelog
+
+All notable changes to the **AgduBugdu Editor** project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.0.0] - 2026-10-01
+
+### Added
+- **Core Architecture & Modern IDE Shell**:
+  - Avalonia 11 LTS (`11.3.2`) + `FluentAvaloniaUI` integration with custom dark chrome and responsive layouts.
+  - Multi-panel docking system (`Dock.Avalonia`) supporting center editor tabs, left file explorer, and bottom terminal/output panes.
+  - Interactive Command Palette overlay (`Ctrl+P` / `Ctrl+Shift+P`) with dynamic command filtering, hotkey gestures, and keyboard navigation.
+  - Informative bottom status bar tracking cursor line/column, encoding, theme mode, and workspace state.
+
+- **Advanced Text Editing**:
+  - `Avalonia.AvalonEdit` editor core backed by rope data structures for handling large files.
+  - TextMate syntax highlighting (`AvaloniaEdit.TextMate`) with `DarkPlus` theme and automatic file extension detection across 100+ languages.
+  - Full native file I/O: Open (`Ctrl+O`), Save (`Ctrl+S`), Save As (`Ctrl+Shift+S`), and New File (`Ctrl+N`).
+  - Active caret tracking, dirty buffer change indicators (`*`), font zoom (`Ctrl + MouseWheel`), and editor context menu (Cut, Copy, Paste, Select All).
+
+- **Workspace File Explorer**:
+  - Hierarchical workspace explorer with lazy-loading directory expansion to maintain instant responsiveness on deep directory structures.
+  - Native folder selection via Avalonia `StorageProvider.OpenFolderPickerAsync` (`Ctrl+K, Ctrl+O`).
+  - Double-click file opening into dock tabs.
+
+- **Extensibility Subsystem & Sample Plugin**:
+  - Plugin runtime isolation via collectible `PluginLoadContext` (`AssemblyLoadContext`).
+  - Shared contracts library (`AgduBugdu.PluginContracts`) exposing `ICommandRegistry`, `IToolWindowRegistry`, `IEditorService`, and `IWorkspaceService`.
+  - Built-in end-to-end sample plugin: `AgduBugdu.Plugin.MarkdownLive`, providing live Markdown-to-HTML rendering and preview docked alongside editor documents.
+
+- **Integrated Interactive Terminal**:
+  - Embedded cross-platform process shell hosting (`powershell.exe` on Windows, `bash` on Unix).
+  - Terminal tool pane with real-time streaming, command input line, clear screen, and `Ctrl+OemTilde` restart shortcut.
+  - Dynamic workspace synchronization: automatically restarts and re-targets working directory to newly opened workspace folders.
+
+- **All-Encompassing Themes**:
+  - **Lonely Dark**: Neon violet accents with deep obsidian background tones.
+  - **Solarized Contrast**: High-contrast solarized cyan and deep petrol teal theme.
+  - Theme switching accessible via menu bar (`Preferences -> Color Theme`) and Command Palette.
+
+- **Auto-Updater Modal**:
+  - Integrated GitHub Releases update checker querying repository releases in the background.
+  - Interactive modal dialog showing version comparison, release notes, and direct download links.
+  - Manual update trigger under `Help -> Check for Updates...`.
+
+- **Branding & Release Packaging**:
+  - Custom AI-generated high-resolution app icon and logo assets (`agdubugdu-logo.ico`, `agdubugdu-logo.png`).
+  - Centralized global versioning via `Directory.Build.props` (`1.0.0`).
+  - Multi-platform GitHub Actions Release workflow (`.github/workflows/release.yml`) producing:
+    - Windows: `AgduBugdu-v1.0.0-win-x64-setup.exe` (Inno Setup) & `AgduBugdu-v1.0.0-win-x64-portable.zip`
+    - Linux: `AgduBugdu-v1.0.0-linux-x64.tar.gz`
+    - macOS: `AgduBugdu-v1.0.0-osx-x64.tar.gz` & `AgduBugdu-v1.0.0-osx-arm64.tar.gz`
+    - Automatic SHA-256 checksums (`SHA256SUMS.txt`).

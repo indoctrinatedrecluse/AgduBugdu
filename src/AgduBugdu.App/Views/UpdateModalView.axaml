@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels"
+             x:Class="AgduBugdu.App.Views.UpdateModalView"
+             x:DataType="vm:UpdateModalViewModel">
+
+    <Grid IsVisible="{Binding IsVisible}"
+          Background="#99000000"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+        
+        <!-- Modal Card Dialog -->
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="480"
+                CornerRadius="8"
+                Background="#1E1E22"
+                BorderBrush="#3B82F6"
+                BorderThickness="1"
+                BoxShadow="0 8 32 0 #55000000"
+                Padding="24">
+            
+            <StackPanel Spacing="16">
+                <!-- Header with Icon & Title -->
+                <Grid ColumnDefinitions="Auto,*">
+                    <Image Grid.Column="0"
+                           Source="/Assets/agdubugdu-logo.png"
+                           Width="36"
+                           Height="36"
+                           Margin="0,0,12,0" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Software Update Available"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Foreground="#F3F4F6" />
+                        <TextBlock Text="{Binding VersionComparisonText}"
+                                   FontSize="12"
+                                   Foreground="#9CA3AF" />
+                    </StackPanel>
+                </Grid>
+
+                <Separator Background="#2D2D35" Height="1" />
+
+                <!-- Release Notes / Details -->
+                <TextBlock Text="Release Highlights:"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#E5E7EB" />
+
+                <Border Background="#141417"
+                        CornerRadius="4"
+                        Padding="12"
+                        MaxHeight="160">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding ReleaseNotes}"
+                                   TextWrapping="Wrap"
+                                   FontSize="11"
+                                   Foreground="#D1D5DB" />
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Actions -->
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="A new version of AgduBugdu is ready."
+                               FontSize="11"
+                               Foreground="#6B7280"
+                               VerticalAlignment="Center" />
+
+                    <Button Grid.Column="1"
+                            Content="Dismiss"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Background="#27272A"
+                            Foreground="#D4D4D8"
+                            CornerRadius="4"
+                            Command="{Binding DismissCommand}" />
+
+                    <Button Grid.Column="2"
+                            Content="Download Update"
+                            Padding="14,6"
+                            Background="#2563EB"
+                            Foreground="#FFFFFF"
+                            FontWeight="SemiBold"
+                            CornerRadius="4"
+                            Command="{Binding OpenReleaseUrlCommand}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

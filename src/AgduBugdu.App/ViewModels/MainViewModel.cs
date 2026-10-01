@@ -3,13 +3,17 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using AgduBugdu.App.Docking;
+using AgduBugdu.App.Themes;
 using AgduBugdu.App.ViewModels.Documents;
+using AgduBugdu.Core;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
+using AgduBugdu.Infrastructure.Updates;
 using AgduBugdu.Plugin.MarkdownLive;
 using AgduBugdu.PluginContracts;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -92,12 +96,16 @@ public partial class MainViewModel : ViewModelBase
     private readonly AppEditorService _editorService;
     private readonly AppWorkspaceService _workspaceService;
     private readonly ExtensionContext _extensionContext;
+    private readonly GitHubUpdateService _updateService;
 
     [ObservableProperty]
     private IRootDock? _layout;
 
     [ObservableProperty]
     private CommandPaletteViewModel _commandPalette = new();
+
+    [ObservableProperty]
+    private UpdateModalViewModel _updateModal;
 
     [ObservableProperty]
     private string _statusMessage = "Ready";
@@ -110,6 +118,30 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _activeWorkspaceName = "No Folder Opened";
+
+    [ObservableProperty]
+    private string _currentThemeName = "Lonely Dark";
+
+    // Dynamic Theme Properties for UI Binding
+    [ObservableProperty]
+    private IBrush _windowBackground = new SolidColorBrush(ThemeManager.LonelyDark.WindowBackground);
+
+    [ObservableProperty]
+    private IBrush _headerBackground = new SolidColorBrush(ThemeManager.LonelyDark.HeaderBackground);
+
+    [ObservableProperty]
+    private IBrush _statusBarBackground = new SolidColorBrush(ThemeManager.LonelyDark.StatusBarBackground);
+
+    [ObservableProperty]
+    private IBrush _statusBarForeground = new SolidColorBrush(ThemeManager.LonelyDark.StatusBarForeground);
+
+    [ObservableProperty]
+    private IBrush _accentBrush = new SolidColorBrush(ThemeManager.LonelyDark.AccentColor);
+
+    [ObservableProperty]
+    private IBrush _borderBrush = new SolidColorBrush(ThemeManager.LonelyDark.BorderBrush);
+
+    public string AppTitle => $"{AppVersionInfo.AppName} v{AppVersionInfo.CurrentVersion}";
 
     public MainViewModel()
     {
@@ -125,12 +157,39 @@ public partial class MainViewModel : ViewModelBase
         _extensionContext = new ExtensionContext(_commandRegistry, _toolRegistry, _editorService, _workspaceService);
         _extensionManager = new ExtensionManager(_extensionContext);
 
+        _updateService = new GitHubUpdateService();
+        _updateModal = new UpdateModalViewModel(_updateService);
+
+        ThemeManager.ThemeChanged += OnThemeChanged;
+
         HookActiveDocument();
         HookExplorer();
         RegisterDefaultCommands();
 
-        // Load built-in and directory plugins
+        // Load built-in extensions & check for updates in background
         _ = InitializeExtensionsAsync();
+        _ = CheckUpdatesBackgroundAsync();
+    }
+
+    private void OnThemeChanged(object? sender, ThemeDefinition theme)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            CurrentThemeName = theme.Name;
+            WindowBackground = new SolidColorBrush(theme.WindowBackground);
+            HeaderBackground = new SolidColorBrush(theme.HeaderBackground);
+            StatusBarBackground = new SolidColorBrush(theme.StatusBarBackground);
+            StatusBarForeground = new SolidColorBrush(theme.StatusBarForeground);
+            AccentBrush = new SolidColorBrush(theme.AccentColor);
+            BorderBrush = new SolidColorBrush(theme.BorderBrush);
+            StatusMessage = $"Theme: {theme.Name}";
+        });
+    }
+
+    private async Task CheckUpdatesBackgroundAsync()
+    {
+        await Task.Delay(2000); // Wait 2s after launch before checking
+        await UpdateModal.CheckForUpdatesSilentlyAsync();
     }
 
     private async Task InitializeExtensionsAsync()
@@ -148,7 +207,7 @@ public partial class MainViewModel : ViewModelBase
                 CommandPalette.RegisterCommand(cmd.Key, cmd.Value.Title, () => cmd.Value.Execute(), cmd.Value.Shortcut);
             }
 
-            StatusMessage = "AgduBugdu Ready (Terminal & Markdown Live Loaded)";
+            StatusMessage = $"AgduBugdu v{AppVersionInfo.CurrentVersion} Ready";
         }
         catch (Exception ex)
         {
@@ -205,11 +264,42 @@ public partial class MainViewModel : ViewModelBase
         CommandPalette.RegisterCommand("file.saveAs", "File: Save As...", () => { _ = SaveFileAsAsync(); }, "Ctrl+Shift+S");
         CommandPalette.RegisterCommand("terminal.restart", "Terminal: Restart Shell in Workspace", () => RestartTerminal(), "Ctrl+`");
         CommandPalette.RegisterCommand("terminal.clear", "Terminal: Clear Screen", () => _dockFactory.TerminalTool?.ClearTerminal());
+        CommandPalette.RegisterCommand("theme.lonelyDark", "Preferences: Color Theme - Lonely Dark", () => SetLonelyDarkTheme());
+        CommandPalette.RegisterCommand("theme.solarizedContrast", "Preferences: Color Theme - Solarized Contrast", () => SetSolarizedContrastTheme());
+        CommandPalette.RegisterCommand("app.checkForUpdates", "Help: Check for Updates...", () => { _ = CheckForUpdatesExplicitAsync(); });
         CommandPalette.RegisterCommand("view.commandpalette", "View: Open Command Palette", () => CommandPalette.Open(), "Ctrl+P");
         CommandPalette.RegisterCommand("view.toggleExplorer", "View: Focus Explorer", () => FocusDockable(_dockFactory.ExplorerTool));
         CommandPalette.RegisterCommand("view.toggleTerminal", "View: Focus Terminal", () => FocusDockable(_dockFactory.TerminalTool));
         CommandPalette.RegisterCommand("view.toggleOutput", "View: Focus Output", () => FocusDockable(_dockFactory.OutputTool));
-        CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => StatusMessage = "AgduBugdu Editor v0.1.0 - Powered by Avalonia UI & AvalonEdit");
+        CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => StatusMessage = $"AgduBugdu Editor v{AppVersionInfo.CurrentVersion} - Avalonia & AvalonEdit");
+    }
+
+    [RelayCommand]
+    public void SetLonelyDarkTheme()
+    {
+        ThemeManager.ApplyTheme(AppThemeMode.LonelyDark);
+    }
+
+    [RelayCommand]
+    public void SetSolarizedContrastTheme()
+    {
+        ThemeManager.ApplyTheme(AppThemeMode.SolarizedContrast);
+    }
+
+    [RelayCommand]
+    public async Task CheckForUpdatesExplicitAsync()
+    {
+        StatusMessage = "Checking for updates...";
+        var result = await _updateService.CheckForUpdatesAsync();
+        if (result.IsUpdateAvailable)
+        {
+            UpdateModal.ShowUpdate(result.LatestVersion, result.ReleaseNotes, result.ReleaseUrl);
+            StatusMessage = $"Update v{result.LatestVersion} available!";
+        }
+        else
+        {
+            StatusMessage = $"You're on the latest version (v{AppVersionInfo.CurrentVersion})";
+        }
     }
 
     [RelayCommand]

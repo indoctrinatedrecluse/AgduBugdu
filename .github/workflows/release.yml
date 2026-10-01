@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Publish Release Assets
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            asset_prefix: AgduBugdu-${{ github.ref_name }}-win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+            asset_prefix: AgduBugdu-${{ github.ref_name }}-linux-x64
+          - os: macos-latest
+            rid: osx-x64
+            asset_prefix: AgduBugdu-${{ github.ref_name }}-osx-x64
+          - os: macos-latest
+            rid: osx-arm64
+            asset_prefix: AgduBugdu-${{ github.ref_name }}-osx-arm64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore AgduBugdu.slnx
+
+      - name: Run Test Suite
+        run: dotnet test AgduBugdu.slnx --no-restore -c Release
+
+      # Publish portable binary bundle
+      - name: Publish Binaries (${{ matrix.rid }})
+        run: >
+          dotnet publish src/AgduBugdu.App/AgduBugdu.App.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=false
+          -o publish/${{ matrix.rid }}
+
+      # Windows specific: Create Portable ZIP and Inno Setup Installer EXE
+      - name: Package Windows Artifacts (.zip and setup .exe)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # 1. Create portable .zip
+          $zipName = "${{ matrix.asset_prefix }}-portable.zip"
+          Compress-Archive -Path "publish/${{ matrix.rid }}/*" -DestinationPath "publish/$zipName" -Force
+          Write-Host "Created portable archive: publish/$zipName"
+
+          # 2. Build Inno Setup installer exe
+          $innoUrl = "https://files.jrsoftware.org/is/6/innosetup-6.3.3.exe"
+          Invoke-WebRequest -Uri $innoUrl -OutFile "is-setup.exe"
+          Start-Process -FilePath ".\is-setup.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) {
+            & $iscc tools/installer.iss
+            Write-Host "Setup exe generated successfully."
+          } else {
+            Write-Warning "Inno Setup compiler not found in standard path."
+          }
+
+      # Linux/macOS specific: Create .tar.gz bundle
+      - name: Package Unix Archive (.tar.gz)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd publish/${{ matrix.rid }}
+          tar -czvf "../${{ matrix.asset_prefix }}.tar.gz" *
+          cd ../..
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: assets-${{ matrix.rid }}
+          path: |
+            publish/*.zip
+            publish/*.tar.gz
+            publish/installer/*.exe
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate Checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/*
+          name: AgduBugdu ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
