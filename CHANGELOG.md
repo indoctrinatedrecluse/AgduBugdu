@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🛠️ [1.0.1] - 2026-10-02
+
+### 🐛 Fixed
+- **📑 Document & Tool Tab Title Visibility**: Added global dock styling for `DocumentTabStripItem` and `ToolTabStripItem` foregrounds ensuring tab titles are always clearly visible in all states (normal, hovered, and selected) rather than only on hover.
+- **📝 Editor Text Document Sync**: Ensured explicit editor background rendering and robust text document binding synchronization when files are loaded into editor tabs.
+- **🚪 Clean Terminal Exit**: Added graceful session handling when typing `exit` in the terminal pane, cleanly terminating the underlying process and notifying the user.
+
+### ✨ Added
+- **📐 Layout Size Reset**: Added `View -> Reset Layout Sizes` (and command palette option) to quickly restore terminal/explorer/editor dock panels back to their original proportional dimensions.
+- **🧩 Extensions Manager Modal**: Added `View -> Extensions...` modal dialog tracking all loaded and active extensions (including the built-in Markdown Live Viewer plugin) with ID, status, version, and description.
+- **👁️ Live Markdown Preview Side by Side**: Added a context menu option in the Workspace Explorer (`Live Markdown Preview (Side by Side)`) that appears specifically and exclusively for `.md` files, opening real-time HTML rendered preview in an adjacent tab.
+
+---
+
 ## 🌟 [1.0.0] - 2026-10-01
 
 ### 🚀 Added
@@ -22,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full native file I/O: Open (`Ctrl+O`), Save (`Ctrl+S`), Save As (`Ctrl+Shift+S`), and New File (`Ctrl+N`).
   - Active caret tracking, dirty buffer change indicators (`*`), font zoom (`Ctrl + MouseWheel`), and editor context menu (Cut, Copy, Paste, Select All).
 
-- **📂 Workspace File Explorer**:
+- **📁 Workspace File Explorer**:
   - Hierarchical workspace explorer with lazy-loading directory expansion to maintain instant responsiveness on deep directory structures.
   - Native folder selection via Avalonia `StorageProvider.OpenFolderPickerAsync` (`Ctrl+K, Ctrl+O`).
   - Double-click file opening into dock tabs.
@@ -54,5 +68,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Multi-platform GitHub Actions Release workflow (`.github/workflows/release.yml`) producing:
     - 🪟 Windows: `AgduBugdu-v1.0.0-win-x64-setup.exe` (Inno Setup) & `AgduBugdu-v1.0.0-win-x64-portable.zip`
     - 🐧 Linux: `AgduBugdu-v1.0.0-linux-x64.tar.gz`
-    - 🍎 macOS: `AgduBugdu-v1.0.0-osx-x64.tar.gz` & `AgduBugdu-v1.0.0-osx-arm64.tar.gz`
+    - 🍏 macOS: `AgduBugdu-v1.0.0-osx-x64.tar.gz` & `AgduBugdu-v1.0.0-osx-arm64.tar.gz`
     - Automatic SHA-256 checksums (`SHA256SUMS.txt`).

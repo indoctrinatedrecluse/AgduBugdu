@@ -50,6 +50,7 @@
 
         <!-- Tree View of Workspace files -->
         <TreeView Grid.Row="1"
+                  x:Name="ExplorerTreeView"
                   ItemsSource="{Binding RootItems}"
                   SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                   Background="Transparent"
@@ -58,6 +59,17 @@
             <TreeView.ItemTemplate>
                 <TreeDataTemplate DataType="models:FileSystemItem" ItemsSource="{Binding Children}">
                     <StackPanel Orientation="Horizontal" Spacing="6" Margin="2,1">
+                        <StackPanel.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Open in Tab"
+                                          Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).ItemDoubleClickedCommand}"
+                                          CommandParameter="{Binding}" />
+                                <MenuItem Header="Live Markdown Preview (Side by Side)"
+                                          IsVisible="{Binding IsMarkdownFile}"
+                                          Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).OpenMarkdownPreviewCommand}"
+                                          CommandParameter="{Binding}" />
+                            </ContextMenu>
+                        </StackPanel.ContextMenu>
                         <!-- Icon (📁 or 📄) -->
                         <TextBlock Text="📁"
                                    FontSize="12"

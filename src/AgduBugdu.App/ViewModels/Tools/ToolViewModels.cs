@@ -27,6 +27,7 @@ public partial class ExplorerToolViewModel : Tool
     private FileSystemItem? _selectedItem;
 
     public event EventHandler<string>? FileSelected;
+    public event EventHandler<string>? MarkdownPreviewRequested;
     public event EventHandler? OpenFolderRequested;
 
     public ExplorerToolViewModel()
@@ -109,6 +110,15 @@ public partial class ExplorerToolViewModel : Tool
             FileSelected?.Invoke(this, item.FullPath);
         }
     }
+
+    [RelayCommand]
+    public void OpenMarkdownPreview(FileSystemItem? item)
+    {
+        if (item != null && !item.IsDirectory && item.FullPath.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            MarkdownPreviewRequested?.Invoke(this, item.FullPath);
+        }
+    }
 }
 
 public class OutputToolViewModel : Tool
@@ -142,6 +152,13 @@ public partial class TerminalToolViewModel : Tool
                 TerminalOutput += text;
             });
         };
+        _session.Exited += (s, exitCode) =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                TerminalOutput += $"{Environment.NewLine}[Process exited with code {exitCode}. Type another command or use 'Restart' to relaunch.]{Environment.NewLine}";
+            });
+        };
         _session.Start();
     }
 
@@ -158,9 +175,24 @@ public partial class TerminalToolViewModel : Tool
         if (string.IsNullOrWhiteSpace(CommandInput))
             return;
 
-        var cmd = CommandInput;
+        var cmd = CommandInput.Trim();
         CommandInput = string.Empty;
         TerminalOutput += $"> {cmd}{Environment.NewLine}";
+
+        // Handle clean 'exit' command
+        if (string.Equals(cmd, "exit", StringComparison.OrdinalIgnoreCase))
+        {
+            _session.Stop();
+            TerminalOutput += $"[Terminal session ended cleanly.]{Environment.NewLine}";
+            return;
+        }
+
+        // If session was exited/stopped, relaunch it transparently
+        if (!_session.IsRunning)
+        {
+            _session.Start();
+        }
+
         await _session.WriteInputAsync(cmd);
     }
 

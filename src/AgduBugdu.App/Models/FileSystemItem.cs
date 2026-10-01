@@ -11,6 +11,8 @@ public partial class FileSystemItem : ObservableObject
     public string FullPath { get; set; } = string.Empty;
     public bool IsDirectory { get; set; }
 
+    public bool IsMarkdownFile => !IsDirectory && FullPath.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+
     [ObservableProperty]
     private bool _isExpanded;
 

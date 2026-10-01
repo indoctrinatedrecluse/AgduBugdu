@@ -25,6 +25,39 @@
         <KeyBinding Gesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
     </Window.KeyBindings>
 
+    <!-- Global Tab & Dock Control Styling for Visible Document & Tool Tabs -->
+    <Window.Styles>
+        <Style Selector="dock|DocumentTabStripItem">
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="dock|DocumentTabStripItem TextBlock">
+            <Setter Property="Foreground" Value="#CCCCCC" />
+        </Style>
+        <Style Selector="dock|DocumentTabStripItem:selected TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="dock|DocumentTabStripItem:pointerover TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <Style Selector="dock|ToolTabStripItem">
+            <Setter Property="Foreground" Value="#AAAAAA" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+        <Style Selector="dock|ToolTabStripItem TextBlock">
+            <Setter Property="Foreground" Value="#AAAAAA" />
+        </Style>
+        <Style Selector="dock|ToolTabStripItem:selected TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="dock|ToolTabStripItem:pointerover TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+    </Window.Styles>
+
     <Grid>
         <!-- IDE Main Shell Layout -->
         <Grid RowDefinitions="Auto,Auto,*,Auto">
@@ -59,9 +92,8 @@
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
                     <Separator />
-                    <MenuItem Header="Explorer" />
-                    <MenuItem Header="Terminal" />
-                    <MenuItem Header="Output" />
+                    <MenuItem Header="_Reset Layout Sizes" Command="{Binding ResetPaneLayoutCommand}" />
+                    <MenuItem Header="_Extensions..." Command="{Binding ShowExtensionsModalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="Check for _Updates..." Command="{Binding CheckForUpdatesExplicitCommand}" />
@@ -149,5 +181,8 @@
 
         <!-- Auto-Updater Modal Overlay -->
         <views:UpdateModalView DataContext="{Binding UpdateModal}" />
+
+        <!-- Extensions Manager Modal Overlay -->
+        <views:ExtensionsModalView DataContext="{Binding ExtensionsModal}" />
     </Grid>
 </Window>

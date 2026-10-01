@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels"
+             x:Class="AgduBugdu.App.Views.ExtensionsModalView"
+             x:DataType="vm:ExtensionsModalViewModel">
+
+    <Grid IsVisible="{Binding IsVisible}"
+          Background="#99000000"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+
+        <!-- Modal Dialog Card -->
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="540"
+                CornerRadius="8"
+                Background="#1E1E22"
+                BorderBrush="#8B5CF6"
+                BorderThickness="1"
+                BoxShadow="0 8 32 0 #55000000"
+                Padding="24">
+
+            <StackPanel Spacing="16">
+                <!-- Header -->
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="🧩 Installed Extensions"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="#F3F4F6"
+                               VerticalAlignment="Center" />
+
+                    <Button Grid.Column="2"
+                            Content="✕"
+                            FontSize="12"
+                            Padding="6,2"
+                            Background="Transparent"
+                            Foreground="#9CA3AF"
+                            Command="{Binding CloseCommand}" />
+                </Grid>
+
+                <Separator Background="#2D2D35" Height="1" />
+
+                <!-- Extensions List -->
+                <Border Background="#141417"
+                        CornerRadius="4"
+                        Padding="8"
+                        MinHeight="180"
+                        MaxHeight="260">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Extensions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ExtensionDisplayItem">
+                                    <Border Background="#1F1F24"
+                                            CornerRadius="4"
+                                            Padding="12,8"
+                                            Margin="0,0,0,6"
+                                            BorderBrush="#2D2D35"
+                                            BorderThickness="1">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="3">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="Bold"
+                                                               FontSize="13"
+                                                               Foreground="#E4E4E7" />
+                                                    <Border Background="#27272A"
+                                                            CornerRadius="3"
+                                                            Padding="4,1">
+                                                        <TextBlock Text="{Binding Version, StringFormat='v{0}'}"
+                                                                   FontSize="10"
+                                                                   Foreground="#A1A1AA" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Description}"
+                                                           FontSize="11"
+                                                           Foreground="#9CA3AF" />
+                                                <TextBlock Text="{Binding Id}"
+                                                           FontSize="10"
+                                                           Foreground="#6B7280" />
+                                            </StackPanel>
+
+                                            <!-- Status Badge -->
+                                            <Border Grid.Column="1"
+                                                    Background="#064E3B"
+                                                    CornerRadius="3"
+                                                    Padding="6,2"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Status}"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#34D399" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Footer -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="Extensions expand editor capabilities and tools."
+                               FontSize="11"
+                               Foreground="#6B7280"
+                               VerticalAlignment="Center" />
+
+                    <Button Grid.Column="1"
+                            Content="Close"
+                            Padding="16,6"
+                            Background="#27272A"
+                            Foreground="#D4D4D8"
+                            CornerRadius="4"
+                            Command="{Binding CloseCommand}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

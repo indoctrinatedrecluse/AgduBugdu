@@ -97,6 +97,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly AppWorkspaceService _workspaceService;
     private readonly ExtensionContext _extensionContext;
     private readonly GitHubUpdateService _updateService;
+    private MarkdownPreviewViewModel? _markdownPreviewModel;
 
     [ObservableProperty]
     private IRootDock? _layout;
@@ -106,6 +107,9 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     private UpdateModalViewModel _updateModal;
+
+    [ObservableProperty]
+    private ExtensionsModalViewModel _extensionsModal = new();
 
     [ObservableProperty]
     private string _statusMessage = "Ready";
@@ -201,6 +205,17 @@ public partial class MainViewModel : ViewModelBase
             mdExtension.Initialize(_extensionContext);
             await mdExtension.ActivateAsync();
 
+            // Populate Extensions Modal list
+            ExtensionsModal.Extensions.Clear();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = mdExtension.Id,
+                Name = mdExtension.Name,
+                Version = mdExtension.Version,
+                Status = "Active",
+                Description = "Provides real-time Markdown side-by-side rendering and preview."
+            });
+
             // Sync registered plugin commands into the Command Palette
             foreach (var cmd in _commandRegistry.GetRegisteredCommands())
             {
@@ -235,10 +250,57 @@ public partial class MainViewModel : ViewModelBase
                 OpenFile(path);
             };
 
+            _dockFactory.ExplorerTool.MarkdownPreviewRequested += (s, path) =>
+            {
+                OpenMarkdownLivePreview(path);
+            };
+
             _dockFactory.ExplorerTool.OpenFolderRequested += (s, e) =>
             {
                 _ = OpenFolderAsync();
             };
+        }
+    }
+
+    public void OpenMarkdownLivePreview(string filePath)
+    {
+        OpenFile(filePath);
+
+        if (_dockFactory.DocumentDock != null)
+        {
+            // Check if preview document already exists
+            var existingPreview = _dockFactory.DocumentDock.VisibleDockables?
+                .OfType<EditorDocumentViewModel>()
+                .FirstOrDefault(d => d.Id == "markdown.preview.tab");
+
+            if (existingPreview != null)
+            {
+                if (File.Exists(filePath))
+                {
+                    existingPreview.TextDocument = new AvaloniaEdit.Document.TextDocument(File.ReadAllText(filePath));
+                }
+                _dockFactory.SetActiveDockable(existingPreview);
+                return;
+            }
+
+            if (_markdownPreviewModel == null)
+            {
+                _markdownPreviewModel = new MarkdownPreviewViewModel();
+            }
+            _markdownPreviewModel.UpdateDocument(filePath);
+
+            var previewDoc = new EditorDocumentViewModel
+            {
+                Id = "markdown.preview.tab",
+                FileName = $"Preview: {Path.GetFileName(filePath)}",
+                Title = $"Preview: {Path.GetFileName(filePath)}",
+                FilePath = filePath,
+                TextDocument = new AvaloniaEdit.Document.TextDocument(_markdownPreviewModel.HtmlPreview)
+            };
+
+            _dockFactory.AddDockable(_dockFactory.DocumentDock, previewDoc);
+            _dockFactory.SetActiveDockable(previewDoc);
+            StatusMessage = $"Showing Live Preview for {Path.GetFileName(filePath)}";
         }
     }
 
@@ -264,6 +326,8 @@ public partial class MainViewModel : ViewModelBase
         CommandPalette.RegisterCommand("file.saveAs", "File: Save As...", () => { _ = SaveFileAsAsync(); }, "Ctrl+Shift+S");
         CommandPalette.RegisterCommand("terminal.restart", "Terminal: Restart Shell in Workspace", () => RestartTerminal(), "Ctrl+`");
         CommandPalette.RegisterCommand("terminal.clear", "Terminal: Clear Screen", () => _dockFactory.TerminalTool?.ClearTerminal());
+        CommandPalette.RegisterCommand("view.resetPanes", "View: Reset Pane Layout to Default Sizes", () => ResetPaneLayout());
+        CommandPalette.RegisterCommand("view.extensions", "View: Manage Extensions...", () => ShowExtensionsModal());
         CommandPalette.RegisterCommand("theme.lonelyDark", "Preferences: Color Theme - Lonely Dark", () => SetLonelyDarkTheme());
         CommandPalette.RegisterCommand("theme.solarizedContrast", "Preferences: Color Theme - Solarized Contrast", () => SetSolarizedContrastTheme());
         CommandPalette.RegisterCommand("app.checkForUpdates", "Help: Check for Updates...", () => { _ = CheckForUpdatesExplicitAsync(); });
@@ -272,6 +336,19 @@ public partial class MainViewModel : ViewModelBase
         CommandPalette.RegisterCommand("view.toggleTerminal", "View: Focus Terminal", () => FocusDockable(_dockFactory.TerminalTool));
         CommandPalette.RegisterCommand("view.toggleOutput", "View: Focus Output", () => FocusDockable(_dockFactory.OutputTool));
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => StatusMessage = $"AgduBugdu Editor v{AppVersionInfo.CurrentVersion} - Avalonia & AvalonEdit");
+    }
+
+    [RelayCommand]
+    public void ResetPaneLayout()
+    {
+        _dockFactory.ResetPaneSizes();
+        StatusMessage = "Panes reset to original layout sizes";
+    }
+
+    [RelayCommand]
+    public void ShowExtensionsModal()
+    {
+        ExtensionsModal.Show();
     }
 
     [RelayCommand]
@@ -349,8 +426,7 @@ public partial class MainViewModel : ViewModelBase
             return;
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open File",
+        {\n            Title = "Open File",
             AllowMultiple = false
         });
 

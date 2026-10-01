@@ -53,6 +53,14 @@ public partial class EditorDocumentView : UserControl
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
+        if (DataContext is EditorDocumentViewModel doc)
+        {
+            // Sync TextDocument directly if needed
+            if (Editor.Document != doc.TextDocument)
+            {
+                Editor.Document = doc.TextDocument;
+            }
+        }
         SetupSyntaxHighlighting();
     }
 

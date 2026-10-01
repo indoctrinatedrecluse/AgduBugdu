@@ -12,11 +12,15 @@ public class MainDockFactory : Factory
 {
     private IRootDock? _rootDock;
     private IDocumentDock? _documentDock;
+    private ToolDock? _bottomDock;
+    private ToolDock? _leftDock;
     private ExplorerToolViewModel? _explorerTool;
     private OutputToolViewModel? _outputTool;
     private TerminalToolViewModel? _terminalTool;
 
     public IDocumentDock? DocumentDock => _documentDock;
+    public ToolDock? BottomDock => _bottomDock;
+    public ToolDock? LeftDock => _leftDock;
     public ExplorerToolViewModel? ExplorerTool => _explorerTool;
     public OutputToolViewModel? OutputTool => _outputTool;
     public TerminalToolViewModel? TerminalTool => _terminalTool;
@@ -42,6 +46,7 @@ public class MainDockFactory : Factory
             VisibleDockables = CreateList<IDockable>(_explorerTool),
             ActiveDockable = _explorerTool
         };
+        _leftDock = leftDock;
 
         var bottomDock = new ToolDock
         {
@@ -51,6 +56,7 @@ public class MainDockFactory : Factory
             VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool),
             ActiveDockable = _terminalTool
         };
+        _bottomDock = bottomDock;
 
         var documentDock = new DocumentDock
         {
@@ -90,6 +96,22 @@ public class MainDockFactory : Factory
 
         _rootDock = rootDock;
         return rootDock;
+    }
+
+    public void ResetPaneSizes()
+    {
+        if (_bottomDock != null)
+        {
+            _bottomDock.Proportion = 0.28;
+        }
+        if (_leftDock != null)
+        {
+            _leftDock.Proportion = 0.22;
+        }
+        if (_documentDock != null)
+        {
+            _documentDock.Proportion = double.NaN;
+        }
     }
 
     public override void InitLayout(IDockable layout)
