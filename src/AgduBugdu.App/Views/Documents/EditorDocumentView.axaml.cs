@@ -117,11 +117,7 @@ public partial class EditorDocumentView : UserControl
     {
         if (DataContext is EditorDocumentViewModel doc)
         {
-            doc.IsModified = true;
-            if (!doc.Title.EndsWith("*", StringComparison.Ordinal))
-            {
-                doc.Title = doc.FileName + "*";
-            }
+            doc.CheckModified();
         }
     }
 }

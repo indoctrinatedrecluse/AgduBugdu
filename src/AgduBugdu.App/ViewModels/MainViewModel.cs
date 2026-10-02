@@ -355,7 +355,13 @@ public partial class MainViewModel : ViewModelBase
     public void ResetPaneLayout()
     {
         _dockFactory.ResetPaneSizes();
-        StatusMessage = "Panes reset to original layout sizes";
+        var currentLayout = Layout;
+        Layout = null;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            Layout = currentLayout;
+            StatusMessage = "Panes reset to original layout sizes";
+        });
     }
 
     [RelayCommand]

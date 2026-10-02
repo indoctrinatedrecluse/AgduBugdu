@@ -8,6 +8,8 @@ namespace AgduBugdu.App.ViewModels.Documents;
 
 public partial class EditorDocumentViewModel : Document
 {
+    private string _originalText = string.Empty;
+
     [ObservableProperty]
     private string _filePath = string.Empty;
 
@@ -35,6 +37,7 @@ public partial class EditorDocumentViewModel : Document
     {
         Id = Guid.NewGuid().ToString();
         Title = FileName;
+        _originalText = TextDocument.Text;
     }
 
     partial void OnLineChanged(int value)
@@ -47,22 +50,29 @@ public partial class EditorDocumentViewModel : Document
         CaretMoved?.Invoke(this, EventArgs.Empty);
     }
 
+    public void CheckModified()
+    {
+        bool modified = TextDocument.Text != _originalText;
+        if (IsModified != modified)
+        {
+            IsModified = modified;
+            Title = modified ? $"{FileName}*" : FileName;
+        }
+    }
+
     public static EditorDocumentViewModel FromFile(string path)
     {
+        var content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
         var vm = new EditorDocumentViewModel
         {
             FilePath = path,
             FileName = Path.GetFileName(path),
-            Id = path
+            Id = path,
+            _originalText = content,
+            TextDocument = new TextDocument(content),
+            IsModified = false
         };
         vm.Title = vm.FileName;
-
-        if (File.Exists(path))
-        {
-            var content = File.ReadAllText(path);
-            vm.TextDocument = new TextDocument(content);
-        }
-
         return vm;
     }
 
@@ -72,6 +82,7 @@ public partial class EditorDocumentViewModel : Document
             return;
 
         File.WriteAllText(FilePath, TextDocument.Text);
+        _originalText = TextDocument.Text;
         IsModified = false;
         Title = FileName;
     }
