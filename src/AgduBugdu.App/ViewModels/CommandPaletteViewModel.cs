@@ -75,11 +75,12 @@ public partial class CommandPaletteViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    public void ExecuteSelected()
+    public void ExecuteSelected(CommandPaletteItem? target = null)
     {
-        if (SelectedItem != null)
+        target ??= SelectedItem;
+        if (target != null)
         {
-            var action = SelectedItem.ExecuteAction;
+            var action = target.ExecuteAction;
             IsOpen = false;
             SearchText = string.Empty;
             action?.Invoke();
@@ -101,3 +102,4 @@ public partial class CommandPaletteViewModel : ViewModelBase
         SearchText = string.Empty;
     }
 }
+

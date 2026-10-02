@@ -41,7 +41,8 @@
                          CornerRadius="4">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="vm:CommandPaletteItem">
-                            <Grid ColumnDefinitions="*,Auto" Margin="4,2">
+                            <Button Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0" Command="{Binding $parent[UserControl].((vm:CommandPaletteViewModel)DataContext).ExecuteSelectedCommand}" CommandParameter="{Binding}">
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,2">
                                 <TextBlock Grid.Column="0"
                                            Text="{Binding Title}"
                                            FontSize="13"
@@ -57,6 +58,7 @@
                                                FontFamily="Cascadia Code, Consolas, monospace" />
                                 </Border>
                             </Grid>
+                            </Button>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -64,3 +66,4 @@
         </Border>
     </Grid>
 </UserControl>
+

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
              x:Class="AgduBugdu.App.Views.Tools.OutputToolView"
@@ -25,7 +25,7 @@
                 </StackPanel>
 
                 <Button Grid.Column="1"
-                        Content="🗕 Minimize"
+                        Content="🗕"
                         ToolTip.Tip="Reset pane to original size"
                         FontSize="10"
                         Padding="6,2"

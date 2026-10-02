@@ -63,15 +63,16 @@ public partial class EditorDocumentViewModel : Document
     public static EditorDocumentViewModel FromFile(string path)
     {
         var content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
+        var textDoc = new TextDocument(content);
         var vm = new EditorDocumentViewModel
         {
             FilePath = path,
             FileName = Path.GetFileName(path),
             Id = path,
-            _originalText = content,
-            TextDocument = new TextDocument(content),
+            TextDocument = textDoc,
             IsModified = false
         };
+        vm._originalText = textDoc.Text;
         vm.Title = vm.FileName;
         return vm;
     }
@@ -95,3 +96,4 @@ public partial class EditorDocumentViewModel : Document
         Save();
     }
 }
+
