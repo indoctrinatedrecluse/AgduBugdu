@@ -72,3 +72,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - 🐧 Linux: `AgduBugdu-v1.0.0-linux-x64.tar.gz`
     - 🍏 macOS: `AgduBugdu-v1.0.0-osx-x64.tar.gz` & `AgduBugdu-v1.0.0-osx-arm64.tar.gz`
     - Automatic SHA-256 checksums (`SHA256SUMS.txt`).
+
