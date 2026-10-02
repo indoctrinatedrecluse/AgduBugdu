@@ -1,6 +1,9 @@
 <Solution>
   <Folder Name="/plugins/">
+    <Project Path="plugins/AgduBugdu.Plugin.DataGridLive/AgduBugdu.Plugin.DataGridLive.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.Debugger/AgduBugdu.Plugin.Debugger.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.MarkdownLive/AgduBugdu.Plugin.MarkdownLive.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.TodoExplorer/AgduBugdu.Plugin.TodoExplorer.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/AgduBugdu.App/AgduBugdu.App.csproj" />

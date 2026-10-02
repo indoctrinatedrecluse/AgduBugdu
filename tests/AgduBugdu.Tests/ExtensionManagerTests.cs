@@ -28,13 +28,24 @@ public class MockEditorService : IEditorService
     public event EventHandler<DocumentEventArgs>? DocumentOpened;
     public event EventHandler<DocumentEventArgs>? DocumentSaved;
     public event EventHandler<DocumentEventArgs>? DocumentClosed;
+    public event EventHandler<LineNavigationEventArgs>? LineNavigationRequested;
 
     public string? ActiveDocumentPath { get; private set; }
+    public int? ActiveLine { get; set; } = 1;
+    public int? ActiveColumn { get; set; } = 1;
 
     public void OpenFile(string filePath)
     {
+        OpenFile(filePath, 1, 1);
+    }
+
+    public void OpenFile(string filePath, int line, int column = 1)
+    {
         ActiveDocumentPath = filePath;
+        ActiveLine = line;
+        ActiveColumn = column;
         DocumentOpened?.Invoke(this, new DocumentEventArgs(filePath));
+        LineNavigationRequested?.Invoke(this, new LineNavigationEventArgs(filePath, line, column));
     }
 
     public void TriggerSave(string filePath)

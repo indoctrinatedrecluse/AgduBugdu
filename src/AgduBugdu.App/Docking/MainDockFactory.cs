@@ -18,6 +18,8 @@ public class MainDockFactory : Factory
     private ExplorerToolViewModel? _explorerTool;
     private OutputToolViewModel? _outputTool;
     private TerminalToolViewModel? _terminalTool;
+    private TodoToolViewModel? _todoTool;
+    private DebuggerToolViewModel? _debuggerTool;
 
     public IDocumentDock? DocumentDock => _documentDock;
     public ToolDock? BottomDock => _bottomDock;
@@ -25,18 +27,22 @@ public class MainDockFactory : Factory
     public ExplorerToolViewModel? ExplorerTool => _explorerTool;
     public OutputToolViewModel? OutputTool => _outputTool;
     public TerminalToolViewModel? TerminalTool => _terminalTool;
+    public TodoToolViewModel? TodoTool => _todoTool;
+    public DebuggerToolViewModel? DebuggerTool => _debuggerTool;
 
     public override IRootDock CreateLayout()
     {
         _explorerTool = new ExplorerToolViewModel();
         _outputTool = new OutputToolViewModel();
         _terminalTool = new TerminalToolViewModel();
+        _todoTool = new TodoToolViewModel();
+        _debuggerTool = new DebuggerToolViewModel();
 
         var doc1 = new EditorDocumentViewModel
         {
             FileName = "Welcome.txt",
             Title = "Welcome.txt",
-            TextDocument = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output) are draggable and re-arrangeable.\n")
+            TextDocument = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output, TODO Tasks, Run & Debug) are draggable and re-arrangeable.\n")
         };
 
         var leftDock = new ToolDock
@@ -54,7 +60,7 @@ public class MainDockFactory : Factory
             Id = "BottomPane",
             Title = "Panel",
             Proportion = 0.28,
-            VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool),
+            VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool),
             ActiveDockable = _terminalTool
         };
         _bottomDock = bottomDock;
@@ -128,7 +134,9 @@ public class MainDockFactory : Factory
         {
             ["Explorer"] = () => _explorerTool,
             ["Output"] = () => _outputTool,
-            ["Terminal"] = () => _terminalTool
+            ["Terminal"] = () => _terminalTool,
+            ["TodoExplorer"] = () => _todoTool,
+            ["Debugger"] = () => _debuggerTool
         };
         DockableLocator = new Dictionary<string, System.Func<IDockable?>>
         {
@@ -144,4 +152,3 @@ public class MainDockFactory : Factory
         base.InitLayout(layout);
     }
 }
-

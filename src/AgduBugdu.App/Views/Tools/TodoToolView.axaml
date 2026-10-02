@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             x:Class="AgduBugdu.App.Views.Tools.TodoToolView"
+             x:DataType="vm:TodoToolViewModel">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Padding="12,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="TODO &amp; TASKS"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#888888"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StatusSummary}"
+                               FontSize="11"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <Button Content="Refresh"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding RefreshCommand}" />
+                    <Button Content="🗕"
+                            ToolTip.Tip="Reset pane to original size"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding ResetSizeCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Task List Display -->
+        <TextBox Grid.Row="1"
+                 Text="{Binding FormattedContent}"
+                 IsReadOnly="True"
+                 FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                 FontSize="12"
+                 Background="#141414"
+                 Foreground="#CCCCCC"
+                 BorderThickness="0"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap" />
+    </Grid>
+</UserControl>

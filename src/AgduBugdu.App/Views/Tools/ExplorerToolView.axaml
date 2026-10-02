@@ -68,9 +68,13 @@
                                           IsVisible="{Binding IsMarkdownFile, FallbackValue=False}"
                                           Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).OpenMarkdownPreviewCommand}"
                                           CommandParameter="{Binding}" />
+                                <MenuItem Header="Open as Data Table"
+                                          IsVisible="{Binding IsCsvFile, FallbackValue=False}"
+                                          Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).OpenCsvPreviewCommand}"
+                                          CommandParameter="{Binding}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>
-                        <!-- Icon (📁 or 📄) -->
+                        <!-- Icon (dY"? or dY",) -->
                         <TextBlock Text="📁"
                                    FontSize="12"
                                    VerticalAlignment="Center"
@@ -90,4 +94,3 @@
         </TreeView>
     </Grid>
 </UserControl>
-

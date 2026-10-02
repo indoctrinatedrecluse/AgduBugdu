@@ -1,0 +1,111 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             x:Class="AgduBugdu.App.Views.Tools.DebuggerToolView"
+             x:DataType="vm:DebuggerToolViewModel">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header & Action Toolbar -->
+        <Border Grid.Row="0"
+                Padding="10,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="RUN &amp; DEBUG"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#888888"
+                               VerticalAlignment="Center" />
+                    <Border Background="#333333" CornerRadius="3" Padding="6,2">
+                        <TextBlock Text="{Binding StatusText}"
+                                   FontSize="11"
+                                   Foreground="#F59E0B"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Debug Action Toolbar -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                    <Button Content="▶ Start (F5)"
+                            ToolTip.Tip="Start or continue debugging (F5)"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#1E3A8A"
+                            Foreground="#FFFFFF"
+                            CornerRadius="3"
+                            Command="{Binding StartOrContinueCommand}" />
+                    <Button Content="↷ Step Over (F10)"
+                            ToolTip.Tip="Step over current line (F10)"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding StepOverCommand}" />
+                    <Button Content="↓ Step Into (F11)"
+                            ToolTip.Tip="Step into current line (F11)"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding StepIntoCommand}" />
+                    <Button Content="⏸ Pause"
+                            ToolTip.Tip="Pause execution"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding PauseCommand}" />
+                    <Button Content="⏹ Stop"
+                            ToolTip.Tip="Stop debugging (Shift+F5)"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#991B1B"
+                            Foreground="#FFFFFF"
+                            CornerRadius="3"
+                            Command="{Binding StopCommand}" />
+                    <Button Content="↻ Restart"
+                            ToolTip.Tip="Restart debugging"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding RestartCommand}" />
+                    <Button Content="Clear BPs"
+                            ToolTip.Tip="Clear all breakpoints"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding ClearBreakpointsCommand}" />
+                    <Button Content="🗕"
+                            ToolTip.Tip="Reset pane to original size"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding ResetSizeCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Debug Information & Console -->
+        <TextBox Grid.Row="1"
+                 Text="{Binding FormattedContent}"
+                 IsReadOnly="True"
+                 FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                 FontSize="12"
+                 Background="#141414"
+                 Foreground="#D4D4D4"
+                 BorderThickness="0"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap" />
+    </Grid>
+</UserControl>

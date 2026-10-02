@@ -29,6 +29,9 @@
     <ProjectReference Include="..\..\src\AgduBugdu.Infrastructure\AgduBugdu.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\AgduBugdu.PluginContracts\AgduBugdu.PluginContracts.csproj" />
     <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.MarkdownLive\AgduBugdu.Plugin.MarkdownLive.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.DataGridLive\AgduBugdu.Plugin.DataGridLive.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.TodoExplorer\AgduBugdu.Plugin.TodoExplorer.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.Debugger\AgduBugdu.Plugin.Debugger.csproj" />
   </ItemGroup>
 
 </Project>

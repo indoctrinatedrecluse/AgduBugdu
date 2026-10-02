@@ -26,6 +26,11 @@ public interface IExtensionContext
     IWorkspaceService WorkspaceService { get; }
 
     /// <summary>
+    /// Debugging and breakpoints subsystem.
+    /// </summary>
+    IDebugService DebugService { get; }
+
+    /// <summary>
     /// Log messages to the editor's output window and log files.
     /// </summary>
     void Log(string message, string level = "Info");

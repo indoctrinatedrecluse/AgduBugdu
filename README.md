@@ -25,10 +25,13 @@
 | **🪟 Workspace & Docking** | Dockable tool windows, document tabs, splitters, layout serialization (`Dock.Avalonia`) | Multi-window detachment, remote workspaces |
 | **📝 Editing** | AvalonEdit buffer, line numbers, word wrap, caret tracking, Ctrl+Wheel zoom, context menu | Inline diff editor, minimap |
 | **🎨 Syntax Highlighting** | VS Code TextMate grammars & themes via `AvaloniaEdit.TextMate` | Semantic token highlighting |
-| **📂 File Management** | Workspace Explorer with lazy subdirectory expansion, file double-click opening, Open Folder dialog | Live file system watcher, Git staging badges |
+| **📁 File Management** | Workspace Explorer with lazy subdirectory expansion, file double-click opening, Open Folder dialog | Live file system watcher, Git staging badges |
 | **🔌 Extensions** | Collectible `PluginLoadContext` (ALC), runtime command palette contribution, tool windows | Extension marketplace, out-of-process RPC plugins |
 | **⚡ Command Palette** | Modal command search (`Ctrl+P` / `Ctrl+Shift+P`) with hotkeys and dynamic execution | Fuzzy file navigation, symbol picker |
 | **💻 Integrated Terminal** | Embedded interactive terminal session (PowerShell/Bash) synchronized with active workspace (`Ctrl+\``) | Multiplexed terminal tabs, split terminals |
+| **🐞 Run & Debugger Workbench** | Breakpoint management (`F9`), active execution highlight, step controls (`F5`, `F10`, `F11`), call stack, variable watches, debug console | DAP (Debug Adapter Protocol) integration |
+| **📋 Workspace TODO Explorer** | Automated recursive scanning for `TODO`, `FIXME`, `BUG`, `HACK`, `NOTE` with jump-to-source navigation | Custom regex tagging, export to Markdown |
+| **📊 CSV / TSV Data Table Viewer** | Auto-delimiter detection, tabular viewer with search/filtering, accessible via file context menu | Inline table cell editing, data charts |
 | **🎭 Themes** | Lonely Dark (neon violet) & Solarized Contrast (rich cyan) dynamic themes | Custom user theme JSON loader |
 | **🔄 Auto-Updater** | Built-in GitHub Releases checker with interactive update modal | In-place silent background updater |
 
@@ -64,10 +67,10 @@ graph TD
     subgraph UI ["🖥️ Presentation Layer (AgduBugdu.App)"]
         MainWindow["MainWindow (DockHost, TitleBar, CommandPalette)"]
         DockManager["Dock Layout & MainDockFactory"]
-        EditorView["Editor Tabs (AvalonEdit + TextMate)"]
-        ExplorerView["Workspace Explorer (TreeView + Lazy Loading)"]
+        EditorView["Editor Tabs (AvalonEdit + TextMate + DebugMarker)"]
+        ExplorerView["Workspace Explorer (TreeView + Context Menus)"]
         TerminalView["Terminal Panel (Interactive Shell)"]
-        ToolPanels["Tool Windows (Output, Preview)"]
+        ToolPanels["Tool Windows (Output, Preview, Debugger, TODOs)"]
     end
 
     subgraph ExtMgr ["🧩 Extension Subsystem (AgduBugdu.Extensibility)"]
@@ -75,10 +78,12 @@ graph TD
         ALCRegistry["PluginLoadContext (Collectible ALC)"]
         CommandReg["CommandRegistry"]
         ToolReg["ToolWindowRegistry"]
+        DebugSvc["DefaultDebugService"]
     end
 
     subgraph Infra ["⚙️ Infrastructure Layer (AgduBugdu.Infrastructure)"]
         TerminalSession["LocalTerminalSession & Process Stream"]
+        UpdateService["GitHubUpdateService"]
     end
 
     subgraph Contracts ["📜 Extensibility Contracts (AgduBugdu.PluginContracts)"]
@@ -86,6 +91,7 @@ graph TD
         ICommandRegistry["ICommandRegistry & Menu Items"]
         IToolWindowRegistry["IToolWindowRegistry"]
         IEditorService["IEditorService & Document Hooks"]
+        IDebugService["IDebugService & Breakpoint Events"]
         IWorkspaceService["IWorkspaceService"]
     end
 
@@ -96,6 +102,9 @@ graph TD
 
     subgraph Plugins ["📦 External Extension Assemblies"]
         MarkdownPlugin["Markdown Live Viewer Plugin (.dll)"]
+        DataGridPlugin["DataGridLive CSV/TSV Plugin (.dll)"]
+        TodoPlugin["TodoExplorer Plugin (.dll)"]
+        DebuggerPlugin["Debugger Plugin (.dll)"]
     end
 
     MainWindow --> DockManager
@@ -105,7 +114,10 @@ graph TD
     ExtensionManager --> ALCRegistry
     ALCRegistry --> Plugins
     MarkdownPlugin -.implements.-> IExtension
-    MarkdownPlugin -.uses.-> Contracts
+    DataGridPlugin -.implements.-> IExtension
+    TodoPlugin -.implements.-> IExtension
+    DebuggerPlugin -.implements.-> IExtension
+    Plugins -.uses.-> Contracts
     ExtensionManager --> Contracts
     UI --> Core
     Contracts --> Core
@@ -132,14 +144,23 @@ flowchart LR
         MarkdownExt["AgduBugdu.Plugin.MarkdownLive.dll"]
     end
     
-    subgraph ALC2 ["Isolated ALC (Custom Plugin)"]
-        CustomExt["CustomPlugin.dll"]
+    subgraph ALC2 ["Isolated ALC (DataGrid Plugin)"]
+        DataGridExt["AgduBugdu.Plugin.DataGridLive.dll"]
     end
 
-    HostApp -->|Loads| ALC1
-    HostApp -->|Loads| ALC2
+    subgraph ALC3 ["Isolated ALC (TodoExplorer Plugin)"]
+        TodoExt["AgduBugdu.Plugin.TodoExplorer.dll"]
+    end
+
+    subgraph ALC4 ["Isolated ALC (Debugger Plugin)"]
+        DebuggerExt["AgduBugdu.Plugin.Debugger.dll"]
+    end
+
+    HostApp -->|Loads| ALC1 & ALC2 & ALC3 & ALC4
     MarkdownExt -->|References| Contracts
-    CustomExt -->|References| Contracts
+    DataGridExt -->|References| Contracts
+    TodoExt -->|References| Contracts
+    DebuggerExt -->|References| Contracts
 ```
 
 ### 5.2 📋 Exposed Extension Endpoints & Interfaces
@@ -165,6 +186,7 @@ public interface IExtensionContext
     IToolWindowRegistry ToolWindows { get; }
     IEditorService EditorService { get; }
     IWorkspaceService WorkspaceService { get; }
+    IDebugService DebugService { get; }
     void Log(string message, string level = "Info");
 }
 
@@ -183,20 +205,48 @@ public interface IToolWindowRegistry
     IReadOnlyDictionary<string, ToolWindowDescriptor> GetRegisteredTools();
 }
 
-// 5. Editor hooks and document interceptors
+// 5. Editor hooks and document navigation
 public interface IEditorService
 {
     event EventHandler<DocumentEventArgs>? DocumentOpened;
     event EventHandler<DocumentEventArgs>? DocumentSaved;
     event EventHandler<DocumentEventArgs>? DocumentClosed;
-    string? ActiveDocumentPath { get; };
+    event EventHandler<NavigationEventArgs>? LineNavigationRequested;
+    string? ActiveDocumentPath { get; }
     void OpenFile(string filePath);
+    void OpenFile(string filePath, int line, int column = 1);
+}
+
+// 6. Debugging, breakpoints & execution engine
+public interface IDebugService
+{
+    DebugState State { get; }
+    IReadOnlyList<BreakpointInfo> Breakpoints { get; }
+    event EventHandler<BreakpointEventArgs>? BreakpointAdded;
+    event EventHandler<BreakpointEventArgs>? BreakpointRemoved;
+    event EventHandler<DebugStateChangedEventArgs>? StateChanged;
+    event EventHandler<string>? OutputReceived;
+    void ToggleBreakpoint(string filePath, int line);
+    Task StartDebuggingAsync();
+    Task StopDebuggingAsync();
+    Task StepOverAsync();
+    Task StepIntoAsync();
+    Task ContinueAsync();
 }
 ```
 
+### 5.3 📦 Built-In Extensions
+
+AgduBugdu comes bundled with standard productivity plugins:
+
+1. **AgduBugdu.Plugin.MarkdownLive**: Live HTML preview for Markdown files, updating as you type. Context menu "View Markdown Live" appears exclusively for `.md` documents.
+2. **AgduBugdu.Plugin.DataGridLive**: RFC 4180 compliant CSV/TSV table viewer with automatic delimiter detection (comma, tab, semicolon, pipe) and real-time text filtering. Context menu "Open as Data Table" appears for `.csv` and `.tsv` files.
+3. **AgduBugdu.Plugin.TodoExplorer**: Workspace task explorer that recursively scans for `TODO`, `FIXME`, `BUG`, `HACK`, and `NOTE` tags across your project, complete with color badges and double-click navigation straight to the code line.
+4. **AgduBugdu.Plugin.Debugger**: Interactive Run & Debugger tool pane with full breakpoint toggle support (`F9`), active execution line tracking (yellow highlight), step controls (`F5`, `F10`, `F11`), call stack viewer, variable watches, and debug console output.
+
 ---
 
-## 6. 🗂️ Solution Project Layout
+## 6. 📁 Solution Project Layout
 
 ```
 AgduBugdu/
@@ -210,6 +260,7 @@ AgduBugdu/
 │   │   ├── ICommandRegistry.cs
 │   │   ├── IToolWindowRegistry.cs
 │   │   ├── IEditorService.cs
+│   │   ├── IDebugService.cs
 │   │   └── IWorkspaceService.cs
 │   │
 │   ├── AgduBugdu.Core/                  # 🧠 Core domain logic & global versioning
@@ -224,6 +275,7 @@ AgduBugdu/
 │   │   ├── PluginLoadContext.cs         # Collectible AssemblyLoadContext
 │   │   ├── ExtensionManager.cs          # Assembly scanner, loader, and unloader
 │   │   ├── ExtensionContext.cs          # Concrete implementation of IExtensionContext
+│   │   ├── Services/                    # DefaultDebugService & default implementations
 │   │   └── Registries/                  # Thread-safe Command & Tool registries
 │   │
 │   └── AgduBugdu.App/                   # 🖥️ Avalonia desktop application
@@ -232,18 +284,20 @@ AgduBugdu/
 │       ├── Models/                      # FileSystemItem (lazy loading hierarchical model)
 │       ├── Themes/                      # ThemeManager (Lonely Dark & Solarized Contrast)
 │       ├── ViewModels/                  # MainViewModel, CommandPaletteViewModel, Documents, Tools
-│       ├── Views/                       # MainWindow, CommandPalette, UpdateModal, Editor, Explorer, Terminal
+│       ├── Views/                       # MainWindow, CommandPalette, UpdateModal, Editor, Explorer, Terminal, Debugger, TODOs
 │       ├── App.axaml                    # Theme configuration (FluentAvalonia, Dock, TreeDataGrid)
 │       └── Program.cs                   # Desktop application bootstrapper
 │
 ├── plugins/
-│   └── AgduBugdu.Plugin.MarkdownLive/   # 📝 Live Markdown Preview sample plugin
-│       ├── MarkdownLiveExtension.cs     # Implements IExtension, registers preview tool & command
-│       └── AgduBugdu.Plugin.MarkdownLive.csproj
+│   ├── AgduBugdu.Plugin.MarkdownLive/   # 📝 Live Markdown Preview plugin
+│   ├── AgduBugdu.Plugin.DataGridLive/   # 📊 CSV / TSV Data Table Viewer plugin
+│   ├── AgduBugdu.Plugin.TodoExplorer/   # 📋 Workspace TODO & Task Explorer plugin
+│   └── AgduBugdu.Plugin.Debugger/       # 🐞 Run & Debugger Workbench plugin
 │
 ├── tests/
-│   └── AgduBugdu.Tests/                 # 🧪 Fast xUnit test suite (lifecycle, registries, terminal, documents)
-│       └── ExtensionManagerTests.cs
+│   └── AgduBugdu.Tests/                 # 🧪 Fast xUnit test suite (lifecycle, registries, terminal, documents, plugins)
+│       ├── ExtensionManagerTests.cs
+│       └── PluginTests.cs
 │
 ├── tools/
 │   ├── run.ps1                          # 🪟 Windows PowerShell local build, test, and GUI runner
@@ -309,7 +363,7 @@ Use the provided runner scripts in `tools/` to check prerequisites, restore miss
   - Native file I/O: Open (`Ctrl+O`), Save (`Ctrl+S`), Save As (`Ctrl+Shift+S`), and New File (`Ctrl+N`).
   - Dirty buffer tracking (`*` indicator) and duplicate tab prevention.
   - Editor enhancements: Current line highlight, smart indentation, context menu (Cut/Copy/Paste/Select All), and `Ctrl+MouseWheel` font zoom.
-- [x] **📂 Milestone 4: Workspace File Explorer**
+- [x] **📁 Milestone 4: Workspace File Explorer**
   - Hierarchical workspace explorer with lazy-loading directory expansion.
   - Native folder selection via Avalonia `StorageProvider.OpenFolderPickerAsync` (`Ctrl+K, Ctrl+O`).
   - Double-click file opening into dock tabs.
@@ -318,7 +372,7 @@ Use the provided runner scripts in `tools/` to check prerequisites, restore miss
   - Dynamic command registration and synchronization into host Command Palette.
   - End-to-end sample plugin: `AgduBugdu.Plugin.MarkdownLive` live-updating HTML output from markdown documents.
 - [x] **💻 Milestone 6: Integrated Terminal & Workspace Synchronization**
-  - Cross-platform process shell hosting (`LocalTerminalSession`) in `AgduBugdu.Infrastructure`.
+  - Cross-platform process shell hosting (`LocalTerminalSession`) in `AgduBugdu.Infrastructure``.
   - Interactive terminal dock tool panel (`TerminalToolView` + `TerminalToolViewModel`) with input line and clear screen.
   - Dynamic workspace synchronization: automatically re-targets working directory to newly opened workspace folders (`Ctrl+OemTilde`).
   - Terminal commands exposed in menu bar, hotkeys, and Command Palette.
@@ -328,3 +382,7 @@ Use the provided runner scripts in `tools/` to check prerequisites, restore miss
   - Global solution versioning via `Directory.Build.props` and `AppVersionInfo`.
   - GitHub Releases auto-updater modal with release highlights.
   - GitHub Actions multi-platform workflow (`win-x64` setup exe & portable zip, `linux-x64`, `osx-x64`, `osx-arm64`).
+- [x] **🐞 Milestone 8: Built-in Extensions & Debugger Ecosystem**
+  - **DataGridLive**: RFC 4180 CSV / TSV data table viewer with search and delimiter auto-detection.
+  - **TodoExplorer**: Recursive workspace TODO scanner with file/line navigation.
+  - **Debugger Workbench**: Breakpoint toggling (`F9`), active execution line highlighting, debug actions (`F5`, `F10`, `F11`, `Shift+F5`), Call Stack, Variables Watch, and Debug Console dock window.

@@ -5,11 +5,15 @@ using System.Threading.Tasks;
 using AgduBugdu.App.Docking;
 using AgduBugdu.App.Themes;
 using AgduBugdu.App.ViewModels.Documents;
+using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.Core;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
 using AgduBugdu.Infrastructure.Updates;
+using AgduBugdu.Plugin.DataGridLive;
+using AgduBugdu.Plugin.Debugger;
 using AgduBugdu.Plugin.MarkdownLive;
+using AgduBugdu.Plugin.TodoExplorer;
 using AgduBugdu.PluginContracts;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -49,20 +53,30 @@ public class AppWorkspaceService : IWorkspaceService
 
 public class AppEditorService : IEditorService
 {
-    private readonly Action<string> _openFileAction;
+    private readonly Action<string, int, int> _openFileAction;
     public string? ActiveDocumentPath { get; private set; }
+    public int? ActiveLine { get; private set; } = 1;
+    public int? ActiveColumn { get; private set; } = 1;
+
     public event EventHandler<DocumentEventArgs>? DocumentOpened;
     public event EventHandler<DocumentEventArgs>? DocumentSaved;
     public event EventHandler<DocumentEventArgs>? DocumentClosed;
+    public event EventHandler<LineNavigationEventArgs>? LineNavigationRequested;
 
-    public AppEditorService(Action<string> openFileAction)
+    public AppEditorService(Action<string, int, int> openFileAction)
     {
         _openFileAction = openFileAction;
     }
 
     public void OpenFile(string filePath)
     {
-        _openFileAction(filePath);
+        OpenFile(filePath, 1, 1);
+    }
+
+    public void OpenFile(string filePath, int line, int column = 1)
+    {
+        _openFileAction(filePath, line, column);
+        LineNavigationRequested?.Invoke(this, new LineNavigationEventArgs(filePath, line, column));
     }
 
     public void NotifyOpened(string path)
@@ -81,14 +95,21 @@ public class AppEditorService : IEditorService
         DocumentClosed?.Invoke(this, new DocumentEventArgs(path));
     }
 
-    public void SetActive(string path)
+    public void SetActive(string path, int line = 1, int column = 1)
     {
         ActiveDocumentPath = path;
+        ActiveLine = line;
+        ActiveColumn = column;
     }
 }
 
-public partial class MainViewModel : ViewModelBase
+public partial class MainViewModel : ObservableObject, IDisposable
 {
+    public void Dispose()
+    {
+        _dockFactory?.TerminalTool?.OnClose();
+    }
+
     private readonly MainDockFactory _dockFactory;
     private readonly ExtensionManager _extensionManager;
     private readonly CommandRegistry _commandRegistry;
@@ -98,6 +119,9 @@ public partial class MainViewModel : ViewModelBase
     private readonly ExtensionContext _extensionContext;
     private readonly GitHubUpdateService _updateService;
     private MarkdownPreviewViewModel? _markdownPreviewModel;
+    private CsvTableViewModel? _csvTableModel;
+
+    public IDebugService DebugService => _extensionContext.DebugService;
 
     [ObservableProperty]
     private IRootDock? _layout;
@@ -159,7 +183,7 @@ public partial class MainViewModel : ViewModelBase
         // Extensibility Subsystem Initialization
         _commandRegistry = new CommandRegistry();
         _toolRegistry = new ToolWindowRegistry();
-        _editorService = new AppEditorService(path => OpenFile(path));
+        _editorService = new AppEditorService((path, line, col) => OpenFile(path, line, col));
         _workspaceService = new AppWorkspaceService(path => OpenFolder(path));
         _extensionContext = new ExtensionContext(_commandRegistry, _toolRegistry, _editorService, _workspaceService);
         _extensionManager = new ExtensionManager(_extensionContext);
@@ -204,13 +228,12 @@ public partial class MainViewModel : ViewModelBase
     {
         try
         {
-            // Register built-in sample Markdown Live extension
+            ExtensionsModal.Extensions.Clear();
+
+            // 1. Markdown Live extension
             var mdExtension = new MarkdownLiveExtension();
             mdExtension.Initialize(_extensionContext);
             await mdExtension.ActivateAsync();
-
-            // Populate Extensions Modal list
-            ExtensionsModal.Extensions.Clear();
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = mdExtension.Id,
@@ -220,7 +243,56 @@ public partial class MainViewModel : ViewModelBase
                 Description = "Provides real-time Markdown side-by-side rendering and preview."
             });
 
-            // Sync registered plugin commands into the Command Palette
+            // 2. CSV / TSV Data Table extension
+            var csvExtension = new DataGridLiveExtension();
+            csvExtension.Initialize(_extensionContext);
+            await csvExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = csvExtension.Id,
+                Name = csvExtension.Name,
+                Version = csvExtension.Version,
+                Status = "Active",
+                Description = "Interactive tabular viewer and search for CSV and TSV datasets."
+            });
+
+            // 3. Workspace TODO & Task Explorer extension
+            var todoExtension = new TodoExplorerExtension();
+            todoExtension.Initialize(_extensionContext);
+            await todoExtension.ActivateAsync();
+            if (_toolRegistry.GetRegisteredTools().TryGetValue("todo.explorer.tool", out var todoToolDesc) &&
+                todoToolDesc.ViewModelFactory() is TodoExplorerViewModel todoVm)
+            {
+                _dockFactory.TodoTool?.AttachModel(todoVm);
+            }
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = todoExtension.Id,
+                Name = todoExtension.Name,
+                Version = todoExtension.Version,
+                Status = "Active",
+                Description = "Scans workspace for TODO, FIXME, BUG, and NOTE comment markers."
+            });
+
+            // 4. Run & Debug Workbench extension
+            var debugExtension = new DebuggerExtension();
+            debugExtension.Initialize(_extensionContext);
+            await debugExtension.ActivateAsync();
+            if (_toolRegistry.GetRegisteredTools().TryGetValue("debug.workbench.tool", out var debugToolDesc) &&
+                debugToolDesc.ViewModelFactory() is DebuggerViewModel debugVm)
+            {
+                _dockFactory.DebuggerTool?.AttachModel(debugVm);
+            }
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = debugExtension.Id,
+                Name = debugExtension.Name,
+                Version = debugExtension.Version,
+                Status = "Active",
+                Description = "Interactive Run & Debugging workbench with breakpoints, variables, call stack, and console."
+            });
+
+            // Sync all registered plugin commands into the Command Palette
             foreach (var cmd in _commandRegistry.GetRegisteredCommands())
             {
                 CommandPalette.RegisterCommand(cmd.Key, cmd.Value.Title, () => cmd.Value.Execute(), cmd.Value.Shortcut);
@@ -255,6 +327,14 @@ public partial class MainViewModel : ViewModelBase
         {
             _dockFactory.OutputTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
+        if (_dockFactory.TodoTool != null)
+        {
+            _dockFactory.TodoTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
+        }
+        if (_dockFactory.DebuggerTool != null)
+        {
+            _dockFactory.DebuggerTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
+        }
     }
 
     private void HookExplorer()
@@ -269,6 +349,11 @@ public partial class MainViewModel : ViewModelBase
             _dockFactory.ExplorerTool.MarkdownPreviewRequested += (s, path) =>
             {
                 OpenMarkdownLivePreview(path);
+            };
+
+            _dockFactory.ExplorerTool.CsvPreviewRequested += (s, path) =>
+            {
+                OpenCsvLivePreview(path);
             };
 
             _dockFactory.ExplorerTool.OpenFolderRequested += (s, e) =>
@@ -320,16 +405,57 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    public void OpenCsvLivePreview(string filePath)
+    {
+        OpenFile(filePath);
+
+        if (_dockFactory.DocumentDock != null)
+        {
+            var tabId = $"csv.preview.{filePath}";
+            var existingPreview = _dockFactory.DocumentDock.VisibleDockables?
+                .OfType<EditorDocumentViewModel>()
+                .FirstOrDefault(d => d.Id == tabId);
+
+            if (_csvTableModel == null)
+            {
+                _csvTableModel = new CsvTableViewModel();
+            }
+            _csvTableModel.LoadFile(filePath);
+            var formatted = _csvTableModel.ToFormattedText();
+
+            if (existingPreview != null)
+            {
+                existingPreview.TextDocument = new AvaloniaEdit.Document.TextDocument(formatted);
+                _dockFactory.SetActiveDockable(existingPreview);
+                return;
+            }
+
+            var previewDoc = new EditorDocumentViewModel
+            {
+                Id = tabId,
+                FileName = $"Table: {Path.GetFileName(filePath)}",
+                Title = $"Table: {Path.GetFileName(filePath)}",
+                FilePath = filePath,
+                TextDocument = new AvaloniaEdit.Document.TextDocument(formatted)
+            };
+
+            _dockFactory.AddDockable(_dockFactory.DocumentDock, previewDoc);
+            _dockFactory.SetActiveDockable(previewDoc);
+            StatusMessage = $"Showing Data Table for {Path.GetFileName(filePath)}";
+        }
+    }
+
     private void AttachDocumentEvents(EditorDocumentViewModel doc)
     {
         doc.CaretMoved += (s, e) =>
         {
             CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
+            _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
         };
         CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
         if (!string.IsNullOrEmpty(doc.FilePath))
         {
-            _editorService.SetActive(doc.FilePath);
+            _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
         }
     }
 
@@ -351,6 +477,8 @@ public partial class MainViewModel : ViewModelBase
         CommandPalette.RegisterCommand("view.toggleExplorer", "View: Focus Explorer", () => FocusDockable(_dockFactory.ExplorerTool));
         CommandPalette.RegisterCommand("view.toggleTerminal", "View: Focus Terminal", () => FocusDockable(_dockFactory.TerminalTool));
         CommandPalette.RegisterCommand("view.toggleOutput", "View: Focus Output", () => FocusDockable(_dockFactory.OutputTool));
+        CommandPalette.RegisterCommand("view.toggleTodo", "View: Focus TODO Tasks", () => FocusDockable(_dockFactory.TodoTool));
+        CommandPalette.RegisterCommand("view.toggleDebugger", "View: Focus Run & Debug", () => FocusDockable(_dockFactory.DebuggerTool));
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
     }
 
@@ -496,6 +624,11 @@ public partial class MainViewModel : ViewModelBase
 
     public void OpenFile(string filePath)
     {
+        OpenFile(filePath, 1, 1);
+    }
+
+    public void OpenFile(string filePath, int line, int column = 1)
+    {
         if (!File.Exists(filePath))
             return;
 
@@ -510,6 +643,7 @@ public partial class MainViewModel : ViewModelBase
             {
                 _dockFactory.SetActiveDockable(existing);
                 AttachDocumentEvents(existing);
+                existing.NavigateTo(line, column);
                 StatusMessage = $"Switched to {existing.FileName}";
                 _editorService.NotifyOpened(filePath);
                 return;
@@ -517,6 +651,7 @@ public partial class MainViewModel : ViewModelBase
 
             var doc = EditorDocumentViewModel.FromFile(filePath);
             AttachDocumentEvents(doc);
+            doc.NavigateTo(line, column);
             _dockFactory.AddDockable(_dockFactory.DocumentDock, doc);
             _dockFactory.SetActiveDockable(doc);
             StatusMessage = $"Opened {doc.FileName}";
@@ -576,12 +711,3 @@ public partial class MainViewModel : ViewModelBase
         return null;
     }
 }
-
-
-
-
-
-
-
-
-

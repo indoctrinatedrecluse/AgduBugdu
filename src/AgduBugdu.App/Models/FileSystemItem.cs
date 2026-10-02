@@ -12,6 +12,7 @@ public partial class FileSystemItem : ObservableObject
     public bool IsDirectory { get; set; }
 
     public bool IsMarkdownFile => !IsDirectory && FullPath.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+    public bool IsCsvFile => !IsDirectory && (FullPath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) || FullPath.EndsWith(".tsv", StringComparison.OrdinalIgnoreCase));
 
     [ObservableProperty]
     private bool _isExpanded;

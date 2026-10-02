@@ -32,6 +32,7 @@ public partial class EditorDocumentViewModel : Document
     private bool _wordWrap = false;
 
     public event EventHandler? CaretMoved;
+    public event EventHandler<int>? ScrollToLineRequested;
 
     public EditorDocumentViewModel()
     {
@@ -48,6 +49,13 @@ public partial class EditorDocumentViewModel : Document
     partial void OnColumnChanged(int value)
     {
         CaretMoved?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void NavigateTo(int line, int column = 1)
+    {
+        Line = line;
+        Column = column;
+        ScrollToLineRequested?.Invoke(this, line);
     }
 
     public void CheckModified()
@@ -96,4 +104,3 @@ public partial class EditorDocumentViewModel : Document
         Save();
     }
 }
-

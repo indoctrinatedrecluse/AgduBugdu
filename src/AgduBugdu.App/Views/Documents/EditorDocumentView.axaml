@@ -23,6 +23,8 @@
                     <MenuItem Header="Paste" Command="{Binding $parent[ae:TextEditor].Paste}" InputGesture="Ctrl+V" />
                     <Separator />
                     <MenuItem Header="Select All" Command="{Binding $parent[ae:TextEditor].SelectAll}" InputGesture="Ctrl+A" />
+                    <Separator />
+                    <MenuItem Header="Toggle Breakpoint" x:Name="ToggleBreakpointMenuItem" InputGesture="F9" />
                 </ContextMenu>
             </ae:TextEditor.ContextMenu>
         </ae:TextEditor>
