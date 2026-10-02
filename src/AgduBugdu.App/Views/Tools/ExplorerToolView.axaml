@@ -65,7 +65,7 @@
                                           Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).ItemDoubleClickedCommand}"
                                           CommandParameter="{Binding}" />
                                 <MenuItem Header="Live Markdown Preview (Side by Side)"
-                                          IsVisible="{Binding IsMarkdownFile}"
+                                          IsVisible="{Binding IsMarkdownFile, FallbackValue=False}"
                                           Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).OpenMarkdownPreviewCommand}"
                                           CommandParameter="{Binding}" />
                             </ContextMenu>
@@ -90,3 +90,4 @@
         </TreeView>
     </Grid>
 </UserControl>
+

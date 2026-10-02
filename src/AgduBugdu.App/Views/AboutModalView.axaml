@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels"
+             x:Class="AgduBugdu.App.Views.AboutModalView"
+             x:DataType="vm:AboutModalViewModel"
+             IsVisible="{Binding IsVisible}">
+    
+    <Grid Background="#80000000">
+        <Border Background="#1E1E1E"
+                BorderBrush="#333333"
+                BorderThickness="1"
+                CornerRadius="8"
+                Width="400"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <StackPanel Spacing="16">
+                <TextBlock Text="About AgduBugdu" FontSize="20" FontWeight="Bold" Foreground="White" />
+                
+                <TextBlock Text="{Binding Version, StringFormat='Version: {0}'}" Foreground="#CCCCCC" />
+                <TextBlock Text="Modern, extensible, cross-platform code and text editor." TextWrapping="Wrap" Foreground="#AAAAAA" />
+                <TextBlock Text="Built with Avalonia UI and AvalonEdit." TextWrapping="Wrap" Foreground="#AAAAAA" />
+                
+                <Button Content="Close"
+                        HorizontalAlignment="Right"
+                        Command="{Binding Close}"
+                        Padding="16,6"
+                        Background="#2563EB"
+                        Foreground="White"
+                        CornerRadius="4" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

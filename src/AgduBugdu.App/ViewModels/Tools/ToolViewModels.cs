@@ -150,6 +150,12 @@ public partial class TerminalToolViewModel : Tool
     [ObservableProperty]
     private string _commandInput = string.Empty;
 
+    public override bool OnClose()
+    {
+        _session?.Stop();
+        return base.OnClose();
+    }
+
     public TerminalToolViewModel()
     {
         Id = "Terminal";
@@ -218,3 +224,4 @@ public partial class TerminalToolViewModel : Tool
         TerminalOutput = string.Empty;
     }
 }
+

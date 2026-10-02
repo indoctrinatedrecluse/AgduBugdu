@@ -112,6 +112,9 @@ public partial class MainViewModel : ViewModelBase
     private ExtensionsModalViewModel _extensionsModal = new();
 
     [ObservableProperty]
+    private AboutModalViewModel _aboutModal = new();
+
+    [ObservableProperty]
     private string _statusMessage = "Ready";
 
     [ObservableProperty]
@@ -348,26 +351,26 @@ public partial class MainViewModel : ViewModelBase
         CommandPalette.RegisterCommand("view.toggleExplorer", "View: Focus Explorer", () => FocusDockable(_dockFactory.ExplorerTool));
         CommandPalette.RegisterCommand("view.toggleTerminal", "View: Focus Terminal", () => FocusDockable(_dockFactory.TerminalTool));
         CommandPalette.RegisterCommand("view.toggleOutput", "View: Focus Output", () => FocusDockable(_dockFactory.OutputTool));
-        CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => StatusMessage = $"AgduBugdu Editor v{AppVersionInfo.CurrentVersion} - Avalonia & AvalonEdit");
+        CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
     }
 
     [RelayCommand]
     public void ResetPaneLayout()
     {
         _dockFactory.ResetPaneSizes();
-        var currentLayout = Layout;
-        Layout = null;
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            Layout = currentLayout;
-            StatusMessage = "Panes reset to original layout sizes";
-        });
+        StatusMessage = "Panes reset to original layout sizes";
     }
 
     [RelayCommand]
     public void ShowExtensionsModal()
     {
         ExtensionsModal.Show();
+    }
+
+    [RelayCommand]
+    public void ShowAboutModal()
+    {
+        AboutModal.Show();
     }
 
     [RelayCommand]
@@ -573,3 +576,10 @@ public partial class MainViewModel : ViewModelBase
         return null;
     }
 }
+
+
+
+
+
+
+

@@ -97,6 +97,7 @@
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="Check for _Updates..." Command="{Binding CheckForUpdatesExplicitCommand}" />
+                    <MenuItem Header="_About AgduBugdu" Command="{Binding ShowAboutModalCommand}" />
                     <Separator />
                     <MenuItem Header="About AgduBugdu" />
                 </MenuItem>
@@ -184,5 +185,7 @@
 
         <!-- Extensions Manager Modal Overlay -->
         <views:ExtensionsModalView DataContext="{Binding ExtensionsModal}" />
+        <views:AboutModalView DataContext="{Binding AboutModal}" />
     </Grid>
 </Window>
+
