@@ -102,21 +102,23 @@ public class MainDockFactory : Factory
 
     public void ResetPaneSizes()
     {
-        if (_bottomDock != null)
-        {
-            _bottomDock.Proportion = 0.28;
-        }
-        if (_documentDock != null)
-        {
-            _documentDock.Proportion = 0.72;
-        }
-        if (_leftDock != null)
-        {
-            _leftDock.Proportion = 0.22;
-        }
+        if (_bottomDock != null) _bottomDock.Proportion = 0.28;
+        if (_documentDock != null) _documentDock.Proportion = 0.72;
+        if (_leftDock != null) _leftDock.Proportion = 0.22;
+        if (_centerLayout != null) _centerLayout.Proportion = double.NaN;
+
         if (_centerLayout != null)
         {
-            _centerLayout.Proportion = 0.78;
+            var temp = _centerLayout.VisibleDockables;
+            _centerLayout.VisibleDockables = null;
+            _centerLayout.VisibleDockables = temp;
+        }
+
+        if (_rootDock != null && _rootDock.ActiveDockable is ProportionalDock mainLayout)
+        {
+            var temp = mainLayout.VisibleDockables;
+            mainLayout.VisibleDockables = null;
+            mainLayout.VisibleDockables = temp;
         }
     }
 
@@ -124,12 +126,16 @@ public class MainDockFactory : Factory
     {
         ContextLocator = new Dictionary<string, System.Func<object?>>
         {
-            ["Explorer"] = () => layout,
-            ["Output"] = () => layout,
-            ["Terminal"] = () => layout,
-            ["Documents"] = () => layout
+            ["Explorer"] = () => _explorerTool,
+            ["Output"] = () => _outputTool,
+            ["Terminal"] = () => _terminalTool
         };
-
+        DockableLocator = new Dictionary<string, System.Func<IDockable?>>
+        {
+            ["LeftPane"] = () => _leftDock,
+            ["BottomPane"] = () => _bottomDock,
+            ["DocumentsPane"] = () => _documentDock
+        };
         HostWindowLocator = new Dictionary<string, System.Func<IHostWindow?>>
         {
             [nameof(IDockWindow)] = () => new Dock.Avalonia.Controls.HostWindow()
@@ -138,3 +144,4 @@ public class MainDockFactory : Factory
         base.InitLayout(layout);
     }
 }
+
