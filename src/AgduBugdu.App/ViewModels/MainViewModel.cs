@@ -7,6 +7,7 @@ using AgduBugdu.App.Themes;
 using AgduBugdu.App.ViewModels.Documents;
 using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.Core;
+using AgduBugdu.Core.Text;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
 using AgduBugdu.Infrastructure.Updates;
@@ -180,6 +181,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _cursorPosition = "Ln 1, Col 1";
 
     [ObservableProperty]
+    private string _wordWrapStatus = "Wrap: Off";
+
+    [ObservableProperty]
     private string _encoding = "UTF-8";
 
     [ObservableProperty]
@@ -225,6 +229,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _workspaceService = new AppWorkspaceService(path => OpenFolder(path));
         _extensionContext = new ExtensionContext(_commandRegistry, _toolRegistry, _editorService, _workspaceService);
         _extensionManager = new ExtensionManager(_extensionContext);
+
+        EditorDocumentViewModel.CommentSyntaxResolver = filePath =>
+        {
+            var customLang = _extensionContext.Languages.GetLanguageForFile(filePath);
+            return CommentSyntax.Resolve(customLang, filePath);
+        };
 
         _updateService = new GitHubUpdateService();
         _updateModal = new UpdateModalViewModel(_updateService);
@@ -490,8 +500,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
                 }
             }
+            else if (e.PropertyName == nameof(EditorDocumentViewModel.WordWrap))
+            {
+                WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
+            }
         };
         CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
+        WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
         if (!string.IsNullOrEmpty(doc.FilePath))
         {
             _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
@@ -518,6 +533,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("edit.replace", "Edit: Replace in File", () => OpenReplace(), "Ctrl+H");
         CommandPalette.RegisterCommand("edit.goToLine", "Edit: Go to Line / Column", () => OpenGoToLine(), "Ctrl+G");
         CommandPalette.RegisterCommand("edit.goToMatchingBracket", "Edit: Go to Matching Bracket", () => GoToMatchingBracket(), "Ctrl+M");
+        CommandPalette.RegisterCommand("edit.toggleLineComment", "Edit: Toggle Line Comment", () => ToggleLineComment(), "Ctrl+/");
+        CommandPalette.RegisterCommand("edit.toggleBlockComment", "Edit: Toggle Block Comment", () => ToggleBlockComment(), "Shift+Alt+A");
+        CommandPalette.RegisterCommand("edit.moveLineUp", "Edit: Move Line Up", () => MoveLineUp(), "Alt+Up");
+        CommandPalette.RegisterCommand("edit.moveLineDown", "Edit: Move Line Down", () => MoveLineDown(), "Alt+Down");
+        CommandPalette.RegisterCommand("edit.duplicateLineUp", "Edit: Duplicate Line Up", () => DuplicateLineUp(), "Shift+Alt+Up");
+        CommandPalette.RegisterCommand("edit.duplicateLineDown", "Edit: Duplicate Line Down", () => DuplicateLineDown(), "Shift+Alt+Down");
+        CommandPalette.RegisterCommand("edit.deleteLine", "Edit: Delete Line", () => DeleteLine(), "Ctrl+Shift+K");
+        CommandPalette.RegisterCommand("edit.joinLines", "Edit: Join Lines", () => JoinLines(), "Ctrl+Shift+J");
+        CommandPalette.RegisterCommand("edit.transformUppercase", "Edit: Transform to Uppercase", () => TransformUppercase(), "Ctrl+Shift+U");
+        CommandPalette.RegisterCommand("edit.transformLowercase", "Edit: Transform to Lowercase", () => TransformLowercase(), "Ctrl+U");
+        CommandPalette.RegisterCommand("view.toggleWordWrap", "View: Toggle Word Wrap", () => ToggleWordWrap(), "Alt+Z");
         CommandPalette.RegisterCommand("view.toggleBottomPanel", "View: Toggle Bottom Panel", () => ToggleBottomPane(), "Ctrl+J");
         CommandPalette.RegisterCommand("view.resetPanes", "View: Reset Panel to Default sizes", () => ResetPaneLayout());
         CommandPalette.RegisterCommand("view.extensions", "View: Manage Extensions...", () => ShowExtensionsModal());
@@ -565,6 +591,77 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void GoToMatchingBracket()
     {
         GetActiveEditorDocument()?.GoToMatchingBracket();
+    }
+
+    [RelayCommand]
+    public void ToggleWordWrap()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.ToggleWordWrap();
+            WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleLineComment()
+    {
+        GetActiveEditorDocument()?.ToggleLineComment();
+    }
+
+    [RelayCommand]
+    public void ToggleBlockComment()
+    {
+        GetActiveEditorDocument()?.ToggleBlockComment();
+    }
+
+    [RelayCommand]
+    public void MoveLineUp()
+    {
+        GetActiveEditorDocument()?.MoveLineUp();
+    }
+
+    [RelayCommand]
+    public void MoveLineDown()
+    {
+        GetActiveEditorDocument()?.MoveLineDown();
+    }
+
+    [RelayCommand]
+    public void DuplicateLineUp()
+    {
+        GetActiveEditorDocument()?.DuplicateLineUp();
+    }
+
+    [RelayCommand]
+    public void DuplicateLineDown()
+    {
+        GetActiveEditorDocument()?.DuplicateLineDown();
+    }
+
+    [RelayCommand]
+    public void DeleteLine()
+    {
+        GetActiveEditorDocument()?.DeleteLine();
+    }
+
+    [RelayCommand]
+    public void JoinLines()
+    {
+        GetActiveEditorDocument()?.JoinLines();
+    }
+
+    [RelayCommand]
+    public void TransformUppercase()
+    {
+        GetActiveEditorDocument()?.TransformUppercase();
+    }
+
+    [RelayCommand]
+    public void TransformLowercase()
+    {
+        GetActiveEditorDocument()?.TransformLowercase();
     }
 
     [RelayCommand]

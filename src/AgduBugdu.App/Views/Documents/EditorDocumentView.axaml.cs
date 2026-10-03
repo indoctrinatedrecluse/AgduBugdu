@@ -193,33 +193,120 @@ public partial class EditorDocumentView : UserControl
             return;
         }
 
+        // Shift + Alt combinations
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            if (e.Key == Key.A)
+            {
+                doc.ToggleBlockComment();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Up)
+            {
+                doc.DuplicateLineUp();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Down)
+            {
+                doc.DuplicateLineDown();
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // Alt combinations (no Shift)
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            if (e.Key == Key.Up)
+            {
+                doc.MoveLineUp();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Down)
+            {
+                doc.MoveLineDown();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Z)
+            {
+                doc.ToggleWordWrap();
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // Control combinations
         if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
-            if (e.Key == Key.F)
+            // Toggle Line Comment (Ctrl + /)
+            if (e.Key == Key.OemQuestion || e.Key == Key.Divide)
             {
-                var sel = Editor.SelectedText;
-                doc.OpenFind(!string.IsNullOrEmpty(sel) ? sel : null);
+                doc.ToggleLineComment();
                 e.Handled = true;
                 return;
             }
-            if (e.Key == Key.H)
+
+            // Ctrl + Shift combinations
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
             {
-                var sel = Editor.SelectedText;
-                doc.OpenReplace(!string.IsNullOrEmpty(sel) ? sel : null);
-                e.Handled = true;
-                return;
+                if (e.Key == Key.K)
+                {
+                    doc.DeleteLine();
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.J)
+                {
+                    doc.JoinLines();
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.U)
+                {
+                    doc.TransformUppercase();
+                    e.Handled = true;
+                    return;
+                }
             }
-            if (e.Key == Key.G)
+            else
             {
-                doc.OpenGoToLine();
-                e.Handled = true;
-                return;
-            }
-            if (e.Key == Key.M)
-            {
-                doc.GoToMatchingBracket();
-                e.Handled = true;
-                return;
+                // Ctrl only
+                if (e.Key == Key.U)
+                {
+                    doc.TransformLowercase();
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.F)
+                {
+                    var sel = Editor.SelectedText;
+                    doc.OpenFind(!string.IsNullOrEmpty(sel) ? sel : null);
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.H)
+                {
+                    var sel = Editor.SelectedText;
+                    doc.OpenReplace(!string.IsNullOrEmpty(sel) ? sel : null);
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.G)
+                {
+                    doc.OpenGoToLine();
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.M)
+                {
+                    doc.GoToMatchingBracket();
+                    e.Handled = true;
+                    return;
+                }
             }
         }
 
@@ -277,122 +364,68 @@ public partial class EditorDocumentView : UserControl
                 Editor.Document = doc.TextDocument;
             }
 
+            // Provide closure for getting current selected text
             doc.GetSelectedTextFunc = () => Editor.SelectedText;
 
-            doc.PropertyChanged += (s, args) =>
+            // Subscribe to programmatic text selection and navigation requests
+            doc.SelectTextRequested += (s, req) =>
             {
-                if (args.PropertyName == nameof(EditorDocumentViewModel.TextDocument))
+                if (Editor.Document != null && req.Offset >= 0 && req.Offset + req.Length <= Editor.Document.TextLength)
                 {
-                    if (Editor.Document != doc.TextDocument)
-                    {
-                        Editor.Document = doc.TextDocument;
-                    }
+                    Editor.Select(req.Offset, req.Length);
+                    Editor.CaretOffset = req.Offset + req.Length;
+                    Editor.ScrollTo(Editor.TextArea.Caret.Line, Editor.TextArea.Caret.Column);
                 }
             };
 
+            doc.FocusSearchBoxRequested += (s, ev) =>
+            {
+                SearchBox.Focus();
+                SearchBox.SelectAll();
+            };
+
+            doc.FocusGoToLineRequested += (s, ev) =>
+            {
+                GoToLineBox.Focus();
+                GoToLineBox.SelectAll();
+            };
+
+            doc.FocusEditorRequested += (s, ev) =>
+            {
+                Editor.Focus();
+            };
+
+            // Hook scroll requests
             doc.ScrollToLineRequested += (s, line) =>
             {
                 try
                 {
-                    if (line > 0 && line <= Editor.Document.LineCount)
-                    {
-                        Editor.ScrollToLine(line);
-                        Editor.TextArea.Caret.Line = line;
-                        Editor.TextArea.Caret.Column = doc.Column > 0 ? doc.Column : 1;
-                    }
+                    Editor.ScrollToLine(line);
+                    Editor.TextArea.Caret.Line = line;
                 }
-                catch { }
-            };
-
-            doc.SelectTextRequested += (s, req) =>
-            {
-                try
+                catch (Exception)
                 {
-                    if (req.Offset >= 0 && req.Offset + req.Length <= Editor.Document.TextLength)
-                    {
-                        Editor.Select(req.Offset, req.Length);
-                        Editor.CaretOffset = req.Offset + req.Length;
-                        Editor.TextArea.Caret.BringCaretToView();
-                    }
+                    // Fallback
                 }
-                catch { }
             };
 
-            doc.FocusSearchBoxRequested += (s, args) =>
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    SearchBox.Focus();
-                    SearchBox.SelectAll();
-                });
-            };
-
-            doc.FocusGoToLineRequested += (s, args) =>
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    GoToLineBox.Focus();
-                    GoToLineBox.SelectAll();
-                });
-            };
-
-            doc.FocusEditorRequested += (s, args) =>
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    Editor.Focus();
-                });
-            };
-
-            if (doc.Line > 1)
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    try
-                    {
-                        if (doc.Line <= Editor.Document.LineCount)
-                        {
-                            Editor.ScrollToLine(doc.Line);
-                            Editor.TextArea.Caret.Line = doc.Line;
-                            Editor.TextArea.Caret.Column = doc.Column > 0 ? doc.Column : 1;
-                        }
-                    }
-                    catch { }
-                });
-            }
-
+            // Attach breakpoint and execution marker renderer
             if (!_rendererAttached)
             {
-                Editor.TextArea.TextView.BackgroundRenderers.Add(
-                    new DebugMarkerRenderer(
-                        () => (DataContext as EditorDocumentViewModel)?.FilePath,
-                        GetDebugService
-                    )
-                );
+                Editor.TextArea.TextView.BackgroundRenderers.Add(new DebugMarkerRenderer(
+                    () => (DataContext as EditorDocumentViewModel)?.FilePath,
+                    () => GetDebugService()
+                ));
                 _rendererAttached = true;
-
-                var debugService = GetDebugService();
-                if (debugService != null)
-                {
-                    debugService.BreakpointChanged += (s, args) =>
-                    {
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() => Editor.TextArea.TextView.InvalidateVisual());
-                    };
-                    debugService.StateChanged += (s, args) =>
-                    {
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() => Editor.TextArea.TextView.InvalidateVisual());
-                    };
-                }
             }
+
+            // Setup TextMate syntax highlighting
+            SetupTextMateGrammar(doc);
         }
-        SetupSyntaxHighlighting();
     }
 
-    private void SetupSyntaxHighlighting()
+    private void SetupTextMateGrammar(EditorDocumentViewModel doc)
     {
-        if (DataContext is not EditorDocumentViewModel doc)
-            return;
-
         try
         {
             if (_textMateInstallation == null)
@@ -439,6 +472,8 @@ public partial class EditorDocumentView : UserControl
             doc.Line = Editor.TextArea.Caret.Line;
             doc.Column = Editor.TextArea.Caret.Column;
             doc.CaretOffset = Editor.CaretOffset;
+            doc.SelectionStart = Editor.SelectionStart;
+            doc.SelectedLength = Editor.SelectionLength;
         }
     }
 
@@ -446,8 +481,9 @@ public partial class EditorDocumentView : UserControl
     {
         if (DataContext is EditorDocumentViewModel doc)
         {
-            doc.CaretOffset = Editor.CaretOffset;
+            doc.SelectionStart = Editor.SelectionStart;
             doc.SelectedLength = Editor.SelectionLength;
+            doc.CaretOffset = Editor.CaretOffset;
         }
     }
 

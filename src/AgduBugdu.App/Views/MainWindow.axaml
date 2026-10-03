@@ -26,6 +26,17 @@
         <KeyBinding Gesture="Ctrl+H" Command="{Binding OpenReplaceCommand}" />
         <KeyBinding Gesture="Ctrl+G" Command="{Binding OpenGoToLineCommand}" />
         <KeyBinding Gesture="Ctrl+M" Command="{Binding GoToMatchingBracketCommand}" />
+        <KeyBinding Gesture="Ctrl+OemQuestion" Command="{Binding ToggleLineCommentCommand}" />
+        <KeyBinding Gesture="Shift+Alt+A" Command="{Binding ToggleBlockCommentCommand}" />
+        <KeyBinding Gesture="Alt+Up" Command="{Binding MoveLineUpCommand}" />
+        <KeyBinding Gesture="Alt+Down" Command="{Binding MoveLineDownCommand}" />
+        <KeyBinding Gesture="Shift+Alt+Up" Command="{Binding DuplicateLineUpCommand}" />
+        <KeyBinding Gesture="Shift+Alt+Down" Command="{Binding DuplicateLineDownCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+K" Command="{Binding DeleteLineCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+J" Command="{Binding JoinLinesCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+U" Command="{Binding TransformUppercaseCommand}" />
+        <KeyBinding Gesture="Ctrl+U" Command="{Binding TransformLowercaseCommand}" />
+        <KeyBinding Gesture="Alt+Z" Command="{Binding ToggleWordWrapCommand}" />
         <KeyBinding Gesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
         <KeyBinding Gesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
@@ -91,6 +102,19 @@
                     <MenuItem Header="_Replace..." InputGesture="Ctrl+H" Command="{Binding OpenReplaceCommand}" />
                     <MenuItem Header="_Go to Line..." InputGesture="Ctrl+G" Command="{Binding OpenGoToLineCommand}" />
                     <MenuItem Header="Go to _Matching Bracket" InputGesture="Ctrl+M" Command="{Binding GoToMatchingBracketCommand}" />
+                    <Separator />
+                    <MenuItem Header="Toggle _Line Comment" InputGesture="Ctrl+OemQuestion" Command="{Binding ToggleLineCommentCommand}" />
+                    <MenuItem Header="Toggle _Block Comment" InputGesture="Shift+Alt+A" Command="{Binding ToggleBlockCommentCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Move Line Up" InputGesture="Alt+Up" Command="{Binding MoveLineUpCommand}" />
+                    <MenuItem Header="Move _Line Down" InputGesture="Alt+Down" Command="{Binding MoveLineDownCommand}" />
+                    <MenuItem Header="Duplicate Line _Up" InputGesture="Shift+Alt+Up" Command="{Binding DuplicateLineUpCommand}" />
+                    <MenuItem Header="_Duplicate Line Down" InputGesture="Shift+Alt+Down" Command="{Binding DuplicateLineDownCommand}" />
+                    <MenuItem Header="Delete Lin_e" InputGesture="Ctrl+Shift+K" Command="{Binding DeleteLineCommand}" />
+                    <MenuItem Header="_Join Lines" InputGesture="Ctrl+Shift+J" Command="{Binding JoinLinesCommand}" />
+                    <Separator />
+                    <MenuItem Header="Transform to _Uppercase" InputGesture="Ctrl+Shift+U" Command="{Binding TransformUppercaseCommand}" />
+                    <MenuItem Header="Transform to _Lowercase" InputGesture="Ctrl+U" Command="{Binding TransformLowercaseCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Terminal">
                     <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
@@ -104,6 +128,7 @@
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
                     <Separator />
+                    <MenuItem Header="Toggle _Word Wrap" InputGesture="Alt+Z" Command="{Binding ToggleWordWrapCommand}" />
                     <MenuItem Header="Toggle _Bottom Panel" InputGesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
                     <MenuItem Header="_Explorer" InputGesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
                     <MenuItem Header="_Terminal" InputGesture="Ctrl+OemTilde" Command="{Binding FocusTerminalCommand}" />
@@ -160,11 +185,26 @@
                         </Grid>
                     </Button>
 
-                    <!-- Right Quick Status -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CurrentThemeName}" FontSize="11" Foreground="#71717A" />
-                        <TextBlock Text="|" Foreground="#444444" />
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#888888" />
+                    <!-- Right Controls: Extensions & Theme Toggle -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button Content="🧩 Extensions"
+                                Command="{Binding ShowExtensionsModalCommand}"
+                                Background="Transparent"
+                                BorderThickness="1"
+                                BorderBrush="{Binding BorderBrush}"
+                                Foreground="#CCCCCC"
+                                Padding="8,4"
+                                FontSize="12"
+                                CornerRadius="4" />
+                        <Button Content="🎨 Theme"
+                                Command="{Binding SetSolarizedContrastThemeCommand}"
+                                Background="Transparent"
+                                BorderThickness="1"
+                                BorderBrush="{Binding BorderBrush}"
+                                Foreground="#CCCCCC"
+                                Padding="8,4"
+                                FontSize="12"
+                                CornerRadius="4" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -187,6 +227,14 @@
 
                     <!-- Right details -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <Button Command="{Binding ToggleWordWrapCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="Toggle Word Wrap (Alt+Z)">
+                            <TextBlock Text="{Binding WordWrapStatus}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+                        </Button>
                         <TextBlock Text="{Binding CursorPosition}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
                         <TextBlock Text="{Binding Encoding}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
                     </StackPanel>

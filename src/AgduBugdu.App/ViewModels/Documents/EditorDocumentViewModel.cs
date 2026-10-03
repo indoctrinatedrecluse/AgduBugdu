@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using AgduBugdu.Core.Text;
 using AvaloniaEdit.Document;
@@ -35,6 +36,9 @@ public partial class EditorDocumentViewModel : Document
 
     [ObservableProperty]
     private int _selectedLength;
+
+    [ObservableProperty]
+    private int _selectionStart;
 
     [ObservableProperty]
     private bool _wordWrap = false;
@@ -85,6 +89,8 @@ public partial class EditorDocumentViewModel : Document
     public event EventHandler? FocusEditorRequested;
 
     public Func<string?>? GetSelectedTextFunc { get; set; }
+
+    public static Func<string, (string LinePrefix, string? BlockStart, string? BlockEnd)>? CommentSyntaxResolver { get; set; }
 
     public EditorDocumentViewModel()
     {
@@ -432,6 +438,540 @@ public partial class EditorDocumentViewModel : Document
             SelectTextRequested?.Invoke(this, (targetOffset.Value, 0));
             CaretOffset = targetOffset.Value;
         }
+    }
+
+    // --- Editing & Line Manipulations (Phase 2) ---
+
+    private (string LinePrefix, string? BlockStart, string? BlockEnd) ResolveCommentSyntax()
+    {
+        if (CommentSyntaxResolver != null)
+        {
+            try
+            {
+                return CommentSyntaxResolver(FilePath);
+            }
+            catch
+            {
+                // Fall back to built-in rules
+            }
+        }
+        return CommentSyntax.GetCommentSyntax(FilePath);
+    }
+
+    private void RequestSelectText(int offset, int length)
+    {
+        SelectTextRequested?.Invoke(this, (offset, length));
+        SelectionStart = offset;
+        SelectedLength = length;
+        CaretOffset = offset + length;
+    }
+
+    [RelayCommand]
+    public void ToggleLineComment()
+    {
+        if (TextDocument.LineCount == 0)
+            return;
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selLen = SelectedLength;
+
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        int selEnd = Math.Clamp(selStart + selLen, 0, TextDocument.TextLength);
+
+        var startDocLine = TextDocument.GetLineByOffset(selStart);
+        var endDocLine = TextDocument.GetLineByOffset(selEnd);
+
+        int startLineNum = startDocLine.LineNumber;
+        int endLineNum = endDocLine.LineNumber;
+
+        if (selLen > 0 && endDocLine.Offset == selEnd && endLineNum > startLineNum)
+        {
+            endLineNum--;
+        }
+
+        var (linePrefix, _, _) = ResolveCommentSyntax();
+
+        var lineTexts = new List<string>();
+        for (int i = startLineNum; i <= endLineNum; i++)
+        {
+            var l = TextDocument.GetLineByNumber(i);
+            lineTexts.Add(TextDocument.GetText(l.Offset, l.Length));
+        }
+
+        var (updatedLines, _) = TextManipulations.ToggleLineComments(lineTexts, linePrefix);
+
+        TextDocument.BeginUpdate();
+        try
+        {
+            for (int i = 0; i < updatedLines.Count; i++)
+            {
+                var lineNum = startLineNum + i;
+                var l = TextDocument.GetLineByNumber(lineNum);
+                TextDocument.Replace(l.Offset, l.Length, updatedLines[i]);
+            }
+        }
+        finally
+        {
+            TextDocument.EndUpdate();
+        }
+
+        CheckModified();
+
+        var firstLine = TextDocument.GetLineByNumber(startLineNum);
+        var lastLine = TextDocument.GetLineByNumber(endLineNum);
+        if (selLen > 0)
+        {
+            int newSelStart = firstLine.Offset;
+            int newSelLen = (lastLine.Offset + lastLine.Length) - firstLine.Offset;
+            RequestSelectText(newSelStart, newSelLen);
+        }
+        else
+        {
+            int targetCol = Math.Clamp(Column, 1, firstLine.Length + 1);
+            int newCaret = firstLine.Offset + (targetCol - 1);
+            RequestSelectText(newCaret, 0);
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleBlockComment()
+    {
+        if (TextDocument.LineCount == 0)
+            return;
+
+        var (_, blockStart, blockEnd) = ResolveCommentSyntax();
+        blockStart ??= "/*";
+        blockEnd ??= "*/";
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selLen = SelectedLength;
+
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        selLen = Math.Clamp(selLen, 0, TextDocument.TextLength - selStart);
+
+        if (selLen > 0)
+        {
+            string selectedText = TextDocument.GetText(selStart, selLen);
+            var (newText, _) = TextManipulations.ToggleBlockComment(selectedText, blockStart, blockEnd);
+
+            TextDocument.BeginUpdate();
+            try
+            {
+                TextDocument.Replace(selStart, selLen, newText);
+            }
+            finally
+            {
+                TextDocument.EndUpdate();
+            }
+
+            CheckModified();
+            RequestSelectText(selStart, newText.Length);
+        }
+        else
+        {
+            var line = TextDocument.GetLineByOffset(selStart);
+            string lineText = TextDocument.GetText(line.Offset, line.Length);
+            if (!string.IsNullOrWhiteSpace(lineText))
+            {
+                var (newText, _) = TextManipulations.ToggleBlockComment(lineText, blockStart, blockEnd);
+                TextDocument.BeginUpdate();
+                try
+                {
+                    TextDocument.Replace(line.Offset, line.Length, newText);
+                }
+                finally
+                {
+                    TextDocument.EndUpdate();
+                }
+
+                CheckModified();
+                RequestSelectText(line.Offset, newText.Length);
+            }
+            else
+            {
+                string emptyComment = $"{blockStart}  {blockEnd}";
+                TextDocument.BeginUpdate();
+                try
+                {
+                    TextDocument.Insert(selStart, emptyComment);
+                }
+                finally
+                {
+                    TextDocument.EndUpdate();
+                }
+
+                CheckModified();
+                RequestSelectText(selStart + blockStart.Length + 1, 0);
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void MoveLineUp()
+    {
+        if (TextDocument.LineCount <= 1) return;
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selEnd = selStart + SelectedLength;
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        selEnd = Math.Clamp(selEnd, 0, TextDocument.TextLength);
+
+        var startDocLine = TextDocument.GetLineByOffset(selStart);
+        var endDocLine = TextDocument.GetLineByOffset(selEnd);
+        int startLineNum = startDocLine.LineNumber;
+        int endLineNum = endDocLine.LineNumber;
+        if (SelectedLength > 0 && endDocLine.Offset == selEnd && endLineNum > startLineNum)
+            endLineNum--;
+
+        if (startLineNum <= 1) return;
+
+        var prevLine = TextDocument.GetLineByNumber(startLineNum - 1);
+        string prevLineText = TextDocument.GetText(prevLine.Offset, prevLine.Length);
+
+        var blockStartOffset = startDocLine.Offset;
+        var blockLastLine = TextDocument.GetLineByNumber(endLineNum);
+        int blockLength = (blockLastLine.Offset + blockLastLine.Length) - blockStartOffset;
+        string blockText = TextDocument.GetText(blockStartOffset, blockLength);
+
+        string delimiter = prevLine.DelimiterLength > 0
+            ? TextDocument.GetText(prevLine.Offset + prevLine.Length, prevLine.DelimiterLength)
+            : "\n";
+
+        TextDocument.BeginUpdate();
+        try
+        {
+            int totalReplaceOffset = prevLine.Offset;
+            int totalReplaceLength = (blockLastLine.Offset + blockLastLine.Length) - prevLine.Offset;
+            string combined = blockText + delimiter + prevLineText;
+            TextDocument.Replace(totalReplaceOffset, totalReplaceLength, combined);
+        }
+        finally
+        {
+            TextDocument.EndUpdate();
+        }
+
+        CheckModified();
+
+        var newStart = TextDocument.GetLineByNumber(startLineNum - 1);
+        var newEnd = TextDocument.GetLineByNumber(endLineNum - 1);
+        int newSelStart = newStart.Offset;
+        int newSelLength = (newEnd.Offset + newEnd.Length) - newStart.Offset;
+        RequestSelectText(newSelStart, SelectedLength > 0 ? newSelLength : 0);
+    }
+
+    [RelayCommand]
+    public void MoveLineDown()
+    {
+        if (TextDocument.LineCount <= 1) return;
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selEnd = selStart + SelectedLength;
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        selEnd = Math.Clamp(selEnd, 0, TextDocument.TextLength);
+
+        var startDocLine = TextDocument.GetLineByOffset(selStart);
+        var endDocLine = TextDocument.GetLineByOffset(selEnd);
+        int startLineNum = startDocLine.LineNumber;
+        int endLineNum = endDocLine.LineNumber;
+        if (SelectedLength > 0 && endDocLine.Offset == selEnd && endLineNum > startLineNum)
+            endLineNum--;
+
+        if (endLineNum >= TextDocument.LineCount) return;
+
+        var nextLine = TextDocument.GetLineByNumber(endLineNum + 1);
+        string nextLineText = TextDocument.GetText(nextLine.Offset, nextLine.Length);
+
+        var blockStartOffset = startDocLine.Offset;
+        var blockLastLine = TextDocument.GetLineByNumber(endLineNum);
+        int blockLength = (blockLastLine.Offset + blockLastLine.Length) - blockStartOffset;
+        string blockText = TextDocument.GetText(blockStartOffset, blockLength);
+
+        string delimiter = blockLastLine.DelimiterLength > 0
+            ? TextDocument.GetText(blockLastLine.Offset + blockLastLine.Length, blockLastLine.DelimiterLength)
+            : "\n";
+
+        TextDocument.BeginUpdate();
+        try
+        {
+            int totalReplaceOffset = blockStartOffset;
+            int totalReplaceLength = (nextLine.Offset + nextLine.Length) - blockStartOffset;
+            string combined = nextLineText + delimiter + blockText;
+            TextDocument.Replace(totalReplaceOffset, totalReplaceLength, combined);
+        }
+        finally
+        {
+            TextDocument.EndUpdate();
+        }
+
+        CheckModified();
+
+        var newStart = TextDocument.GetLineByNumber(startLineNum + 1);
+        var newEnd = TextDocument.GetLineByNumber(endLineNum + 1);
+        int newSelStart = newStart.Offset;
+        int newSelLength = (newEnd.Offset + newEnd.Length) - newStart.Offset;
+        RequestSelectText(newSelStart, SelectedLength > 0 ? newSelLength : 0);
+    }
+
+    [RelayCommand]
+    public void DuplicateLineDown()
+    {
+        if (TextDocument.LineCount == 0) return;
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selEnd = selStart + SelectedLength;
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        selEnd = Math.Clamp(selEnd, 0, TextDocument.TextLength);
+
+        var startDocLine = TextDocument.GetLineByOffset(selStart);
+        var endDocLine = TextDocument.GetLineByOffset(selEnd);
+        int startLineNum = startDocLine.LineNumber;
+        int endLineNum = endDocLine.LineNumber;
+        if (SelectedLength > 0 && endDocLine.Offset == selEnd && endLineNum > startLineNum)
+            endLineNum--;
+
+        var blockLastLine = TextDocument.GetLineByNumber(endLineNum);
+        int blockLength = (blockLastLine.Offset + blockLastLine.Length) - startDocLine.Offset;
+        string blockText = TextDocument.GetText(startDocLine.Offset, blockLength);
+
+        string delimiter = blockLastLine.DelimiterLength > 0
+            ? TextDocument.GetText(blockLastLine.Offset + blockLastLine.Length, blockLastLine.DelimiterLength)
+            : "\n";
+
+        TextDocument.BeginUpdate();
+        try
+        {
+            if (endLineNum < TextDocument.LineCount)
+            {
+                int insertOffset = blockLastLine.Offset + blockLastLine.TotalLength;
+                TextDocument.Insert(insertOffset, blockText + delimiter);
+            }
+            else
+            {
+                TextDocument.Insert(TextDocument.TextLength, delimiter + blockText);
+            }
+        }
+        finally
+        {
+            TextDocument.EndUpdate();
+        }
+
+        CheckModified();
+
+        int lineSpan = endLineNum - startLineNum + 1;
+        var newStart = TextDocument.GetLineByNumber(startLineNum + lineSpan);
+        var newEnd = TextDocument.GetLineByNumber(endLineNum + lineSpan);
+        RequestSelectText(newStart.Offset, SelectedLength > 0 ? (newEnd.Offset + newEnd.Length) - newStart.Offset : 0);
+    }
+
+    [RelayCommand]
+    public void DuplicateLineUp()
+    {
+        if (TextDocument.LineCount == 0) return;
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selEnd = selStart + SelectedLength;
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        selEnd = Math.Clamp(selEnd, 0, TextDocument.TextLength);
+
+        var startDocLine = TextDocument.GetLineByOffset(selStart);
+        var endDocLine = TextDocument.GetLineByOffset(selEnd);
+        int startLineNum = startDocLine.LineNumber;
+        int endLineNum = endDocLine.LineNumber;
+        if (SelectedLength > 0 && endDocLine.Offset == selEnd && endLineNum > startLineNum)
+            endLineNum--;
+
+        var blockLastLine = TextDocument.GetLineByNumber(endLineNum);
+        int blockLength = (blockLastLine.Offset + blockLastLine.Length) - startDocLine.Offset;
+        string blockText = TextDocument.GetText(startDocLine.Offset, blockLength);
+
+        string delimiter = startDocLine.DelimiterLength > 0
+            ? TextDocument.GetText(startDocLine.Offset + startDocLine.Length, startDocLine.DelimiterLength)
+            : "\n";
+
+        TextDocument.BeginUpdate();
+        try
+        {
+            TextDocument.Insert(startDocLine.Offset, blockText + delimiter);
+        }
+        finally
+        {
+            TextDocument.EndUpdate();
+        }
+
+        CheckModified();
+
+        var newStart = TextDocument.GetLineByNumber(startLineNum);
+        var newEnd = TextDocument.GetLineByNumber(endLineNum);
+        RequestSelectText(newStart.Offset, SelectedLength > 0 ? (newEnd.Offset + newEnd.Length) - newStart.Offset : 0);
+    }
+
+    [RelayCommand]
+    public void DeleteLine()
+    {
+        if (TextDocument.LineCount == 0) return;
+        if (TextDocument.LineCount == 1)
+        {
+            TextDocument.Text = string.Empty;
+            CheckModified();
+            RequestSelectText(0, 0);
+            return;
+        }
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selEnd = selStart + SelectedLength;
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        selEnd = Math.Clamp(selEnd, 0, TextDocument.TextLength);
+
+        var startDocLine = TextDocument.GetLineByOffset(selStart);
+        var endDocLine = TextDocument.GetLineByOffset(selEnd);
+        int startLineNum = startDocLine.LineNumber;
+        int endLineNum = endDocLine.LineNumber;
+        if (SelectedLength > 0 && endDocLine.Offset == selEnd && endLineNum > startLineNum)
+            endLineNum--;
+
+        var blockLastLine = TextDocument.GetLineByNumber(endLineNum);
+
+        TextDocument.BeginUpdate();
+        try
+        {
+            if (endLineNum < TextDocument.LineCount)
+            {
+                int removeOffset = startDocLine.Offset;
+                int removeLength = (blockLastLine.Offset + blockLastLine.TotalLength) - removeOffset;
+                TextDocument.Remove(removeOffset, removeLength);
+            }
+            else
+            {
+                if (startLineNum > 1)
+                {
+                    var prevLine = TextDocument.GetLineByNumber(startLineNum - 1);
+                    int removeOffset = prevLine.Offset + prevLine.Length;
+                    int removeLength = TextDocument.TextLength - removeOffset;
+                    TextDocument.Remove(removeOffset, removeLength);
+                }
+                else
+                {
+                    TextDocument.Text = string.Empty;
+                }
+            }
+        }
+        finally
+        {
+            TextDocument.EndUpdate();
+        }
+
+        CheckModified();
+
+        int targetLine = Math.Clamp(startLineNum, 1, TextDocument.LineCount);
+        var line = TextDocument.GetLineByNumber(targetLine);
+        RequestSelectText(line.Offset, 0);
+    }
+
+    [RelayCommand]
+    public void JoinLines()
+    {
+        if (TextDocument.LineCount <= 1) return;
+
+        int selStart = SelectedLength > 0 ? SelectionStart : CaretOffset;
+        int selEnd = selStart + SelectedLength;
+        selStart = Math.Clamp(selStart, 0, TextDocument.TextLength);
+        selEnd = Math.Clamp(selEnd, 0, TextDocument.TextLength);
+
+        var startDocLine = TextDocument.GetLineByOffset(selStart);
+        var endDocLine = TextDocument.GetLineByOffset(selEnd);
+        int startLineNum = startDocLine.LineNumber;
+        int endLineNum = endDocLine.LineNumber;
+
+        if (SelectedLength == 0 || startLineNum == endLineNum)
+        {
+            if (startLineNum >= TextDocument.LineCount) return;
+            endLineNum = startLineNum + 1;
+        }
+
+        var lines = new List<string>();
+        for (int i = startLineNum; i <= endLineNum; i++)
+        {
+            var l = TextDocument.GetLineByNumber(i);
+            lines.Add(TextDocument.GetText(l.Offset, l.Length));
+        }
+
+        string joined = TextManipulations.JoinLines(lines);
+
+        var first = TextDocument.GetLineByNumber(startLineNum);
+        var last = TextDocument.GetLineByNumber(endLineNum);
+
+        TextDocument.BeginUpdate();
+        try
+        {
+            int replaceOffset = first.Offset;
+            int replaceLength = (last.Offset + last.Length) - first.Offset;
+            TextDocument.Replace(replaceOffset, replaceLength, joined);
+        }
+        finally
+        {
+            TextDocument.EndUpdate();
+        }
+
+        CheckModified();
+        RequestSelectText(first.Offset + joined.Length, 0);
+    }
+
+    [RelayCommand]
+    public void TransformUppercase() => TransformCase(true);
+
+    [RelayCommand]
+    public void TransformLowercase() => TransformCase(false);
+
+    private void TransformCase(bool toUpper)
+    {
+        if (TextDocument.TextLength == 0) return;
+
+        if (SelectedLength > 0)
+        {
+            int selStart = Math.Clamp(SelectionStart, 0, TextDocument.TextLength);
+            int selLen = Math.Clamp(SelectedLength, 0, TextDocument.TextLength - selStart);
+            string text = TextDocument.GetText(selStart, selLen);
+            string transformed = toUpper ? text.ToUpperInvariant() : text.ToLowerInvariant();
+            TextDocument.BeginUpdate();
+            try
+            {
+                TextDocument.Replace(selStart, selLen, transformed);
+            }
+            finally
+            {
+                TextDocument.EndUpdate();
+            }
+
+            CheckModified();
+            RequestSelectText(selStart, selLen);
+        }
+        else
+        {
+            var (wordStart, wordLen) = TextManipulations.FindWordBoundaries(TextDocument.Text, CaretOffset);
+            if (wordLen > 0)
+            {
+                string word = TextDocument.GetText(wordStart, wordLen);
+                string transformed = toUpper ? word.ToUpperInvariant() : word.ToLowerInvariant();
+                TextDocument.BeginUpdate();
+                try
+                {
+                    TextDocument.Replace(wordStart, wordLen, transformed);
+                }
+                finally
+                {
+                    TextDocument.EndUpdate();
+                }
+
+                CheckModified();
+                RequestSelectText(wordStart + wordLen, 0);
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleWordWrap()
+    {
+        WordWrap = !WordWrap;
     }
 
     public static EditorDocumentViewModel FromFile(string path)

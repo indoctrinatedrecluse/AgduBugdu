@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using AgduBugdu.App.ViewModels.Documents;
 using AgduBugdu.Core.Text;
+using AgduBugdu.PluginContracts;
 using AvaloniaEdit.Document;
 using Xunit;
 
@@ -61,71 +64,69 @@ public class TextEditingTests
     [Fact]
     public void SearchEngine_FindAll_WholeWord()
     {
-        string text = "cat catch catfish cat";
+        string text = "cat catalog concatenate cat dog";
 
-        var wholeWord = SearchEngine.FindAll(text, new SearchOptions("cat", WholeWord: true));
-        Assert.Equal(2, wholeWord.Count);
-        Assert.Equal(0, wholeWord[0].Offset);
-        Assert.Equal(18, wholeWord[1].Offset);
+        var matches = SearchEngine.FindAll(text, new SearchOptions("cat", WholeWord: true));
+        Assert.Equal(2, matches.Count);
+        Assert.Equal(0, matches[0].Offset);
+        Assert.Equal(24, matches[1].Offset);
     }
 
     [Fact]
     public void SearchEngine_FindAll_Regex()
     {
-        string text = "int v1 = 10;\nint v2 = 20;\nstring s = \"hello\";";
+        string text = "item123 item456 something else item789";
 
-        var regexMatches = SearchEngine.FindAll(text, new SearchOptions(@"v\d+", UseRegex: true));
-        Assert.Equal(2, regexMatches.Count);
-        Assert.Equal("v1", regexMatches[0].Value);
-        Assert.Equal("v2", regexMatches[1].Value);
+        var matches = SearchEngine.FindAll(text, new SearchOptions(@"item\d+", UseRegex: true));
+        Assert.Equal(3, matches.Count);
+        Assert.Equal("item123", text.Substring(matches[0].Offset, matches[0].Length));
+        Assert.Equal("item456", text.Substring(matches[1].Offset, matches[1].Length));
+        Assert.Equal("item789", text.Substring(matches[2].Offset, matches[2].Length));
     }
 
     [Fact]
-    public void SearchEngine_FindNext_And_FindPrevious_Wrap_Around()
+    public void SearchEngine_FindNext_And_FindPrevious_Wraps_Around()
+    {
+        string text = "one two one three one";
+        var options = new SearchOptions("one");
+
+        // Next from beginning -> offset 0
+        var m1 = SearchEngine.FindNext(text, options, 0);
+        Assert.NotNull(m1);
+        Assert.Equal(0, m1.Value.Result.Offset);
+        Assert.Equal(0, m1.Value.Index);
+
+        // Next from offset 1 -> offset 8
+        var m2 = SearchEngine.FindNext(text, options, 1);
+        Assert.NotNull(m2);
+        Assert.Equal(8, m2.Value.Result.Offset);
+        Assert.Equal(1, m2.Value.Index);
+
+        // Next from after last match (offset 19) -> wraps back to 0
+        var m3 = SearchEngine.FindNext(text, options, 19);
+        Assert.NotNull(m3);
+        Assert.Equal(0, m3.Value.Result.Offset);
+
+        // Previous from offset 0 -> wraps to last match (offset 18)
+        var p1 = SearchEngine.FindPrevious(text, options, 0);
+        Assert.NotNull(p1);
+        Assert.Equal(18, p1.Value.Result.Offset);
+        Assert.Equal(2, p1.Value.Index);
+    }
+
+    [Fact]
+    public void SearchEngine_ReplaceAll_Replaces_All_Occurrences()
     {
         string text = "apple banana apple cherry apple";
         var options = new SearchOptions("apple");
 
-        // Next from offset 0
-        var next1 = SearchEngine.FindNext(text, options, 0);
-        Assert.NotNull(next1);
-        Assert.Equal(0, next1.Value.Result.Offset);
-        Assert.Equal(0, next1.Value.Index);
-        Assert.Equal(3, next1.Value.TotalCount);
-
-        // Next from offset 5 -> should find index 13
-        var next2 = SearchEngine.FindNext(text, options, 5);
-        Assert.NotNull(next2);
-        Assert.Equal(13, next2.Value.Result.Offset);
-
-        // Next from offset 30 -> wraps around to 0
-        var nextWrap = SearchEngine.FindNext(text, options, 30);
-        Assert.NotNull(nextWrap);
-        Assert.Equal(0, nextWrap.Value.Result.Offset);
-
-        // Previous from offset 20 -> should find index 13
-        var prev1 = SearchEngine.FindPrevious(text, options, 20);
-        Assert.NotNull(prev1);
-        Assert.Equal(13, prev1.Value.Result.Offset);
-
-        // Previous from offset 0 -> wraps around to index 26
-        var prevWrap = SearchEngine.FindPrevious(text, options, 0);
-        Assert.NotNull(prevWrap);
-        Assert.Equal(26, prevWrap.Value.Result.Offset);
-    }
-
-    [Fact]
-    public void SearchEngine_ReplaceAll()
-    {
-        string text = "foo bar foo baz foo";
-        var (newText, count) = SearchEngine.ReplaceAll(text, new SearchOptions("foo"), "qux");
-
+        var (newText, count) = SearchEngine.ReplaceAll(text, options, "orange");
         Assert.Equal(3, count);
-        Assert.Equal("qux bar qux baz qux", newText);
+        Assert.Equal("orange banana orange cherry orange", newText);
     }
 
     [Fact]
-    public void EditorDocumentViewModel_FindNext_And_Previous_Fires_Events()
+    public void EditorDocumentViewModel_SearchCommands_And_Navigation()
     {
         var doc = new EditorDocumentViewModel
         {
@@ -137,6 +138,8 @@ public class TextEditingTests
 
         doc.OpenFind("item");
         Assert.True(doc.IsFindVisible);
+        Assert.Equal("item", doc.SearchQuery);
+        Assert.True(doc.HasSearchMatches);
 
         doc.FindNext();
         Assert.NotNull(selected);
@@ -218,5 +221,262 @@ public class TextEditingTests
 
         Assert.NotNull(selected);
         Assert.Equal(22, selected.Value.Offset); // '}' is at 22
+    }
+
+    // --- Phase 2: Editing Ergonomics Tests ---
+
+    [Fact]
+    public void CommentSyntax_Resolves_Extensions_And_CustomDefinitions()
+    {
+        var cs = CommentSyntax.GetCommentSyntax("App.cs");
+        Assert.Equal("//", cs.LinePrefix);
+        Assert.Equal("/*", cs.BlockStart);
+        Assert.Equal("*/", cs.BlockEnd);
+
+        var py = CommentSyntax.GetCommentSyntax("script.py");
+        Assert.Equal("#", py.LinePrefix);
+        Assert.Equal("\"\"\"", py.BlockStart);
+
+        var html = CommentSyntax.GetCommentSyntax("index.html");
+        Assert.Equal("<!--", html.LinePrefix);
+        Assert.Equal("-->", html.BlockEnd);
+
+        // Custom definition
+        var customDef = new LanguageDefinition("powershell", "PowerShell", new[] { ".ps1" }, "source.powershell", "#", "<#", "#>");
+        var resolved = CommentSyntax.Resolve(customDef, "script.ps1");
+        Assert.Equal("#", resolved.LinePrefix);
+        Assert.Equal("<#", resolved.BlockStart);
+        Assert.Equal("#>", resolved.BlockEnd);
+    }
+
+    [Fact]
+    public void TextManipulations_ToggleLineComments_IndentedAndEmptyLines()
+    {
+        var lines = new List<string>
+        {
+            "    int a = 1;",
+            "",
+            "    int b = 2;"
+        };
+
+        // Comment
+        var (commented, wasCommented) = TextManipulations.ToggleLineComments(lines, "//");
+        Assert.True(wasCommented);
+        Assert.Equal("    // int a = 1;", commented[0]);
+        Assert.Equal("", commented[1]);
+        Assert.Equal("    // int b = 2;", commented[2]);
+
+        // Uncomment
+        var (uncommented, wasCommented2) = TextManipulations.ToggleLineComments(commented, "//");
+        Assert.False(wasCommented2);
+        Assert.Equal("    int a = 1;", uncommented[0]);
+        Assert.Equal("", uncommented[1]);
+        Assert.Equal("    int b = 2;", uncommented[2]);
+    }
+
+    [Fact]
+    public void TextManipulations_ToggleBlockComment_WrapsAndUnwraps()
+    {
+        string code = "int result = x + y;";
+
+        var (commented, wasCommented) = TextManipulations.ToggleBlockComment(code, "/*", "*/");
+        Assert.True(wasCommented);
+        Assert.Equal("/* int result = x + y; */", commented);
+
+        var (uncommented, wasCommented2) = TextManipulations.ToggleBlockComment(commented, "/*", "*/");
+        Assert.False(wasCommented2);
+        Assert.Equal("int result = x + y;", uncommented);
+    }
+
+    [Fact]
+    public void TextManipulations_MoveLines_ShiftsCorrectly()
+    {
+        var lines = new List<string> { "first", "second", "third" };
+
+        // Move "second" up
+        var (movedUp, newIdx) = TextManipulations.MoveLinesUp(lines, 1, 1);
+        Assert.Equal(0, newIdx);
+        Assert.Equal(new[] { "second", "first", "third" }, movedUp);
+
+        // Move "second" down
+        var (movedDown, newIdx2) = TextManipulations.MoveLinesDown(movedUp, 0, 1);
+        Assert.Equal(1, newIdx2);
+        Assert.Equal(new[] { "first", "second", "third" }, movedDown);
+
+        // Boundary tests
+        var (atTop, _) = TextManipulations.MoveLinesUp(lines, 0, 1);
+        Assert.Equal(lines, atTop);
+
+        var (atBottom, _) = TextManipulations.MoveLinesDown(lines, 2, 1);
+        Assert.Equal(lines, atBottom);
+    }
+
+    [Fact]
+    public void TextManipulations_DuplicateLines_ClonesSlice()
+    {
+        var lines = new List<string> { "line 1", "line 2", "line 3" };
+
+        var (duplicatedDown, insertedIdx) = TextManipulations.DuplicateLines(lines, 1, 1, duplicateBelow: true);
+        Assert.Equal(2, insertedIdx);
+        Assert.Equal(new[] { "line 1", "line 2", "line 2", "line 3" }, duplicatedDown);
+
+        var (duplicatedUp, insertedIdx2) = TextManipulations.DuplicateLines(lines, 1, 1, duplicateBelow: false);
+        Assert.Equal(1, insertedIdx2);
+        Assert.Equal(new[] { "line 1", "line 2", "line 2", "line 3" }, duplicatedUp);
+    }
+
+    [Fact]
+    public void TextManipulations_DeleteLines_RemovesCorrectLines()
+    {
+        var lines = new List<string> { "line 1", "line 2", "line 3" };
+
+        var deleted = TextManipulations.DeleteLines(lines, 1, 1);
+        Assert.Equal(new[] { "line 1", "line 3" }, deleted);
+
+        var allDeleted = TextManipulations.DeleteLines(lines, 0, 3);
+        Assert.Single(allDeleted);
+        Assert.Equal(string.Empty, allDeleted[0]);
+    }
+
+    [Fact]
+    public void TextManipulations_JoinLines_CollapsesIndentation()
+    {
+        var lines = new[] { "function hello() {", "    return 42;", "}" };
+        string joined = TextManipulations.JoinLines(lines);
+        Assert.Equal("function hello() { return 42; }", joined);
+    }
+
+    [Fact]
+    public void TextManipulations_FindWordBoundaries_FindsIdentifiers()
+    {
+        string text = "int my_variable_name = 100;";
+        var (start, length) = TextManipulations.FindWordBoundaries(text, 10);
+        Assert.Equal(4, start);
+        Assert.Equal("my_variable_name", text.Substring(start, length));
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_ToggleLineComment_CS_And_Python()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            FilePath = "test.cs",
+            TextDocument = new TextDocument("line one\nline two\nline three")
+        };
+
+        doc.CaretOffset = 2; // Line 1
+        doc.ToggleLineComment();
+        Assert.Equal("// line one\nline two\nline three", doc.GetText());
+        Assert.True(doc.IsModified);
+
+        doc.ToggleLineComment();
+        Assert.Equal("line one\nline two\nline three", doc.GetText());
+
+        // Test python
+        var pyDoc = new EditorDocumentViewModel
+        {
+            FilePath = "script.py",
+            TextDocument = new TextDocument("print('hello')")
+        };
+        pyDoc.ToggleLineComment();
+        Assert.Equal("# print('hello')", pyDoc.GetText());
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_ToggleBlockComment_Selection()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            FilePath = "test.cs",
+            TextDocument = new TextDocument("int value = 42;")
+        };
+
+        doc.SelectionStart = 0;
+        doc.SelectedLength = 15;
+        doc.ToggleBlockComment();
+
+        Assert.Equal("/* int value = 42; */", doc.GetText());
+
+        doc.ToggleBlockComment();
+        Assert.Equal("int value = 42;", doc.GetText());
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_MoveLineUp_And_Down()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TextDocument = new TextDocument("alpha\nbeta\ngamma")
+        };
+
+        // Move "beta" (line 2) up
+        doc.CaretOffset = 7;
+        doc.MoveLineUp();
+        Assert.Equal("beta\nalpha\ngamma", doc.GetText());
+
+        // Move "beta" (line 1) down
+        doc.MoveLineDown();
+        Assert.Equal("alpha\nbeta\ngamma", doc.GetText());
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_DuplicateLine_And_DeleteLine()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TextDocument = new TextDocument("alpha\nbeta\ngamma")
+        };
+
+        // Duplicate line 2 ("beta") down
+        doc.CaretOffset = 7;
+        doc.DuplicateLineDown();
+        Assert.Equal("alpha\nbeta\nbeta\ngamma", doc.GetText());
+
+        // Delete duplicated line
+        doc.DeleteLine();
+        Assert.Equal("alpha\nbeta\ngamma", doc.GetText());
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_JoinLines_MergesNextLine()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TextDocument = new TextDocument("hello\n    world")
+        };
+
+        doc.CaretOffset = 2; // on "hello"
+        doc.JoinLines();
+        Assert.Equal("hello world", doc.GetText());
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_TransformCase_UpperAndLower()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TextDocument = new TextDocument("hello world")
+        };
+
+        doc.SelectionStart = 0;
+        doc.SelectedLength = 5; // "hello"
+        doc.TransformUppercase();
+        Assert.Equal("HELLO world", doc.GetText());
+
+        doc.TransformLowercase();
+        Assert.Equal("hello world", doc.GetText());
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_ToggleWordWrap()
+    {
+        var doc = new EditorDocumentViewModel();
+        Assert.False(doc.WordWrap);
+
+        doc.ToggleWordWrap();
+        Assert.True(doc.WordWrap);
+
+        doc.ToggleWordWrap();
+        Assert.False(doc.WordWrap);
     }
 }
