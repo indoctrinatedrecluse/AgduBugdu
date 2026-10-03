@@ -121,6 +121,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private MarkdownPreviewViewModel? _markdownPreviewModel;
     private CsvTableViewModel? _csvTableModel;
 
+    public MainDockFactory DockFactory => _dockFactory;
     public IDebugService DebugService => _extensionContext.DebugService;
 
     [ObservableProperty]
@@ -321,18 +322,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (_dockFactory.TerminalTool != null)
         {
+            _dockFactory.TerminalTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
             _dockFactory.TerminalTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
         if (_dockFactory.OutputTool != null)
         {
+            _dockFactory.OutputTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
             _dockFactory.OutputTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
         if (_dockFactory.TodoTool != null)
         {
+            _dockFactory.TodoTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
             _dockFactory.TodoTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
         if (_dockFactory.DebuggerTool != null)
         {
+            _dockFactory.DebuggerTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
             _dockFactory.DebuggerTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
     }
@@ -468,7 +473,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("file.saveAs", "File: Save As...", () => { _ = SaveFileAsAsync(); }, "Ctrl+Shift+S");
         CommandPalette.RegisterCommand("terminal.restart", "Terminal: Restart Shell in Workspace", () => RestartTerminal(), "Ctrl+`");
         CommandPalette.RegisterCommand("terminal.clear", "Terminal: Clear Screen", () => _dockFactory.TerminalTool?.ClearTerminal());
-        CommandPalette.RegisterCommand("view.resetPanes", "View: Reset Pane Layout to Default Sizes", () => ResetPaneLayout());
+        CommandPalette.RegisterCommand("view.toggleBottomPanel", "View: Toggle Bottom Panel", () => ToggleBottomPane(), "Ctrl+J");
+        CommandPalette.RegisterCommand("view.resetPanes", "View: Reset Panel to Default sizes", () => ResetPaneLayout());
         CommandPalette.RegisterCommand("view.extensions", "View: Manage Extensions...", () => ShowExtensionsModal());
         CommandPalette.RegisterCommand("theme.lonelyDark", "Preferences: Color Theme - Lonely Dark", () => SetLonelyDarkTheme());
         CommandPalette.RegisterCommand("theme.solarizedContrast", "Preferences: Color Theme - Solarized Contrast", () => SetSolarizedContrastTheme());
@@ -485,9 +491,38 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void ResetPaneLayout()
     {
-        _dockFactory.ResetPaneSizes();
+        Layout = _dockFactory.ResetLayout();
         StatusMessage = "Panes reset to original layout sizes";
     }
+
+    [RelayCommand]
+    public void MinimizeBottomPane()
+    {
+        _dockFactory.MinimizeBottomPane();
+        StatusMessage = "Bottom panel minimized";
+    }
+
+    [RelayCommand]
+    public void ToggleBottomPane()
+    {
+        _dockFactory.ToggleBottomPane();
+        StatusMessage = _dockFactory.IsBottomPaneMinimized ? "Bottom panel minimized" : "Bottom panel restored";
+    }
+
+    [RelayCommand]
+    public void FocusExplorer() => FocusDockable(_dockFactory.ExplorerTool);
+
+    [RelayCommand]
+    public void FocusTerminal() => FocusDockable(_dockFactory.TerminalTool);
+
+    [RelayCommand]
+    public void FocusOutput() => FocusDockable(_dockFactory.OutputTool);
+
+    [RelayCommand]
+    public void FocusTodo() => FocusDockable(_dockFactory.TodoTool);
+
+    [RelayCommand]
+    public void FocusDebugger() => FocusDockable(_dockFactory.DebuggerTool);
 
     [RelayCommand]
     public void ShowExtensionsModal()
@@ -546,7 +581,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (dockable != null)
         {
+            if (dockable == _dockFactory.TerminalTool || dockable == _dockFactory.OutputTool ||
+                dockable == _dockFactory.TodoTool || dockable == _dockFactory.DebuggerTool)
+            {
+                _dockFactory.RestoreBottomPane(dockable);
+            }
             _dockFactory.SetActiveDockable(dockable);
+            if (dockable.Owner is IDock ownerDock)
+            {
+                _dockFactory.SetFocusedDockable(ownerDock, dockable);
+            }
         }
     }
 

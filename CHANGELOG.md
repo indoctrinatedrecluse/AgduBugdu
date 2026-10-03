@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🛠️ [1.0.2] - 2026-10-03
+
+### 🐛 Fixed
+- **🗕 Pane Minimize Button**: Fixed the minimize button on Terminal, Output, TODO Tasks, and Run & Debug pane headers to strictly display only the glyph (`🗕`) without text, and actively collapse the bottom panel to yield 100% vertical viewport space to active document tabs.
+- **📐 Reset Panel to Default Sizes**: Completely overhauled layout reset (`View -> Reset Panel to Default Sizes` and Command Palette `View: Reset Panel to Default sizes`) to cleanly recompute the proportional docking hierarchy back to exact default proportions (22% Explorer, 72% Editor, 28% Bottom Panel) while seamlessly preserving all open document tabs and active tool instances.
+- **🧲 Dock Snapping & Alignment**: Resolved dock snapping issues by binding `DockControl.Factory` in `MainWindow.axaml`, assigning explicit `Alignment.Left` on Explorer and `Alignment.Bottom` on the panel container, setting `GripMode.Visible`, and registering all container and tool IDs in `DockableLocator` for reliable drag, drop, and docking operations across all zones.
+- **⌨️ View Navigation & Panel Shortcuts**: Added `View -> Toggle Bottom Panel` (`Ctrl+J`), `View -> Explorer` (`Ctrl+Shift+E`), `View -> Run & Debug` (`Ctrl+Shift+D`), automatically un-minimizing / restoring the bottom panel whenever a tool tab or hotkey is invoked.
+- **🧹 Code Consolidation & Cleanup**: Cleaned up dock factories and tool view models, normalized XAML button definitions, removed duplicate menu items, and eliminated stale proportion cache issues.
+
+### ✨ Added
+- **📊 CSV / TSV Data Table Viewer Plugin** (`AgduBugdu.Plugin.DataGridLive`): RFC 4180 compliant tabular viewer with search/filtering, delimiter auto-detection (comma, tab, semicolon, pipe), and contextual file launch from Workspace Explorer.
+- **📋 Workspace TODO & Task Explorer Plugin** (`AgduBugdu.Plugin.TodoExplorer`): Project-wide comment scanner indexing `TODO`, `FIXME`, `BUG`, `HACK`, `NOTE` markers with color badges and double-click jump-to-source navigation.
+- **🐞 Run & Debug Workbench Plugin** (`AgduBugdu.Plugin.Debugger`): Interactive debugger pane with breakpoint toggles (`F9`), active execution line highlighting, step controls (`F5`, `F10`, `F11`), call stack, watch variables, and debug console.
+
+---
+
 ## 🛠️ [1.0.1] - 2026-10-02
 
 ### 🐛 Fixed
@@ -72,6 +88,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - 🐧 Linux: `AgduBugdu-v1.0.0-linux-x64.tar.gz`
     - 🍏 macOS: `AgduBugdu-v1.0.0-osx-x64.tar.gz` & `AgduBugdu-v1.0.0-osx-arm64.tar.gz`
     - Automatic SHA-256 checksums (`SHA256SUMS.txt`).
-
-
-

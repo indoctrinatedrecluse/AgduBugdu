@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using AgduBugdu.App.ViewModels.Documents;
 using AgduBugdu.App.ViewModels.Tools;
 using Dock.Model.Controls;
@@ -15,11 +16,13 @@ public class MainDockFactory : Factory
     private ToolDock? _bottomDock;
     private ToolDock? _leftDock;
     private ProportionalDock? _centerLayout;
+    private ProportionalDockSplitter? _bottomSplitter;
     private ExplorerToolViewModel? _explorerTool;
     private OutputToolViewModel? _outputTool;
     private TerminalToolViewModel? _terminalTool;
     private TodoToolViewModel? _todoTool;
     private DebuggerToolViewModel? _debuggerTool;
+    private bool _isBottomPaneMinimized;
 
     public IDocumentDock? DocumentDock => _documentDock;
     public ToolDock? BottomDock => _bottomDock;
@@ -29,14 +32,15 @@ public class MainDockFactory : Factory
     public TerminalToolViewModel? TerminalTool => _terminalTool;
     public TodoToolViewModel? TodoTool => _todoTool;
     public DebuggerToolViewModel? DebuggerTool => _debuggerTool;
+    public bool IsBottomPaneMinimized => _isBottomPaneMinimized;
 
     public override IRootDock CreateLayout()
     {
-        _explorerTool = new ExplorerToolViewModel();
-        _outputTool = new OutputToolViewModel();
-        _terminalTool = new TerminalToolViewModel();
-        _todoTool = new TodoToolViewModel();
-        _debuggerTool = new DebuggerToolViewModel();
+        _explorerTool ??= new ExplorerToolViewModel();
+        _outputTool ??= new OutputToolViewModel();
+        _terminalTool ??= new TerminalToolViewModel();
+        _todoTool ??= new TodoToolViewModel();
+        _debuggerTool ??= new DebuggerToolViewModel();
 
         var doc1 = new EditorDocumentViewModel
         {
@@ -50,6 +54,8 @@ public class MainDockFactory : Factory
             Id = "LeftPane",
             Title = "Explorer",
             Proportion = 0.22,
+            Alignment = Alignment.Left,
+            GripMode = GripMode.Visible,
             VisibleDockables = CreateList<IDockable>(_explorerTool),
             ActiveDockable = _explorerTool
         };
@@ -60,6 +66,8 @@ public class MainDockFactory : Factory
             Id = "BottomPane",
             Title = "Panel",
             Proportion = 0.28,
+            Alignment = Alignment.Bottom,
+            GripMode = GripMode.Visible,
             VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool),
             ActiveDockable = _terminalTool
         };
@@ -76,12 +84,14 @@ public class MainDockFactory : Factory
         };
         _documentDock = documentDock;
 
+        _bottomSplitter = new ProportionalDockSplitter();
+
         var centerLayout = new ProportionalDock
         {
             Orientation = Orientation.Vertical,
             VisibleDockables = CreateList<IDockable>(
                 documentDock,
-                new ProportionalDockSplitter(),
+                _bottomSplitter,
                 bottomDock
             )
         };
@@ -99,6 +109,7 @@ public class MainDockFactory : Factory
 
         var rootDock = CreateRootDock();
         rootDock.IsCollapsable = false;
+        rootDock.DefaultDockable = documentDock;
         rootDock.VisibleDockables = CreateList<IDockable>(mainLayout);
         rootDock.ActiveDockable = mainLayout;
 
@@ -106,26 +117,87 @@ public class MainDockFactory : Factory
         return rootDock;
     }
 
+    public void MinimizeBottomPane()
+    {
+        if (_isBottomPaneMinimized || _centerLayout?.VisibleDockables == null || _bottomDock == null || _bottomSplitter == null)
+            return;
+
+        _centerLayout.VisibleDockables.Remove(_bottomSplitter);
+        _centerLayout.VisibleDockables.Remove(_bottomDock);
+        if (_documentDock != null)
+        {
+            _documentDock.Proportion = double.NaN;
+        }
+        _isBottomPaneMinimized = true;
+    }
+
+    public void RestoreBottomPane(IDockable? activeTool = null)
+    {
+        if (!_isBottomPaneMinimized || _centerLayout?.VisibleDockables == null || _bottomDock == null || _bottomSplitter == null)
+        {
+            if (_bottomDock != null && activeTool != null)
+            {
+                _bottomDock.ActiveDockable = activeTool;
+            }
+            return;
+        }
+
+        if (_documentDock != null)
+        {
+            _documentDock.Proportion = 0.72;
+        }
+        _bottomDock.Proportion = 0.28;
+
+        if (!_centerLayout.VisibleDockables.Contains(_bottomSplitter))
+            _centerLayout.VisibleDockables.Add(_bottomSplitter);
+        if (!_centerLayout.VisibleDockables.Contains(_bottomDock))
+            _centerLayout.VisibleDockables.Add(_bottomDock);
+
+        if (activeTool != null)
+        {
+            _bottomDock.ActiveDockable = activeTool;
+        }
+        _isBottomPaneMinimized = false;
+    }
+
+    public void ToggleBottomPane()
+    {
+        if (_isBottomPaneMinimized)
+            RestoreBottomPane();
+        else
+            MinimizeBottomPane();
+    }
+
+    public IRootDock ResetLayout()
+    {
+        var openDocs = _documentDock?.VisibleDockables != null 
+            ? new List<IDockable>(_documentDock.VisibleDockables) 
+            : null;
+        var activeDoc = _documentDock?.ActiveDockable;
+        var activeBottom = _bottomDock?.ActiveDockable;
+
+        _isBottomPaneMinimized = false;
+
+        var newRoot = CreateLayout();
+
+        if (_documentDock != null && openDocs != null && openDocs.Count > 0)
+        {
+            _documentDock.VisibleDockables = CreateList(openDocs.ToArray());
+            _documentDock.ActiveDockable = activeDoc ?? openDocs[0];
+        }
+
+        if (_bottomDock != null && activeBottom != null)
+        {
+            _bottomDock.ActiveDockable = activeBottom;
+        }
+
+        InitLayout(newRoot);
+        return newRoot;
+    }
+
     public void ResetPaneSizes()
     {
-        if (_bottomDock != null) _bottomDock.Proportion = 0.28;
-        if (_documentDock != null) _documentDock.Proportion = 0.72;
-        if (_leftDock != null) _leftDock.Proportion = 0.22;
-        if (_centerLayout != null) _centerLayout.Proportion = double.NaN;
-
-        if (_centerLayout != null)
-        {
-            var temp = _centerLayout.VisibleDockables;
-            _centerLayout.VisibleDockables = null;
-            _centerLayout.VisibleDockables = temp;
-        }
-
-        if (_rootDock != null && _rootDock.ActiveDockable is ProportionalDock mainLayout)
-        {
-            var temp = mainLayout.VisibleDockables;
-            mainLayout.VisibleDockables = null;
-            mainLayout.VisibleDockables = temp;
-        }
+        ResetLayout();
     }
 
     public override void InitLayout(IDockable layout)
@@ -142,7 +214,12 @@ public class MainDockFactory : Factory
         {
             ["LeftPane"] = () => _leftDock,
             ["BottomPane"] = () => _bottomDock,
-            ["DocumentsPane"] = () => _documentDock
+            ["DocumentsPane"] = () => _documentDock,
+            ["Explorer"] = () => _explorerTool,
+            ["Output"] = () => _outputTool,
+            ["Terminal"] = () => _terminalTool,
+            ["TodoExplorer"] = () => _todoTool,
+            ["Debugger"] = () => _debuggerTool
         };
         HostWindowLocator = new Dictionary<string, System.Func<IHostWindow?>>
         {

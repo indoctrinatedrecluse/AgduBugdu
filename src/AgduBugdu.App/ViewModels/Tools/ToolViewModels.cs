@@ -138,6 +138,7 @@ public partial class ExplorerToolViewModel : Tool
 public partial class OutputToolViewModel : Tool
 {
     public event EventHandler? ResetSizeRequested;
+    public event EventHandler? MinimizeRequested;
 
     public OutputToolViewModel()
     {
@@ -150,6 +151,12 @@ public partial class OutputToolViewModel : Tool
     {
         ResetSizeRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    [RelayCommand]
+    public void Minimize()
+    {
+        MinimizeRequested?.Invoke(this, EventArgs.Empty);
+    }
 }
 
 public partial class TerminalToolViewModel : Tool
@@ -157,6 +164,7 @@ public partial class TerminalToolViewModel : Tool
     private readonly ITerminalSession _session;
 
     public event EventHandler? ResetSizeRequested;
+    public event EventHandler? MinimizeRequested;
 
     [ObservableProperty]
     private string _terminalOutput = string.Empty;
@@ -206,6 +214,12 @@ public partial class TerminalToolViewModel : Tool
     }
 
     [RelayCommand]
+    public void Minimize()
+    {
+        MinimizeRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
     public async Task SendCommandAsync()
     {
         if (string.IsNullOrWhiteSpace(CommandInput))
@@ -244,6 +258,7 @@ public partial class TodoToolViewModel : Tool
     private TodoExplorerViewModel? _model;
 
     public event EventHandler? ResetSizeRequested;
+    public event EventHandler? MinimizeRequested;
 
     [ObservableProperty]
     private string _formattedContent = "Open a workspace folder to view tasks.";
@@ -280,6 +295,12 @@ public partial class TodoToolViewModel : Tool
         ResetSizeRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    [RelayCommand]
+    public void Minimize()
+    {
+        MinimizeRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     private void UpdateContent()
     {
         if (_model != null)
@@ -295,6 +316,7 @@ public partial class DebuggerToolViewModel : Tool
     private DebuggerViewModel? _model;
 
     public event EventHandler? ResetSizeRequested;
+    public event EventHandler? MinimizeRequested;
 
     [ObservableProperty]
     private string _formattedContent = "Debugger ready. Set breakpoints in any file with F9 and press Start (F5).";
@@ -364,6 +386,12 @@ public partial class DebuggerToolViewModel : Tool
     public void ResetSize()
     {
         ResetSizeRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    public void Minimize()
+    {
+        MinimizeRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void UpdateContent()

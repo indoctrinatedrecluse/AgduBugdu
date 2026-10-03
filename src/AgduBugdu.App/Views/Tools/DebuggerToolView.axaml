@@ -68,7 +68,7 @@
                             Foreground="#FFFFFF"
                             CornerRadius="3"
                             Command="{Binding StopCommand}" />
-                    <Button Content="↻ Restart"
+                    <Button Content="↺ Restart"
                             ToolTip.Tip="Restart debugging"
                             FontSize="10"
                             Padding="6,2"
@@ -85,13 +85,13 @@
                             CornerRadius="3"
                             Command="{Binding ClearBreakpointsCommand}" />
                     <Button Content="🗕"
-                            ToolTip.Tip="Reset pane to original size"
+                            ToolTip.Tip="Minimize bottom panel"
                             FontSize="10"
                             Padding="6,2"
                             Background="#333333"
                             Foreground="#EEEEEE"
                             CornerRadius="3"
-                            Command="{Binding ResetSizeCommand}" />
+                            Command="{Binding MinimizeCommand}" />
                 </StackPanel>
             </Grid>
         </Border>

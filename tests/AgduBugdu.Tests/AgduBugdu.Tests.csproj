@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.2" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.1.0" />
+    <PackageReference Include="Dock.Model.Mvvm" Version="11.3.2" />
+    <PackageReference Include="Dock.Avalonia" Version="11.3.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -28,6 +31,7 @@
     <ProjectReference Include="..\..\src\AgduBugdu.Extensibility\AgduBugdu.Extensibility.csproj" />
     <ProjectReference Include="..\..\src\AgduBugdu.Infrastructure\AgduBugdu.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\AgduBugdu.PluginContracts\AgduBugdu.PluginContracts.csproj" />
+    <ProjectReference Include="..\..\src\AgduBugdu.App\AgduBugdu.App.csproj" />
     <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.MarkdownLive\AgduBugdu.Plugin.MarkdownLive.csproj" />
     <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.DataGridLive\AgduBugdu.Plugin.DataGridLive.csproj" />
     <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.TodoExplorer\AgduBugdu.Plugin.TodoExplorer.csproj" />

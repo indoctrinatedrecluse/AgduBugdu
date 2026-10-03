@@ -23,6 +23,9 @@
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
         <KeyBinding Gesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
+        <KeyBinding Gesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />
     </Window.KeyBindings>
 
     <!-- Global Tab & Dock Control Styling for Visible Document & Tool Tabs -->
@@ -92,13 +95,19 @@
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
                     <Separator />
-                    <MenuItem Header="_Reset Layout Sizes" Command="{Binding ResetPaneLayoutCommand}" />
+                    <MenuItem Header="Toggle _Bottom Panel" InputGesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
+                    <MenuItem Header="_Explorer" InputGesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
+                    <MenuItem Header="_Terminal" InputGesture="Ctrl+`" Command="{Binding FocusTerminalCommand}" />
+                    <MenuItem Header="_Output" Command="{Binding FocusOutputCommand}" />
+                    <MenuItem Header="_TODO Tasks" Command="{Binding FocusTodoCommand}" />
+                    <MenuItem Header="_Run &amp; Debug" InputGesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Reset Panel to Default Sizes" Command="{Binding ResetPaneLayoutCommand}" />
                     <MenuItem Header="_Extensions..." Command="{Binding ShowExtensionsModalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="Check for _Updates..." Command="{Binding CheckForUpdatesExplicitCommand}" />
                     <MenuItem Header="_About AgduBugdu" Command="{Binding ShowAboutModalCommand}" />
-                    
                 </MenuItem>
             </Menu>
 
@@ -154,6 +163,7 @@
             <!-- Docking Host (Explorer, Editor Tabs, Terminal, Output Pane) -->
             <dock:DockControl Grid.Row="2"
                               Layout="{Binding Layout}"
+                              Factory="{Binding DockFactory}"
                               Margin="0" />
 
             <!-- Dynamic Bottom Status Bar -->
@@ -187,5 +197,3 @@
         <views:AboutModalView DataContext="{Binding AboutModal}" />
     </Grid>
 </Window>
-
-
