@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.2.0] - 2026-10-04
+
+### ✨ Added
+- **🔍 In-Buffer Find & Replace Overlay (`Ctrl+F` / `Ctrl+H`)**:
+  - Interactive non-blocking search and replace bar docked directly inside active editor tabs.
+  - Case Sensitive (`Aa`), Match Whole Word (`\b`), and Regular Expressions (`.*`) toggles.
+  - Previous (`Shift+Enter` / `Shift+F3`) and Next (`Enter` / `F3`) match navigation with match count indicators (`X of Y`).
+  - Selective Single Replace and global Replace All with instant buffer updates.
+  - Smooth dismiss via `Escape` key returning focus seamlessly to the editor caret.
+- **📍 Go to Line / Column Dialog (`Ctrl+G`)**:
+  - Modal navigation prompt accepting `line` or `line:column` (or `line,column`) formats with live boundary validation against document line limits.
+  - Automatically centers viewport and positions caret at the target destination.
+- **🔲 Bracket & Quote Matching & Auto-Closing**:
+  - **Go to Matching Bracket (`Ctrl+M`)**: Instant caret jump between opening and closing delimiters for `()`, `[]`, `{}`, and `<>`.
+  - **Auto-Closing Delimiters**: Automatic insertion of closing partner characters for parentheses `()`, brackets `[]`, braces `{}`, double quotes `""`, single quotes `''`, and backticks ` `` `.
+  - **Selection Wrapping**: Typing an opening bracket or quote with text selected wraps the selection rather than overwriting it.
+  - **Overtype Skipping**: Typing a closing character immediately preceding an identical closing partner moves the caret past it without double-inserting.
+- **⚡ Advanced Editing Ergonomics & Line Manipulations**:
+  - **Toggle Line Comment (`Ctrl+/` or `Ctrl+K, Ctrl+C` / `Ctrl+K, Ctrl+U`)**: Language-aware line commenting/uncommenting supporting 25+ language extensions and filetypes.
+  - **Toggle Block Comment (`Shift+Alt+A`)**: Delimited multi-line block commenting (e.g. `/* ... */`, `<!-- ... -->`, `"""..."""`).
+  - **Move Line(s) Up / Down (`Alt+Up` / `Alt+Down`)**: Relocate single lines or multi-line selections with automatic boundary handling and selection preservation.
+  - **Duplicate Line(s) Up / Down (`Shift+Alt+Up` / `Shift+Alt+Down`)**: Instant line and block duplication without clobbering the system clipboard.
+  - **Delete Line (`Ctrl+Shift+K`)**: Instant current line removal with automatic caret repositioning.
+  - **Join Lines (`Ctrl+Shift+J`)**: Merge consecutive lines with normalized whitespace separation.
+  - **Case Transformations (`Ctrl+Shift+U` / `Ctrl+U`)**: Transform selected text (or word under cursor) to UPPERCASE or lowercase.
+  - **Word Wrap Toggle (`Alt+Z`)**: Dynamic soft line wrapping toggle per editor tab.
+- **📂 Code Folding (`FoldingManager`)**:
+  - Integrated `AvaloniaEdit.Folding` manager providing fold/unfold gutters for multi-line block constructs (`{...}`).
+  - Automatically recalibrated on text edits with collapsed preview indicators.
+- **📊 Interactive Status Bar Controls & Formatters**:
+  - **Line Endings Switcher (`CRLF` / `LF`)**: Clickable flyout on status bar enabling on-the-fly conversion of document line endings.
+  - **Indentation & Tab Size Switcher**: Clickable flyout supporting `Spaces: 2`, `Spaces: 4`, `Spaces: 8`, `Tab Size: 2`, `Tab Size: 4`, `Tab Size: 8`, alongside one-click "Convert Indentation to Spaces" and "Convert Indentation to Tabs".
+  - **File Encoding Switcher**: Clickable flyout supporting `UTF-8`, `UTF-8 with BOM`, `UTF-16 LE`, and `ASCII`.
+  - **Word Wrap Switcher**: Clickable status bar badge toggling wrapping mode.
+
+---
+
 ## 🌐 [1.1.0] - 2026-10-04
 
 ### ✨ Added

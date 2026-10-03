@@ -43,6 +43,19 @@ public partial class EditorDocumentViewModel : Document
     [ObservableProperty]
     private bool _wordWrap = false;
 
+    // --- Phase 3: Status & Formatting Controls ---
+    [ObservableProperty]
+    private string _lineEnding = "CRLF";
+
+    [ObservableProperty]
+    private int _tabSize = 4;
+
+    [ObservableProperty]
+    private bool _useSpacesForTabs = true;
+
+    [ObservableProperty]
+    private string _encodingName = "UTF-8";
+
     // --- Search & Replace State ---
     [ObservableProperty]
     private bool _isFindVisible;
@@ -974,6 +987,86 @@ public partial class EditorDocumentViewModel : Document
         WordWrap = !WordWrap;
     }
 
+    // --- Phase 3 Formatting & Status Methods ---
+
+    public void ConvertToCrlf()
+    {
+        var text = TextDocument.Text;
+        var normalized = text.Replace("\r\n", "\n").Replace("\r", "\n");
+        var crlf = normalized.Replace("\n", "\r\n");
+        if (crlf != text)
+        {
+            TextDocument.Text = crlf;
+            CheckModified();
+        }
+        LineEnding = "CRLF";
+    }
+
+    public void ConvertToLf()
+    {
+        var text = TextDocument.Text;
+        var lf = text.Replace("\r\n", "\n").Replace("\r", "\n");
+        if (lf != text)
+        {
+            TextDocument.Text = lf;
+            CheckModified();
+        }
+        LineEnding = "LF";
+    }
+
+    public void SetTabSize(int size)
+    {
+        TabSize = Math.Clamp(size, 1, 16);
+    }
+
+    public void ConvertTabsToSpaces()
+    {
+        var text = TextDocument.Text;
+        string spaces = new string(' ', TabSize);
+        var converted = text.Replace("\t", spaces);
+        if (converted != text)
+        {
+            TextDocument.Text = converted;
+            CheckModified();
+        }
+        UseSpacesForTabs = true;
+    }
+
+    public void ConvertSpacesToTabs()
+    {
+        var text = TextDocument.Text;
+        string spaces = new string(' ', TabSize);
+        var converted = text.Replace(spaces, "\t");
+        if (converted != text)
+        {
+            TextDocument.Text = converted;
+            CheckModified();
+        }
+        UseSpacesForTabs = false;
+    }
+
+    public void SetEncoding(string encoding)
+    {
+        EncodingName = encoding;
+    }
+
+    public void DetectLineEndings()
+    {
+        var text = TextDocument.Text;
+        if (text.Contains("\r\n"))
+        {
+            LineEnding = "CRLF";
+        }
+        else if (text.Contains("\n"))
+        {
+            LineEnding = "LF";
+        }
+        else
+        {
+            LineEnding = Environment.NewLine == "\r\n" ? "CRLF" : "LF";
+        }
+    }
+
     public static EditorDocumentViewModel FromFile(string path)
     {
         var content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
@@ -989,6 +1082,7 @@ public partial class EditorDocumentViewModel : Document
         };
         vm._originalText = textDoc.Text;
         vm.Title = vm.FileName;
+        vm.DetectLineEndings();
         return vm;
     }
 

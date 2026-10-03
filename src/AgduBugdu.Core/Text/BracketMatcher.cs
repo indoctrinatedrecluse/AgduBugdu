@@ -83,7 +83,31 @@ public static class BracketMatcher
         return null;
     }
 
-    private static bool IsBracket(char c)
+    /// <summary>
+    /// Returns the closing quote or bracket corresponding to <paramref name="openingChar"/>,
+    /// or '\0' if the character does not have an automatic closing partner.
+    /// Supported pairs: '(', '[', '{', '"', '\'', '`'.
+    /// </summary>
+    public static char GetAutoClosingPartner(char openingChar)
+    {
+        return openingChar switch
+        {
+            '(' => ')',
+            '[' => ']',
+            '{' => '}',
+            '"' => '"',
+            '\'' => '\'',
+            '`' => '`',
+            _ => '\0'
+        };
+    }
+
+    public static bool IsClosingChar(char c)
+    {
+        return c is ')' or ']' or '}' or '"' or '\'' or '`';
+    }
+
+    public static bool IsBracket(char c)
     {
         return c is '(' or ')' or '[' or ']' or '{' or '}' or '<' or '>';
     }

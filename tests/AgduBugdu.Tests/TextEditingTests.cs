@@ -479,4 +479,68 @@ public class TextEditingTests
         doc.ToggleWordWrap();
         Assert.False(doc.WordWrap);
     }
+
+    // --- Phase 3: Visual Polish & Status Controls Tests ---
+
+    [Theory]
+    [InlineData('(', ')')]
+    [InlineData('[', ']')]
+    [InlineData('{', '}')]
+    [InlineData('"', '"')]
+    [InlineData('\'', '\'')]
+    [InlineData('`', '`')]
+    public void BracketMatcher_AutoClosingPartners(char open, char expectedClose)
+    {
+        var partner = BracketMatcher.GetAutoClosingPartner(open);
+        Assert.Equal(expectedClose, partner);
+        Assert.True(BracketMatcher.IsClosingChar(expectedClose));
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_LineEnding_Conversion()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TextDocument = new TextDocument("line1\nline2\nline3")
+        };
+
+        doc.DetectLineEndings();
+        Assert.Equal("LF", doc.LineEnding);
+
+        doc.ConvertToCrlf();
+        Assert.Equal("CRLF", doc.LineEnding);
+        Assert.Equal("line1\r\nline2\r\nline3", doc.GetText());
+
+        doc.ConvertToLf();
+        Assert.Equal("LF", doc.LineEnding);
+        Assert.Equal("line1\nline2\nline3", doc.GetText());
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_TabAndSpace_Conversion()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TabSize = 4,
+            TextDocument = new TextDocument("\tint x = 1;\n\tint y = 2;")
+        };
+
+        doc.ConvertTabsToSpaces();
+        Assert.Equal("    int x = 1;\n    int y = 2;", doc.GetText());
+        Assert.True(doc.UseSpacesForTabs);
+
+        doc.ConvertSpacesToTabs();
+        Assert.Equal("\tint x = 1;\n\tint y = 2;", doc.GetText());
+        Assert.False(doc.UseSpacesForTabs);
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_Encoding_Setting()
+    {
+        var doc = new EditorDocumentViewModel();
+        Assert.Equal("UTF-8", doc.EncodingName);
+
+        doc.SetEncoding("UTF-16LE");
+        Assert.Equal("UTF-16LE", doc.EncodingName);
+    }
 }

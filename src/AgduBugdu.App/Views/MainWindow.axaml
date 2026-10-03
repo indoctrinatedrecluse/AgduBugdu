@@ -236,7 +236,57 @@
                             <TextBlock Text="{Binding WordWrapStatus}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
                         </Button>
                         <TextBlock Text="{Binding CursorPosition}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
-                        <TextBlock Text="{Binding Encoding}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+
+                        <!-- Clickable Line Endings CRLF/LF -->
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="Line Endings">
+                            <Button.Flyout>
+                                <MenuFlyout Placement="Top">
+                                    <MenuItem Header="Convert to CRLF (\r\n)" Command="{Binding ConvertToCrlfCommand}" />
+                                    <MenuItem Header="Convert to LF (\n)" Command="{Binding ConvertToLfCommand}" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                            <TextBlock Text="{Binding LineEndingStatus}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+                        </Button>
+
+                        <!-- Clickable Tab / Space Indentation -->
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="Indentation Mode">
+                            <Button.Flyout>
+                                <MenuFlyout Placement="Top">
+                                    <MenuItem Header="Spaces: 2" Command="{Binding SetTabSizeCommand}" CommandParameter="2" />
+                                    <MenuItem Header="Spaces: 4" Command="{Binding SetTabSizeCommand}" CommandParameter="4" />
+                                    <MenuItem Header="Spaces: 8" Command="{Binding SetTabSizeCommand}" CommandParameter="8" />
+                                    <Separator />
+                                    <MenuItem Header="Convert Indentation to Spaces" Command="{Binding ConvertTabsToSpacesCommand}" />
+                                    <MenuItem Header="Convert Indentation to Tabs" Command="{Binding ConvertSpacesToTabsCommand}" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                            <TextBlock Text="{Binding IndentStatus}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+                        </Button>
+
+                        <!-- Clickable File Encoding -->
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="File Encoding">
+                            <Button.Flyout>
+                                <MenuFlyout Placement="Top">
+                                    <MenuItem Header="UTF-8" Command="{Binding SetEncodingCommand}" CommandParameter="UTF-8" />
+                                    <MenuItem Header="UTF-8 with BOM" Command="{Binding SetEncodingCommand}" CommandParameter="UTF-8-BOM" />
+                                    <MenuItem Header="UTF-16 LE" Command="{Binding SetEncodingCommand}" CommandParameter="UTF-16LE" />
+                                    <MenuItem Header="ASCII" Command="{Binding SetEncodingCommand}" CommandParameter="ASCII" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                            <TextBlock Text="{Binding Encoding}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>

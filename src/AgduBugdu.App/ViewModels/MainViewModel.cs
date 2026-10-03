@@ -187,6 +187,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _encoding = "UTF-8";
 
     [ObservableProperty]
+    private string _lineEndingStatus = "CRLF";
+
+    [ObservableProperty]
+    private string _indentStatus = "Spaces: 4";
+
+    [ObservableProperty]
     private string _activeWorkspaceName = "No Folder Opened";
 
     [ObservableProperty]
@@ -504,9 +510,25 @@ public partial class MainViewModel : ObservableObject, IDisposable
             {
                 WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
             }
+            else if (e.PropertyName == nameof(EditorDocumentViewModel.LineEnding))
+            {
+                LineEndingStatus = doc.LineEnding;
+            }
+            else if (e.PropertyName == nameof(EditorDocumentViewModel.TabSize) ||
+                     e.PropertyName == nameof(EditorDocumentViewModel.UseSpacesForTabs))
+            {
+                IndentStatus = doc.UseSpacesForTabs ? $"Spaces: {doc.TabSize}" : $"Tabs: {doc.TabSize}";
+            }
+            else if (e.PropertyName == nameof(EditorDocumentViewModel.EncodingName))
+            {
+                Encoding = doc.EncodingName;
+            }
         };
         CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
         WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
+        LineEndingStatus = doc.LineEnding;
+        IndentStatus = doc.UseSpacesForTabs ? $"Spaces: {doc.TabSize}" : $"Tabs: {doc.TabSize}";
+        Encoding = doc.EncodingName;
         if (!string.IsNullOrEmpty(doc.FilePath))
         {
             _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
@@ -662,6 +684,81 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void TransformLowercase()
     {
         GetActiveEditorDocument()?.TransformLowercase();
+    }
+
+    [RelayCommand]
+    public void ConvertToCrlf()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.ConvertToCrlf();
+            LineEndingStatus = doc.LineEnding;
+            StatusMessage = "Converted line endings to CRLF";
+        }
+    }
+
+    [RelayCommand]
+    public void ConvertToLf()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.ConvertToLf();
+            LineEndingStatus = doc.LineEnding;
+            StatusMessage = "Converted line endings to LF";
+        }
+    }
+
+    [RelayCommand]
+    public void SetTabSize(string sizeStr)
+    {
+        if (int.TryParse(sizeStr, out int size))
+        {
+            var doc = GetActiveEditorDocument();
+            if (doc != null)
+            {
+                doc.SetTabSize(size);
+                IndentStatus = doc.UseSpacesForTabs ? $"Spaces: {doc.TabSize}" : $"Tabs: {doc.TabSize}";
+                StatusMessage = $"Set Tab Size to {size}";
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void ConvertTabsToSpaces()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.ConvertTabsToSpaces();
+            IndentStatus = $"Spaces: {doc.TabSize}";
+            StatusMessage = "Converted tabs to spaces";
+        }
+    }
+
+    [RelayCommand]
+    public void ConvertSpacesToTabs()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.ConvertSpacesToTabs();
+            IndentStatus = $"Tabs: {doc.TabSize}";
+            StatusMessage = "Converted spaces to tabs";
+        }
+    }
+
+    [RelayCommand]
+    public void SetEncoding(string encoding)
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.SetEncoding(encoding);
+            Encoding = doc.EncodingName;
+            StatusMessage = $"Encoding: {encoding}";
+        }
     }
 
     [RelayCommand]

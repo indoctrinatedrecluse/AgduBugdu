@@ -11,6 +11,9 @@ using AgduBugdu.App.ViewModels;
 using AgduBugdu.App.ViewModels.Documents;
 using AgduBugdu.PluginContracts;
 using TextMateSharp.Grammars;
+using AvaloniaEdit.Folding;
+using System.Collections.Generic;
+using AgduBugdu.Core.Text;
 
 namespace AgduBugdu.App.Views.Documents;
 
@@ -64,6 +67,7 @@ public partial class EditorDocumentView : UserControl
     private TextMate.Installation? _textMateInstallation;
     private RegistryOptions? _registryOptions;
     private bool _rendererAttached;
+    private FoldingManager? _foldingManager;
 
     public EditorDocumentView()
     {
@@ -81,6 +85,7 @@ public partial class EditorDocumentView : UserControl
         Editor.TextArea.SelectionChanged += OnSelectionChanged;
         Editor.TextChanged += OnTextChanged;
         Editor.KeyDown += OnEditorKeyDown;
+        Editor.TextArea.TextEntering += OnTextAreaTextEntering;
 
         // Ctrl + MouseWheel to zoom font size
         Editor.PointerWheelChanged += OnPointerWheelChanged;
@@ -421,6 +426,28 @@ public partial class EditorDocumentView : UserControl
 
             // Setup TextMate syntax highlighting
             SetupTextMateGrammar(doc);
+
+            // Install code folding manager
+            if (_foldingManager == null && Editor.TextArea != null)
+            {
+                _foldingManager = FoldingManager.Install(Editor.TextArea);
+            }
+            UpdateCodeFoldings();
+
+            // Synchronize formatting options with document viewmodel
+            Editor.Options.IndentationSize = doc.TabSize;
+            Editor.Options.ConvertTabsToSpaces = doc.UseSpacesForTabs;
+            doc.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(EditorDocumentViewModel.TabSize))
+                {
+                    Editor.Options.IndentationSize = doc.TabSize;
+                }
+                else if (e.PropertyName == nameof(EditorDocumentViewModel.UseSpacesForTabs))
+                {
+                    Editor.Options.ConvertTabsToSpaces = doc.UseSpacesForTabs;
+                }
+            };
         }
     }
 
@@ -465,6 +492,92 @@ public partial class EditorDocumentView : UserControl
         }
     }
 
+    private void OnTextAreaTextEntering(object? sender, TextInputEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.Text) || e.Text.Length != 1)
+            return;
+
+        char typed = e.Text[0];
+
+        // 1. Overtype closing character if already positioned immediately before it
+        if (BracketMatcher.IsClosingChar(typed) && Editor.Document != null && Editor.CaretOffset < Editor.Document.TextLength)
+        {
+            char nextChar = Editor.Document.GetCharAt(Editor.CaretOffset);
+            if (nextChar == typed)
+            {
+                Editor.CaretOffset++;
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // 2. Auto-close opening brackets and quotes
+        char closingPartner = BracketMatcher.GetAutoClosingPartner(typed);
+        if (closingPartner != '\0' && Editor.Document != null)
+        {
+            int offset = Editor.CaretOffset;
+            int selLen = Editor.SelectionLength;
+
+            if (selLen > 0)
+            {
+                // Wrap selection: e.g. [selected_text] or "selected_text"
+                string selText = Editor.SelectedText;
+                Editor.Document.Replace(offset, selLen, $"{typed}{selText}{closingPartner}");
+                Editor.Select(offset + 1, selLen);
+                e.Handled = true;
+                return;
+            }
+
+            // Normal insertion with auto-closed partner
+            Editor.Document.Insert(offset, $"{typed}{closingPartner}");
+            Editor.CaretOffset = offset + 1;
+            e.Handled = true;
+        }
+    }
+
+    private void UpdateCodeFoldings()
+    {
+        if (_foldingManager == null || Editor.Document == null)
+            return;
+
+        try
+        {
+            var foldings = new List<NewFolding>();
+            var text = Editor.Document.Text;
+            var stack = new Stack<int>();
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == '{')
+                {
+                    stack.Push(i);
+                }
+                else if (c == '}' && stack.Count > 0)
+                {
+                    int openOffset = stack.Pop();
+                    // Only create folding section if multi-line
+                    int openLine = Editor.Document.GetLineByOffset(openOffset).LineNumber;
+                    int closeLine = Editor.Document.GetLineByOffset(i).LineNumber;
+                    if (closeLine > openLine)
+                    {
+                        foldings.Add(new NewFolding(openOffset, i + 1)
+                        {
+                            Name = "{...}"
+                        });
+                    }
+                }
+            }
+
+            foldings.Sort((a, b) => a.StartOffset.CompareTo(b.StartOffset));
+            _foldingManager.UpdateFoldings(foldings, -1);
+        }
+        catch
+        {
+            // Ignore folding errors during dynamic edits
+        }
+    }
+
     private void OnCaretPositionChanged(object? sender, EventArgs e)
     {
         if (DataContext is EditorDocumentViewModel doc)
@@ -496,6 +609,7 @@ public partial class EditorDocumentView : UserControl
             {
                 doc.UpdateSearchMatches();
             }
+            UpdateCodeFoldings();
         }
     }
 }
