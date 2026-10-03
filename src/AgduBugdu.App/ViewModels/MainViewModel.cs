@@ -581,6 +581,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (dockable != null)
         {
+            if (dockable == _dockFactory.ExplorerTool)
+            {
+                _dockFactory.RestoreLeftPane();
+            }
             if (dockable == _dockFactory.TerminalTool || dockable == _dockFactory.OutputTool ||
                 dockable == _dockFactory.TodoTool || dockable == _dockFactory.DebuggerTool)
             {

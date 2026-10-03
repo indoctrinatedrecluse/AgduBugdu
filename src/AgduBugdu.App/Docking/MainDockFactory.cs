@@ -16,7 +16,9 @@ public class MainDockFactory : Factory
     private ToolDock? _bottomDock;
     private ToolDock? _leftDock;
     private ProportionalDock? _centerLayout;
+    private ProportionalDock? _mainLayout;
     private ProportionalDockSplitter? _bottomSplitter;
+    private ProportionalDockSplitter? _leftDockSplitter;
     private ExplorerToolViewModel? _explorerTool;
     private OutputToolViewModel? _outputTool;
     private TerminalToolViewModel? _terminalTool;
@@ -42,11 +44,15 @@ public class MainDockFactory : Factory
         _todoTool ??= new TodoToolViewModel();
         _debuggerTool ??= new DebuggerToolViewModel();
 
+        var welcomeDoc = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output, TODO Tasks, Run & Debug) are draggable and re-arrangeable.\n");
+        welcomeDoc.UndoStack.MarkAsOriginalFile();
+
         var doc1 = new EditorDocumentViewModel
         {
             FileName = "Welcome.txt",
             Title = "Welcome.txt",
-            TextDocument = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output, TODO Tasks, Run & Debug) are draggable and re-arrangeable.\n")
+            TextDocument = welcomeDoc,
+            IsModified = false
         };
 
         var leftDock = new ToolDock
@@ -54,8 +60,6 @@ public class MainDockFactory : Factory
             Id = "LeftPane",
             Title = "Explorer",
             Proportion = 0.22,
-            Alignment = Alignment.Left,
-            GripMode = GripMode.Visible,
             VisibleDockables = CreateList<IDockable>(_explorerTool),
             ActiveDockable = _explorerTool
         };
@@ -66,8 +70,6 @@ public class MainDockFactory : Factory
             Id = "BottomPane",
             Title = "Panel",
             Proportion = 0.28,
-            Alignment = Alignment.Bottom,
-            GripMode = GripMode.Visible,
             VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool),
             ActiveDockable = _terminalTool
         };
@@ -97,24 +99,53 @@ public class MainDockFactory : Factory
         };
         _centerLayout = centerLayout;
 
+        _leftDockSplitter = new ProportionalDockSplitter();
+
         var mainLayout = new ProportionalDock
         {
             Orientation = Orientation.Horizontal,
             VisibleDockables = CreateList<IDockable>(
                 leftDock,
-                new ProportionalDockSplitter(),
+                _leftDockSplitter,
                 centerLayout
             )
         };
+        _mainLayout = mainLayout;
 
         var rootDock = CreateRootDock();
         rootDock.IsCollapsable = false;
-        rootDock.DefaultDockable = documentDock;
         rootDock.VisibleDockables = CreateList<IDockable>(mainLayout);
         rootDock.ActiveDockable = mainLayout;
 
         _rootDock = rootDock;
         return rootDock;
+    }
+
+    public void RestoreLeftPane()
+    {
+        if (_leftDock == null || _explorerTool == null)
+            return;
+
+        if (_leftDock.VisibleDockables == null || !_leftDock.VisibleDockables.Contains(_explorerTool))
+        {
+            _leftDock.VisibleDockables ??= CreateList<IDockable>();
+            _leftDock.VisibleDockables.Add(_explorerTool);
+        }
+        _leftDock.ActiveDockable = _explorerTool;
+
+        if (_mainLayout?.VisibleDockables != null && _leftDockSplitter != null)
+        {
+            if (!_mainLayout.VisibleDockables.Contains(_leftDock))
+            {
+                _mainLayout.VisibleDockables.Insert(0, _leftDock);
+            }
+            if (!_mainLayout.VisibleDockables.Contains(_leftDockSplitter))
+            {
+                int idx = _mainLayout.VisibleDockables.IndexOf(_leftDock);
+                _mainLayout.VisibleDockables.Insert(idx + 1, _leftDockSplitter);
+            }
+        }
+        _leftDock.Proportion = 0.22;
     }
 
     public void MinimizeBottomPane()
@@ -133,13 +164,21 @@ public class MainDockFactory : Factory
 
     public void RestoreBottomPane(IDockable? activeTool = null)
     {
-        if (!_isBottomPaneMinimized || _centerLayout?.VisibleDockables == null || _bottomDock == null || _bottomSplitter == null)
-        {
-            if (_bottomDock != null && activeTool != null)
-            {
-                _bottomDock.ActiveDockable = activeTool;
-            }
+        if (_bottomDock == null || _centerLayout?.VisibleDockables == null || _bottomSplitter == null)
             return;
+
+        // Ensure bottom tools exist in VisibleDockables
+        if (_bottomDock.VisibleDockables == null || _bottomDock.VisibleDockables.Count == 0)
+        {
+            _terminalTool ??= new TerminalToolViewModel();
+            _outputTool ??= new OutputToolViewModel();
+            _todoTool ??= new TodoToolViewModel();
+            _debuggerTool ??= new DebuggerToolViewModel();
+            _bottomDock.VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool);
+        }
+        else if (activeTool != null && !_bottomDock.VisibleDockables.Contains(activeTool))
+        {
+            _bottomDock.VisibleDockables.Add(activeTool);
         }
 
         if (_documentDock != null)
@@ -156,6 +195,10 @@ public class MainDockFactory : Factory
         if (activeTool != null)
         {
             _bottomDock.ActiveDockable = activeTool;
+        }
+        else if (_bottomDock.ActiveDockable == null && _bottomDock.VisibleDockables.Count > 0)
+        {
+            _bottomDock.ActiveDockable = _bottomDock.VisibleDockables[0];
         }
         _isBottomPaneMinimized = false;
     }
@@ -186,9 +229,13 @@ public class MainDockFactory : Factory
             _documentDock.ActiveDockable = activeDoc ?? openDocs[0];
         }
 
-        if (_bottomDock != null && activeBottom != null)
+        if (_bottomDock != null && activeBottom != null && _bottomDock.VisibleDockables != null)
         {
-            _bottomDock.ActiveDockable = activeBottom;
+            var match = _bottomDock.VisibleDockables.FirstOrDefault(d => d.Id == activeBottom.Id);
+            if (match != null)
+            {
+                _bottomDock.ActiveDockable = match;
+            }
         }
 
         InitLayout(newRoot);

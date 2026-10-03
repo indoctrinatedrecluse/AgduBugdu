@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using AgduBugdu.App.Docking;
+using AgduBugdu.App.ViewModels;
 using AgduBugdu.App.ViewModels.Documents;
 using Dock.Model.Core;
 using Xunit;
@@ -24,6 +26,59 @@ public class DockingTests
         Assert.Equal(0.22, factory.LeftDock.Proportion);
         Assert.Equal(0.72, factory.DocumentDock.Proportion);
         Assert.Equal(0.28, factory.BottomDock.Proportion);
+    }
+
+    [Fact]
+    public void TestMainViewModelDockingInitialization()
+    {
+        var vm = new MainViewModel();
+        Assert.NotNull(vm.Layout);
+        Assert.NotNull(vm.DockFactory);
+        Assert.NotNull(vm.DockFactory.ExplorerTool);
+        Assert.NotNull(vm.DockFactory.TerminalTool);
+        Assert.NotNull(vm.DockFactory.OutputTool);
+        Assert.NotNull(vm.DockFactory.TodoTool);
+        Assert.NotNull(vm.DockFactory.DebuggerTool);
+
+        Assert.NotNull(vm.DockFactory.LeftDock);
+        Assert.NotNull(vm.DockFactory.BottomDock);
+        Assert.NotNull(vm.DockFactory.DocumentDock);
+
+        // Check if Explorer is in LeftDock
+        Assert.NotNull(vm.DockFactory.LeftDock.VisibleDockables);
+        Assert.Contains(vm.DockFactory.ExplorerTool, vm.DockFactory.LeftDock.VisibleDockables);
+        // Check if BottomDock has tools
+        Assert.NotNull(vm.DockFactory.BottomDock.VisibleDockables);
+        Assert.Contains(vm.DockFactory.TerminalTool, vm.DockFactory.BottomDock.VisibleDockables);
+        Assert.Contains(vm.DockFactory.OutputTool, vm.DockFactory.BottomDock.VisibleDockables);
+        Assert.Contains(vm.DockFactory.TodoTool, vm.DockFactory.BottomDock.VisibleDockables);
+        Assert.Contains(vm.DockFactory.DebuggerTool, vm.DockFactory.BottomDock.VisibleDockables);
+
+        // Test Focus commands
+        vm.FocusExplorerCommand.Execute(null);
+        Assert.Equal(vm.DockFactory.ExplorerTool, vm.DockFactory.LeftDock.ActiveDockable);
+
+        vm.FocusTerminalCommand.Execute(null);
+        Assert.Equal(vm.DockFactory.TerminalTool, vm.DockFactory.BottomDock.ActiveDockable);
+
+        vm.FocusOutputCommand.Execute(null);
+        Assert.Equal(vm.DockFactory.OutputTool, vm.DockFactory.BottomDock.ActiveDockable);
+
+        vm.FocusTodoCommand.Execute(null);
+        Assert.Equal(vm.DockFactory.TodoTool, vm.DockFactory.BottomDock.ActiveDockable);
+
+        vm.FocusDebuggerCommand.Execute(null);
+        Assert.Equal(vm.DockFactory.DebuggerTool, vm.DockFactory.BottomDock.ActiveDockable);
+    }
+
+    [Fact]
+    public void TestDockControlProperties()
+    {
+        var type = typeof(Dock.Avalonia.Controls.DockControl);
+        var props = type.GetProperties().Select(p => p.Name).ToList();
+        Assert.Contains("Layout", props);
+        bool hasFactory = props.Contains("Factory");
+        Assert.True(hasFactory);
     }
 
     [Fact]

@@ -39,6 +39,27 @@ public partial class EditorDocumentViewModel : Document
         Id = Guid.NewGuid().ToString();
         Title = FileName;
         _originalText = TextDocument.Text;
+        TextDocument.UndoStack.MarkAsOriginalFile();
+    }
+
+    partial void OnFileNameChanged(string value)
+    {
+        Title = IsModified ? $"{value}*" : value;
+    }
+
+    partial void OnTextDocumentChanged(TextDocument value)
+    {
+        if (value != null)
+        {
+            _originalText = value.Text;
+            value.UndoStack.MarkAsOriginalFile();
+        }
+        else
+        {
+            _originalText = string.Empty;
+        }
+        IsModified = false;
+        Title = FileName;
     }
 
     partial void OnLineChanged(int value)
@@ -60,7 +81,7 @@ public partial class EditorDocumentViewModel : Document
 
     public void CheckModified()
     {
-        bool modified = TextDocument.Text != _originalText;
+        bool modified = !TextDocument.UndoStack.IsOriginalFile && TextDocument.Text != _originalText;
         if (IsModified != modified)
         {
             IsModified = modified;
@@ -72,6 +93,7 @@ public partial class EditorDocumentViewModel : Document
     {
         var content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
         var textDoc = new TextDocument(content);
+        textDoc.UndoStack.MarkAsOriginalFile();
         var vm = new EditorDocumentViewModel
         {
             FilePath = path,
@@ -92,6 +114,7 @@ public partial class EditorDocumentViewModel : Document
 
         File.WriteAllText(FilePath, TextDocument.Text);
         _originalText = TextDocument.Text;
+        TextDocument.UndoStack.MarkAsOriginalFile();
         IsModified = false;
         Title = FileName;
     }

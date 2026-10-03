@@ -163,7 +163,6 @@
             <!-- Docking Host (Explorer, Editor Tabs, Terminal, Output Pane) -->
             <dock:DockControl Grid.Row="2"
                               Layout="{Binding Layout}"
-                              Factory="{Binding DockFactory}"
                               Margin="0" />
 
             <!-- Dynamic Bottom Status Bar -->
