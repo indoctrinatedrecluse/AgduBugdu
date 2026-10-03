@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 🌐 [1.0.3] - 2026-10-04
+## 🌐 [1.1.0] - 2026-10-04
 
 ### ✨ Added
 - **🌐 Dedicated Language Support Extensions for 6 Core Languages**:
@@ -106,10 +106,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **📦 Branding, Packaging & Multi-Platform CI/CD**:
   - Custom AI-generated high-resolution app icon and logo assets (`agdubugdu-logo.ico`, `agdubugdu-logo.png`).
-  - Centralized global versioning via `Directory.Build.props` (`1.0.3`).
+  - Centralized global versioning via `Directory.Build.props` (`1.0.0`).
   - Dedicated runner scripts: `tools/run.ps1` (PowerShell) and `tools/run.sh` (POSIX / Cygwin / MSYS2).
   - Multi-platform GitHub Actions Release workflow (`.github/workflows/release.yml`) producing:
-    - 🪟 Windows: `AgduBugdu-v1.0.3-win-x64-setup.exe` (Inno Setup) & `AgduBugdu-v1.0.3-win-x64-portable.zip`
-    - 🐧 Linux: `AgduBugdu-v1.0.3-linux-x64.tar.gz`
-    - 🍎 macOS: `AgduBugdu-v1.0.3-osx-x64.tar.gz` & `AgduBugdu-v1.0.3-osx-arm64.tar.gz`
+    - 🪟 Windows: `AgduBugdu-v1.0.0-win-x64-setup.exe` (Inno Setup) & `AgduBugdu-v1.0.0-win-x64-portable.zip`
+    - 🐧 Linux: `AgduBugdu-v1.0.0-linux-x64.tar.gz`
+    - 🍎 macOS: `AgduBugdu-v1.0.0-osx-x64.tar.gz` & `AgduBugdu-v1.0.0-osx-arm64.tar.gz`
     - Automatic SHA-256 checksums (`SHA256SUMS.txt`).
