@@ -10,9 +10,15 @@ using AgduBugdu.Core;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
 using AgduBugdu.Infrastructure.Updates;
+using AgduBugdu.Plugin.Cpp;
+using AgduBugdu.Plugin.CSharp;
 using AgduBugdu.Plugin.DataGridLive;
 using AgduBugdu.Plugin.Debugger;
+using AgduBugdu.Plugin.Go;
+using AgduBugdu.Plugin.Java;
 using AgduBugdu.Plugin.MarkdownLive;
+using AgduBugdu.Plugin.Python;
+using AgduBugdu.Plugin.Rust;
 using AgduBugdu.Plugin.TodoExplorer;
 using AgduBugdu.PluginContracts;
 using Avalonia.Controls;
@@ -54,6 +60,9 @@ public class AppWorkspaceService : IWorkspaceService
 public class AppEditorService : IEditorService
 {
     private readonly Action<string, int, int> _openFileAction;
+    private readonly Func<EditorDocumentViewModel?> _getActiveDocument;
+    private readonly Action<string?, string?> _newDocumentAction;
+
     public string? ActiveDocumentPath { get; private set; }
     public int? ActiveLine { get; private set; } = 1;
     public int? ActiveColumn { get; private set; } = 1;
@@ -63,9 +72,14 @@ public class AppEditorService : IEditorService
     public event EventHandler<DocumentEventArgs>? DocumentClosed;
     public event EventHandler<LineNavigationEventArgs>? LineNavigationRequested;
 
-    public AppEditorService(Action<string, int, int> openFileAction)
+    public AppEditorService(
+        Action<string, int, int> openFileAction,
+        Func<EditorDocumentViewModel?> getActiveDocument,
+        Action<string?, string?> newDocumentAction)
     {
         _openFileAction = openFileAction;
+        _getActiveDocument = getActiveDocument;
+        _newDocumentAction = newDocumentAction;
     }
 
     public void OpenFile(string filePath)
@@ -101,6 +115,27 @@ public class AppEditorService : IEditorService
         ActiveLine = line;
         ActiveColumn = column;
     }
+
+    public void InsertText(string text)
+    {
+        var doc = _getActiveDocument();
+        doc?.InsertText(text);
+    }
+
+    public string? GetActiveDocumentText()
+    {
+        return _getActiveDocument()?.GetText();
+    }
+
+    public void SetActiveDocumentText(string text)
+    {
+        _getActiveDocument()?.SetText(text);
+    }
+
+    public void NewDocument(string? defaultFileName = null, string? initialContent = null)
+    {
+        _newDocumentAction(defaultFileName, initialContent);
+    }
 }
 
 public partial class MainViewModel : ObservableObject, IDisposable
@@ -118,11 +153,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly AppWorkspaceService _workspaceService;
     private readonly ExtensionContext _extensionContext;
     private readonly GitHubUpdateService _updateService;
-    private MarkdownPreviewViewModel? _markdownPreviewModel;
-    private CsvTableViewModel? _csvTableModel;
 
     public MainDockFactory DockFactory => _dockFactory;
     public IDebugService DebugService => _extensionContext.DebugService;
+    public ILanguageService LanguageService => _extensionContext.Languages;
 
     [ObservableProperty]
     private IRootDock? _layout;
@@ -184,7 +218,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         // Extensibility Subsystem Initialization
         _commandRegistry = new CommandRegistry();
         _toolRegistry = new ToolWindowRegistry();
-        _editorService = new AppEditorService((path, line, col) => OpenFile(path, line, col));
+        _editorService = new AppEditorService(
+            (path, line, col) => OpenFile(path, line, col),
+            () => GetActiveEditorDocument(),
+            (name, content) => CreateNewDocument(name, content));
         _workspaceService = new AppWorkspaceService(path => OpenFolder(path));
         _extensionContext = new ExtensionContext(_commandRegistry, _toolRegistry, _editorService, _workspaceService);
         _extensionManager = new ExtensionManager(_extensionContext);
@@ -293,10 +330,97 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Description = "Interactive Run & Debugging workbench with breakpoints, variables, call stack, and console."
             });
 
+            // 5. C/C++ Language Support
+            var cppExtension = new CppLanguageExtension();
+            cppExtension.Initialize(_extensionContext);
+            await cppExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = cppExtension.Id,
+                Name = cppExtension.Name,
+                Version = cppExtension.Version,
+                Status = "Active",
+                Description = "Syntax highlighting, language definitions, and C/C++ code snippets."
+            });
+
+            // 6. Java Language Support
+            var javaExtension = new JavaLanguageExtension();
+            javaExtension.Initialize(_extensionContext);
+            await javaExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = javaExtension.Id,
+                Name = javaExtension.Name,
+                Version = javaExtension.Version,
+                Status = "Active",
+                Description = "Syntax highlighting, language definitions, and Java code snippets."
+            });
+
+            // 7. Go Language Support
+            var goExtension = new GoLanguageExtension();
+            goExtension.Initialize(_extensionContext);
+            await goExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = goExtension.Id,
+                Name = goExtension.Name,
+                Version = goExtension.Version,
+                Status = "Active",
+                Description = "Syntax highlighting, language definitions, and Go code snippets."
+            });
+
+            // 8. Rust Language Support
+            var rustExtension = new RustLanguageExtension();
+            rustExtension.Initialize(_extensionContext);
+            await rustExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = rustExtension.Id,
+                Name = rustExtension.Name,
+                Version = rustExtension.Version,
+                Status = "Active",
+                Description = "Syntax highlighting, language definitions, and Rust code snippets."
+            });
+
+            // 9. Python Language Support
+            var pythonExtension = new PythonLanguageExtension();
+            pythonExtension.Initialize(_extensionContext);
+            await pythonExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = pythonExtension.Id,
+                Name = pythonExtension.Name,
+                Version = pythonExtension.Version,
+                Status = "Active",
+                Description = "Syntax highlighting, language definitions, and Python code snippets."
+            });
+
+            // 10. C# / .NET Language Support
+            var csharpExtension = new CSharpLanguageExtension();
+            csharpExtension.Initialize(_extensionContext);
+            await csharpExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = csharpExtension.Id,
+                Name = csharpExtension.Name,
+                Version = csharpExtension.Version,
+                Status = "Active",
+                Description = "Syntax highlighting, language definitions, and C# / .NET code snippets."
+            });
+
             // Sync all registered plugin commands into the Command Palette
             foreach (var cmd in _commandRegistry.GetRegisteredCommands())
             {
                 CommandPalette.RegisterCommand(cmd.Key, cmd.Value.Title, () => cmd.Value.Execute(), cmd.Value.Shortcut);
+            }
+
+            // Register all language snippets into the Command Palette
+            foreach (var snippet in _extensionContext.Languages.GetSnippets())
+            {
+                CommandPalette.RegisterCommand(
+                    $"snippet.{snippet.Id}",
+                    $"Snippet ({snippet.LanguageId.ToUpperInvariant()}): {snippet.Prefix} - {snippet.Name}",
+                    () => InsertSnippet(snippet));
             }
 
             StatusMessage = $"AgduBugdu v{AppVersionInfo.CurrentVersion} Ready";
@@ -330,16 +454,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
             _dockFactory.OutputTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
             _dockFactory.OutputTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
-        if (_dockFactory.TodoTool != null)
-        {
-            _dockFactory.TodoTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
-            _dockFactory.TodoTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
-        }
-        if (_dockFactory.DebuggerTool != null)
-        {
-            _dockFactory.DebuggerTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
-            _dockFactory.DebuggerTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
-        }
+    }
+
+    [RelayCommand]
+    public void ResetPaneLayout()
+    {
+        _dockFactory.ResetPaneSizes();
+        StatusMessage = "Pane layout reset to default sizes";
     }
 
     private void HookExplorer()
@@ -348,114 +469,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             _dockFactory.ExplorerTool.FileSelected += (s, path) =>
             {
-                OpenFile(path);
-            };
-
-            _dockFactory.ExplorerTool.MarkdownPreviewRequested += (s, path) =>
-            {
-                OpenMarkdownLivePreview(path);
-            };
-
-            _dockFactory.ExplorerTool.CsvPreviewRequested += (s, path) =>
-            {
-                OpenCsvLivePreview(path);
-            };
-
-            _dockFactory.ExplorerTool.OpenFolderRequested += (s, e) =>
-            {
-                _ = OpenFolderAsync();
-            };
-        }
-    }
-
-    public void OpenMarkdownLivePreview(string filePath)
-    {
-        OpenFile(filePath);
-
-        if (_dockFactory.DocumentDock != null)
-        {
-            // Check if preview document already exists
-            var existingPreview = _dockFactory.DocumentDock.VisibleDockables?
-                .OfType<EditorDocumentViewModel>()
-                .FirstOrDefault(d => d.Id == "markdown.preview.tab");
-
-            if (existingPreview != null)
-            {
-                if (File.Exists(filePath))
+                if (File.Exists(path))
                 {
-                    existingPreview.TextDocument = new AvaloniaEdit.Document.TextDocument(File.ReadAllText(filePath));
+                    OpenFile(path);
                 }
-                _dockFactory.SetActiveDockable(existingPreview);
-                return;
-            }
-
-            if (_markdownPreviewModel == null)
-            {
-                _markdownPreviewModel = new MarkdownPreviewViewModel();
-            }
-            _markdownPreviewModel.UpdateDocument(filePath);
-
-            var previewDoc = new EditorDocumentViewModel
-            {
-                Id = "markdown.preview.tab",
-                FileName = $"Preview: {Path.GetFileName(filePath)}",
-                Title = $"Preview: {Path.GetFileName(filePath)}",
-                FilePath = filePath,
-                TextDocument = new AvaloniaEdit.Document.TextDocument(_markdownPreviewModel.HtmlPreview)
             };
-
-            _dockFactory.AddDockable(_dockFactory.DocumentDock, previewDoc);
-            _dockFactory.SetActiveDockable(previewDoc);
-            StatusMessage = $"Showing Live Preview for {Path.GetFileName(filePath)}";
-        }
-    }
-
-    public void OpenCsvLivePreview(string filePath)
-    {
-        OpenFile(filePath);
-
-        if (_dockFactory.DocumentDock != null)
-        {
-            var tabId = $"csv.preview.{filePath}";
-            var existingPreview = _dockFactory.DocumentDock.VisibleDockables?
-                .OfType<EditorDocumentViewModel>()
-                .FirstOrDefault(d => d.Id == tabId);
-
-            if (_csvTableModel == null)
-            {
-                _csvTableModel = new CsvTableViewModel();
-            }
-            _csvTableModel.LoadFile(filePath);
-            var formatted = _csvTableModel.ToFormattedText();
-
-            if (existingPreview != null)
-            {
-                existingPreview.TextDocument = new AvaloniaEdit.Document.TextDocument(formatted);
-                _dockFactory.SetActiveDockable(existingPreview);
-                return;
-            }
-
-            var previewDoc = new EditorDocumentViewModel
-            {
-                Id = tabId,
-                FileName = $"Table: {Path.GetFileName(filePath)}",
-                Title = $"Table: {Path.GetFileName(filePath)}",
-                FilePath = filePath,
-                TextDocument = new AvaloniaEdit.Document.TextDocument(formatted)
-            };
-
-            _dockFactory.AddDockable(_dockFactory.DocumentDock, previewDoc);
-            _dockFactory.SetActiveDockable(previewDoc);
-            StatusMessage = $"Showing Data Table for {Path.GetFileName(filePath)}";
         }
     }
 
     private void AttachDocumentEvents(EditorDocumentViewModel doc)
     {
-        doc.CaretMoved += (s, e) =>
+        doc.PropertyChanged += (s, e) =>
         {
-            CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
-            _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
+            if (e.PropertyName == nameof(EditorDocumentViewModel.Line) ||
+                e.PropertyName == nameof(EditorDocumentViewModel.Column))
+            {
+                CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
+                if (!string.IsNullOrEmpty(doc.FilePath))
+                {
+                    _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
+                }
+            }
         };
         CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
         if (!string.IsNullOrEmpty(doc.FilePath))
@@ -467,6 +501,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private void RegisterDefaultCommands()
     {
         CommandPalette.RegisterCommand("file.new", "File: New File", () => NewFile(), "Ctrl+N");
+        CommandPalette.RegisterCommand("file.new.cpp", "File: New C++ Source File (main.cpp)", () => CreateNewDocument("main.cpp", CppLanguageExtension.Snippets[0].Body));
+        CommandPalette.RegisterCommand("file.new.c", "File: New C Source File (main.c)", () => CreateNewDocument("main.c", CppLanguageExtension.Snippets[1].Body));
+        CommandPalette.RegisterCommand("file.new.java", "File: New Java Source File (Main.java)", () => CreateNewDocument("Main.java", JavaLanguageExtension.Snippets[0].Body));
+        CommandPalette.RegisterCommand("file.new.go", "File: New Go Source File (main.go)", () => CreateNewDocument("main.go", GoLanguageExtension.Snippets[0].Body));
+        CommandPalette.RegisterCommand("file.new.rust", "File: New Rust Source File (main.rs)", () => CreateNewDocument("main.rs", RustLanguageExtension.Snippets[0].Body));
+        CommandPalette.RegisterCommand("file.new.python", "File: New Python Script (main.py)", () => CreateNewDocument("main.py", PythonLanguageExtension.Snippets[0].Body));
+        CommandPalette.RegisterCommand("file.new.csharp", "File: New C# Program File (Program.cs)", () => CreateNewDocument("Program.cs", CSharpLanguageExtension.Snippets[9].Body));
         CommandPalette.RegisterCommand("file.open", "File: Open File...", () => { _ = OpenFileAsync(); }, "Ctrl+O");
         CommandPalette.RegisterCommand("file.openFolder", "File: Open Folder...", () => { _ = OpenFolderAsync(); }, "Ctrl+K, Ctrl+O");
         CommandPalette.RegisterCommand("file.save", "File: Save", () => { _ = SaveFileAsync(); }, "Ctrl+S");
@@ -486,13 +527,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.toggleTodo", "View: Focus TODO Tasks", () => FocusDockable(_dockFactory.TodoTool));
         CommandPalette.RegisterCommand("view.toggleDebugger", "View: Focus Run & Debug", () => FocusDockable(_dockFactory.DebuggerTool));
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
-    }
-
-    [RelayCommand]
-    public void ResetPaneLayout()
-    {
-        Layout = _dockFactory.ResetLayout();
-        StatusMessage = "Panes reset to original layout sizes";
     }
 
     [RelayCommand]
@@ -601,18 +635,47 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NewFile()
     {
+        CreateNewDocument("Untitled.txt", string.Empty);
+    }
+
+    public void CreateNewDocument(string? defaultFileName = null, string? initialContent = null)
+    {
         if (_dockFactory.DocumentDock != null)
         {
+            var fileName = string.IsNullOrWhiteSpace(defaultFileName) ? "Untitled.txt" : defaultFileName;
             var newDoc = new EditorDocumentViewModel
             {
-                FileName = "Untitled.txt",
-                Title = "Untitled.txt",
-                TextDocument = new AvaloniaEdit.Document.TextDocument()
+                FileName = fileName,
+                Title = fileName,
+                TextDocument = new AvaloniaEdit.Document.TextDocument(initialContent ?? string.Empty)
             };
             AttachDocumentEvents(newDoc);
             _dockFactory.AddDockable(_dockFactory.DocumentDock, newDoc);
             _dockFactory.SetActiveDockable(newDoc);
-            StatusMessage = "Created new document";
+            StatusMessage = $"Created {fileName}";
+        }
+    }
+
+    public EditorDocumentViewModel? GetActiveEditorDocument()
+    {
+        return _dockFactory.DocumentDock?.ActiveDockable as EditorDocumentViewModel;
+    }
+
+    public void InsertSnippet(Snippet snippet)
+    {
+        var activeDoc = GetActiveEditorDocument();
+        if (activeDoc != null)
+        {
+            activeDoc.InsertText(snippet.Body);
+            StatusMessage = $"Inserted snippet: {snippet.Name}";
+        }
+        else
+        {
+            var langDef = LanguageService.GetLanguageById(snippet.LanguageId);
+            var ext = langDef?.FileExtensions.FirstOrDefault() ?? ".txt";
+            var fileName = $"snippet_{snippet.Prefix}{ext}";
+            CreateNewDocument(fileName, snippet.Body);
+            StatusMessage = $"Created {fileName} from snippet {snippet.Name}";
         }
     }
 

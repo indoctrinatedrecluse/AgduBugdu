@@ -16,7 +16,7 @@ public interface IExtensionContext
     IToolWindowRegistry ToolWindows { get; }
 
     /// <summary>
-    /// Editor buffer hooks and events.
+    /// Editor buffer hooks, events, and document manipulation.
     /// </summary>
     IEditorService EditorService { get; }
 
@@ -29,6 +29,11 @@ public interface IExtensionContext
     /// Debugging and breakpoints subsystem.
     /// </summary>
     IDebugService DebugService { get; }
+
+    /// <summary>
+    /// Language registry for syntax rules, grammar definitions, and code snippets.
+    /// </summary>
+    ILanguageService Languages { get; }
 
     /// <summary>
     /// Log messages to the editor's output window and log files.

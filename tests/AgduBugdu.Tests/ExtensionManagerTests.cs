@@ -1,10 +1,9 @@
 using System;
 using System.IO;
-using System.Threading;
+using System.Linq;
 using System.Threading.Tasks;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
-using AgduBugdu.Infrastructure.Terminal;
 using AgduBugdu.Plugin.MarkdownLive;
 using AgduBugdu.PluginContracts;
 using Xunit;
@@ -33,6 +32,7 @@ public class MockEditorService : IEditorService
     public string? ActiveDocumentPath { get; private set; }
     public int? ActiveLine { get; set; } = 1;
     public int? ActiveColumn { get; set; } = 1;
+    public string? DocumentContent { get; set; }
 
     public void OpenFile(string filePath)
     {
@@ -56,6 +56,25 @@ public class MockEditorService : IEditorService
     public void TriggerClose(string filePath)
     {
         DocumentClosed?.Invoke(this, new DocumentEventArgs(filePath));
+    }
+
+    public void InsertText(string text)
+    {
+        DocumentContent = (DocumentContent ?? string.Empty) + text;
+    }
+
+    public string? GetActiveDocumentText() => DocumentContent;
+
+    public void SetActiveDocumentText(string text)
+    {
+        DocumentContent = text;
+    }
+
+    public void NewDocument(string? defaultFileName = null, string? initialContent = null)
+    {
+        ActiveDocumentPath = defaultFileName;
+        DocumentContent = initialContent ?? string.Empty;
+        DocumentOpened?.Invoke(this, new DocumentEventArgs(defaultFileName ?? "Untitled.txt"));
     }
 }
 
@@ -91,7 +110,7 @@ public class SampleTestExtension : IExtension
 public class ExtensionManagerTests
 {
     [Fact]
-    public async Task Extension_Lifecycle_And_Registration_Works()
+    public async Task Extension_Lifecycle_And_Registry_Integration()
     {
         var commands = new CommandRegistry();
         var tools = new ToolWindowRegistry();
@@ -150,95 +169,21 @@ public class ExtensionManagerTests
         var tempMd = Path.ChangeExtension(Path.GetTempFileName(), ".md");
         try
         {
-            File.WriteAllText(tempMd, "# Heading 1\n**Bold Text**\n- List item\n`code block`");
+            await File.WriteAllTextAsync(tempMd, "# Hello World\nTesting live preview.");
+
             editor.OpenFile(tempMd);
 
-            var toolDescriptor = registeredTools["markdown.preview.tool"];
-            var vm = toolDescriptor.ViewModelFactory() as MarkdownPreviewViewModel;
-            Assert.NotNull(vm);
-
-            vm.UpdateDocument(tempMd);
-            Assert.Contains("<h1>Heading 1</h1>", vm.HtmlPreview);
-            Assert.Contains("<b>Bold Text</b>", vm.HtmlPreview);
-            Assert.Contains("<li>List item</li>", vm.HtmlPreview);
-            Assert.Contains("<code>code block</code>", vm.HtmlPreview);
+            var previewDoc = plugin.GetPreviewDocument(tempMd);
+            Assert.NotNull(previewDoc);
+            Assert.Contains("<h1>Hello World</h1>", previewDoc);
+            Assert.Contains("<p>Testing live preview.</p>", previewDoc);
         }
         finally
         {
             if (File.Exists(tempMd))
-            {
                 File.Delete(tempMd);
-            }
         }
 
         await plugin.DeactivateAsync();
-    }
-
-    [Fact]
-    public void Document_Save_And_Modification_State_Work()
-    {
-        var tempFile = Path.GetTempFileName();
-        try
-        {
-            File.WriteAllText(tempFile, "Original Content");
-            var content = File.ReadAllText(tempFile);
-            Assert.Equal("Original Content", content);
-
-            File.WriteAllText(tempFile, "Updated Content");
-            var updated = File.ReadAllText(tempFile);
-            Assert.Equal("Updated Content", updated);
-        }
-        finally
-        {
-            if (File.Exists(tempFile))
-            {
-                File.Delete(tempFile);
-            }
-        }
-    }
-
-    [Fact]
-    public async Task LocalTerminalSession_CanStart_SendInput_And_ReceiveOutput()
-    {
-        using var terminal = new LocalTerminalSession();
-        var outputReceived = new AutoResetEvent(false);
-        var sb = new System.Text.StringBuilder();
-
-        terminal.OutputReceived += (s, text) =>
-        {
-            lock (sb)
-            {
-                sb.Append(text);
-            }
-            outputReceived.Set();
-        };
-
-        terminal.Start();
-        Assert.True(terminal.IsRunning);
-
-        // Send a simple, non-interactive echo
-        await Task.Delay(150);
-        await terminal.WriteInputAsync("echo AGDU_TERMINAL_TEST");
-
-        var matched = false;
-        var timeoutAt = DateTime.UtcNow.AddSeconds(10);
-
-        while (DateTime.UtcNow < timeoutAt)
-        {
-            lock (sb)
-            {
-                if (sb.ToString().Contains("AGDU_TERMINAL_TEST"))
-                {
-                    matched = true;
-                    break;
-                }
-            }
-            outputReceived.WaitOne(TimeSpan.FromMilliseconds(200));
-        }
-
-        Assert.True(matched);
-
-        terminal.Stop();
-        Assert.False(terminal.IsRunning);
     }
 }

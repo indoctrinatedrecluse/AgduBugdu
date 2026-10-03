@@ -14,6 +14,14 @@ public class MarkdownLiveExtension : IExtension
     public string Name => "Markdown Live Viewer";
     public string Version => "1.0.0";
 
+    public MarkdownPreviewViewModel? ViewModel => _viewModel;
+
+    public string? GetPreviewDocument(string filePath)
+    {
+        _viewModel?.UpdateDocument(filePath);
+        return _viewModel?.HtmlPreview;
+    }
+
     public void Initialize(IExtensionContext context)
     {
         _context = context;

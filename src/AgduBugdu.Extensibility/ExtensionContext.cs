@@ -11,6 +11,7 @@ public class ExtensionContext : IExtensionContext
     public IEditorService EditorService { get; }
     public IWorkspaceService WorkspaceService { get; }
     public IDebugService DebugService { get; }
+    public ILanguageService Languages { get; }
 
     private readonly Action<string, string> _logger;
 
@@ -20,6 +21,7 @@ public class ExtensionContext : IExtensionContext
         IEditorService editorService,
         IWorkspaceService workspaceService,
         IDebugService? debugService = null,
+        ILanguageService? languageService = null,
         Action<string, string>? logger = null)
     {
         Commands = commands;
@@ -27,6 +29,7 @@ public class ExtensionContext : IExtensionContext
         EditorService = editorService;
         WorkspaceService = workspaceService;
         DebugService = debugService ?? new DefaultDebugService();
+        Languages = languageService ?? new DefaultLanguageService();
         _logger = logger ?? ((msg, lvl) => Console.WriteLine($"[{lvl}] {msg}"));
     }
 

@@ -89,6 +89,42 @@ public partial class EditorDocumentViewModel : Document
         }
     }
 
+    public void InsertText(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        int offset;
+        try
+        {
+            if (Line > 0 && Line <= TextDocument.LineCount)
+            {
+                var docLine = TextDocument.GetLineByNumber(Line);
+                int colOffset = Math.Clamp(Column - 1, 0, docLine.Length);
+                offset = docLine.Offset + colOffset;
+            }
+            else
+            {
+                offset = TextDocument.TextLength;
+            }
+        }
+        catch
+        {
+            offset = TextDocument.TextLength;
+        }
+
+        TextDocument.Insert(offset, text);
+        CheckModified();
+    }
+
+    public string GetText() => TextDocument.Text;
+
+    public void SetText(string text)
+    {
+        TextDocument.Text = text ?? string.Empty;
+        CheckModified();
+    }
+
     public static EditorDocumentViewModel FromFile(string path)
     {
         var content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;

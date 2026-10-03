@@ -1,8 +1,14 @@
 <Solution>
   <Folder Name="/plugins/">
+    <Project Path="plugins/AgduBugdu.Plugin.Cpp/AgduBugdu.Plugin.Cpp.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.CSharp/AgduBugdu.Plugin.CSharp.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.DataGridLive/AgduBugdu.Plugin.DataGridLive.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.Debugger/AgduBugdu.Plugin.Debugger.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.Go/AgduBugdu.Plugin.Go.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.Java/AgduBugdu.Plugin.Java.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.MarkdownLive/AgduBugdu.Plugin.MarkdownLive.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.Python/AgduBugdu.Plugin.Python.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.Rust/AgduBugdu.Plugin.Rust.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.TodoExplorer/AgduBugdu.Plugin.TodoExplorer.csproj" />
   </Folder>
   <Folder Name="/src/">

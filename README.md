@@ -29,9 +29,10 @@
 | **🔌 Extensions** | Collectible `PluginLoadContext` (ALC), runtime command palette contribution, tool windows | Extension marketplace, out-of-process RPC plugins |
 | **⚡ Command Palette** | Modal command search (`Ctrl+P` / `Ctrl+Shift+P`) with hotkeys and dynamic execution | Fuzzy file navigation, symbol picker |
 | **💻 Integrated Terminal** | Embedded interactive terminal session (PowerShell/Bash) synchronized with active workspace (`Ctrl+\``) | Multiplexed terminal tabs, split terminals |
-| **🐞 Run & Debugger Workbench** | Breakpoint management (`F9`), active execution highlight, step controls (`F5`, `F10`, `F11`), call stack, variable watches, debug console | DAP (Debug Adapter Protocol) integration |
+| **🪲 Run & Debugger Workbench** | Breakpoint management (`F9`), active execution highlight, step controls (`F5`, `F10`, `F11`), call stack, variable watches, debug console | DAP (Debug Adapter Protocol) integration |
 | **📋 Workspace TODO Explorer** | Automated recursive scanning for `TODO`, `FIXME`, `BUG`, `HACK`, `NOTE` with jump-to-source navigation | Custom regex tagging, export to Markdown |
 | **📊 CSV / TSV Data Table Viewer** | Auto-delimiter detection, tabular viewer with search/filtering, accessible via file context menu | Inline table cell editing, data charts |
+| **🌐 Language Support & Snippets** | First-class language definitions, TextMate scope binding, templates, and rich snippets for C/C++, Java, Go, Rust, Python, and C# | LSP (Language Server Protocol) integration |
 | **🎭 Themes** | Lonely Dark (neon violet) & Solarized Contrast (rich cyan) dynamic themes | Custom user theme JSON loader |
 | **🔄 Auto-Updater** | Built-in GitHub Releases checker with interactive update modal | In-place silent background updater |
 
@@ -78,6 +79,7 @@ graph TD
         ALCRegistry["PluginLoadContext (Collectible ALC)"]
         CommandReg["CommandRegistry"]
         ToolReg["ToolWindowRegistry"]
+        LangSvc["DefaultLanguageService"]
         DebugSvc["DefaultDebugService"]
     end
 
@@ -91,6 +93,7 @@ graph TD
         ICommandRegistry["ICommandRegistry & Menu Items"]
         IToolWindowRegistry["IToolWindowRegistry"]
         IEditorService["IEditorService & Document Hooks"]
+        ILanguageService["ILanguageService & Snippet Registry"]
         IDebugService["IDebugService & Breakpoint Events"]
         IWorkspaceService["IWorkspaceService"]
     end
@@ -105,6 +108,12 @@ graph TD
         DataGridPlugin["DataGridLive CSV/TSV Plugin (.dll)"]
         TodoPlugin["TodoExplorer Plugin (.dll)"]
         DebuggerPlugin["Debugger Plugin (.dll)"]
+        CppPlugin["C/C++ Language Support (.dll)"]
+        JavaPlugin["Java Language Support (.dll)"]
+        GoPlugin["Go Language Support (.dll)"]
+        RustPlugin["Rust Language Support (.dll)"]
+        PythonPlugin["Python Language Support (.dll)"]
+        CSharpPlugin["C# / .NET Language Support (.dll)"]
     end
 
     MainWindow --> DockManager
@@ -117,6 +126,12 @@ graph TD
     DataGridPlugin -.implements.-> IExtension
     TodoPlugin -.implements.-> IExtension
     DebuggerPlugin -.implements.-> IExtension
+    CppPlugin -.implements.-> IExtension
+    JavaPlugin -.implements.-> IExtension
+    GoPlugin -.implements.-> IExtension
+    RustPlugin -.implements.-> IExtension
+    PythonPlugin -.implements.-> IExtension
+    CSharpPlugin -.implements.-> IExtension
     Plugins -.uses.-> Contracts
     ExtensionManager --> Contracts
     UI --> Core
@@ -134,34 +149,6 @@ Extensions are loaded into isolated `AssemblyLoadContext` (ALC) instances:
 - **🔒 Dependency Isolation**: Extensions can depend on different package versions without conflicting with the host application or each other.
 - **♻️ Safe Unloading**: Using collectible `AssemblyLoadContext` instances, extensions can be reloaded or disabled at runtime without restarting the editor.
 - **🤝 Shared Contracts**: The host exports `AgduBugdu.PluginContracts.dll`, which is marked as shared so types across the boundary map to identical runtime types.
-
-```mermaid
-flowchart LR
-    HostApp["AgduBugdu Host Application"]
-    Contracts["AgduBugdu.PluginContracts (Shared Assembly)"]
-    
-    subgraph ALC1 ["Isolated ALC (Markdown Plugin)"]
-        MarkdownExt["AgduBugdu.Plugin.MarkdownLive.dll"]
-    end
-    
-    subgraph ALC2 ["Isolated ALC (DataGrid Plugin)"]
-        DataGridExt["AgduBugdu.Plugin.DataGridLive.dll"]
-    end
-
-    subgraph ALC3 ["Isolated ALC (TodoExplorer Plugin)"]
-        TodoExt["AgduBugdu.Plugin.TodoExplorer.dll"]
-    end
-
-    subgraph ALC4 ["Isolated ALC (Debugger Plugin)"]
-        DebuggerExt["AgduBugdu.Plugin.Debugger.dll"]
-    end
-
-    HostApp -->|Loads| ALC1 & ALC2 & ALC3 & ALC4
-    MarkdownExt -->|References| Contracts
-    DataGridExt -->|References| Contracts
-    TodoExt -->|References| Contracts
-    DebuggerExt -->|References| Contracts
-```
 
 ### 5.2 📋 Exposed Extension Endpoints & Interfaces
 
@@ -187,6 +174,7 @@ public interface IExtensionContext
     IEditorService EditorService { get; }
     IWorkspaceService WorkspaceService { get; }
     IDebugService DebugService { get; }
+    ILanguageService Languages { get; }
     void Log(string message, string level = "Info");
 }
 
@@ -205,19 +193,37 @@ public interface IToolWindowRegistry
     IReadOnlyDictionary<string, ToolWindowDescriptor> GetRegisteredTools();
 }
 
-// 5. Editor hooks and document navigation
+// 5. Editor hooks, document navigation & text manipulation
 public interface IEditorService
 {
     event EventHandler<DocumentEventArgs>? DocumentOpened;
     event EventHandler<DocumentEventArgs>? DocumentSaved;
     event EventHandler<DocumentEventArgs>? DocumentClosed;
-    event EventHandler<NavigationEventArgs>? LineNavigationRequested;
+    event EventHandler<LineNavigationEventArgs>? LineNavigationRequested;
     string? ActiveDocumentPath { get; }
     void OpenFile(string filePath);
     void OpenFile(string filePath, int line, int column = 1);
+    void InsertText(string text);
+    string? GetActiveDocumentText();
+    void SetActiveDocumentText(string text);
+    void NewDocument(string? defaultFileName = null, string? initialContent = null);
 }
 
-// 6. Debugging, breakpoints & execution engine
+// 6. Language metadata, grammar scopes & snippet registry
+public interface ILanguageService
+{
+    event EventHandler<LanguageDefinition>? LanguageRegistered;
+    event EventHandler<Snippet>? SnippetRegistered;
+    void RegisterLanguage(LanguageDefinition language);
+    IReadOnlyList<LanguageDefinition> GetLanguages();
+    LanguageDefinition? GetLanguageById(string languageId);
+    LanguageDefinition? GetLanguageForFile(string filePath);
+    void RegisterSnippet(Snippet snippet);
+    IReadOnlyList<Snippet> GetSnippets(string? languageId = null);
+    Snippet? GetSnippetById(string snippetId);
+}
+
+// 7. Debugging, breakpoints & execution engine
 public interface IDebugService
 {
     DebugState State { get; }
@@ -237,12 +243,18 @@ public interface IDebugService
 
 ### 5.3 📦 Built-In Extensions
 
-AgduBugdu comes bundled with standard productivity plugins:
+AgduBugdu comes bundled with standard productivity and language plugins:
 
 1. **AgduBugdu.Plugin.MarkdownLive**: Live HTML preview for Markdown files, updating as you type. Context menu "View Markdown Live" appears exclusively for `.md` documents.
 2. **AgduBugdu.Plugin.DataGridLive**: RFC 4180 compliant CSV/TSV table viewer with automatic delimiter detection (comma, tab, semicolon, pipe) and real-time text filtering. Context menu "Open as Data Table" appears for `.csv` and `.tsv` files.
 3. **AgduBugdu.Plugin.TodoExplorer**: Workspace task explorer that recursively scans for `TODO`, `FIXME`, `BUG`, `HACK`, and `NOTE` tags across your project, complete with color badges and double-click navigation straight to the code line.
 4. **AgduBugdu.Plugin.Debugger**: Interactive Run & Debugger tool pane with full breakpoint toggle support (`F9`), active execution line tracking (yellow highlight), step controls (`F5`, `F10`, `F11`), call stack viewer, variable watches, and debug console output.
+5. **AgduBugdu.Plugin.Cpp**: Full syntax highlighting (C/C++ grammar scopes), comment syntax rules (`//`, `/* */`), starter templates (`main.cpp`, `main.c`), and rich C++ snippets (`main`, `cmain`, `class`, `struct`, `fori`, `forr`, `cout`, `cin`, `guard`, `pragma`, `vec`, `try`, `lambda`).
+6. **AgduBugdu.Plugin.Java**: Full syntax highlighting, Java language metadata, starter templates (`Main.java`), and rich Java snippets (`main`, `class`, `sout`, `serr`, `fori`, `foreach`, `interface`, `record`, `singleton`, `junit`).
+7. **AgduBugdu.Plugin.Go**: Full syntax highlighting, Go language metadata, starter templates (`main.go`), and idiomatic Go snippets (`main`, `func`, `meth`, `struct`, `interface`, `iferr`, `go`, `forr`, `test`, `http`).
+8. **AgduBugdu.Plugin.Rust**: Full syntax highlighting, Rust language metadata, starter templates (`main.rs`), and idiomatic Rust snippets (`main`, `fn`, `struct`, `enum`, `impl`, `test`, `match`, `pln`, `forin`, `tokiomain`).
+9. **AgduBugdu.Plugin.Python**: Full syntax highlighting, Python language metadata, starter templates (`main.py`), and modern Python snippets (`main`, `def`, `class`, `dataclass`, `try`, `withopen`, `lcomp`, `pf`, `test`, `fastapi`).
+10. **AgduBugdu.Plugin.CSharp**: Full syntax highlighting, C# / .NET language metadata, starter templates (`Program.cs`), and modern C# snippets (`class`, `prop`, `propg`, `ctor`, `record`, `interface`, `asyncm`, `cw`, `try`, `topmain`, `fact`, `di`).
 
 ---
 
@@ -260,8 +272,11 @@ AgduBugdu/
 │   │   ├── ICommandRegistry.cs
 │   │   ├── IToolWindowRegistry.cs
 │   │   ├── IEditorService.cs
+│   │   ├── ILanguageService.cs
 │   │   ├── IDebugService.cs
-│   │   └── IWorkspaceService.cs
+│   │   ├── IWorkspaceService.cs
+│   │   ├── LanguageDefinition.cs
+│   │   └── Snippet.cs
 │   │
 │   ├── AgduBugdu.Core/                  # 🧠 Core domain logic & global versioning
 │   │   ├── AppVersionInfo.cs
@@ -275,7 +290,7 @@ AgduBugdu/
 │   │   ├── PluginLoadContext.cs         # Collectible AssemblyLoadContext
 │   │   ├── ExtensionManager.cs          # Assembly scanner, loader, and unloader
 │   │   ├── ExtensionContext.cs          # Concrete implementation of IExtensionContext
-│   │   ├── Services/                    # DefaultDebugService & default implementations
+│   │   ├── Services/                    # DefaultDebugService & DefaultLanguageService
 │   │   └── Registries/                  # Thread-safe Command & Tool registries
 │   │
 │   └── AgduBugdu.App/                   # 🖥️ Avalonia desktop application
@@ -292,12 +307,20 @@ AgduBugdu/
 │   ├── AgduBugdu.Plugin.MarkdownLive/   # 📝 Live Markdown Preview plugin
 │   ├── AgduBugdu.Plugin.DataGridLive/   # 📊 CSV / TSV Data Table Viewer plugin
 │   ├── AgduBugdu.Plugin.TodoExplorer/   # 📋 Workspace TODO & Task Explorer plugin
-│   └── AgduBugdu.Plugin.Debugger/       # 🐞 Run & Debugger Workbench plugin
+│   ├── AgduBugdu.Plugin.Debugger/       # 🪲 Run & Debugger Workbench plugin
+│   ├── AgduBugdu.Plugin.Cpp/            # ⚡ C/C++ Language Support plugin
+│   ├── AgduBugdu.Plugin.Java/           # ☕ Java Language Support plugin
+│   ├── AgduBugdu.Plugin.Go/             # 🐹 Go Language Support plugin
+│   ├── AgduBugdu.Plugin.Rust/           # 🦀 Rust Language Support plugin
+│   ├── AgduBugdu.Plugin.Python/         # 🐍 Python Language Support plugin
+│   └── AgduBugdu.Plugin.CSharp/         # 🔷 C# / .NET Language Support plugin
 │
 ├── tests/
-│   └── AgduBugdu.Tests/                 # 🧪 Fast xUnit test suite (lifecycle, registries, terminal, documents, plugins)
+│   └── AgduBugdu.Tests/                 # 🧪 Fast xUnit test suite (lifecycle, registries, terminal, documents, plugins, languages)
 │       ├── ExtensionManagerTests.cs
-│       └── PluginTests.cs
+│       ├── PluginTests.cs
+│       ├── LanguageExtensionTests.cs
+│       └── TextMateGrammarTests.cs
 │
 ├── tools/
 │   ├── run.ps1                          # 🪟 Windows PowerShell local build, test, and GUI runner
@@ -372,7 +395,7 @@ Use the provided runner scripts in `tools/` to check prerequisites, restore miss
   - Dynamic command registration and synchronization into host Command Palette.
   - End-to-end sample plugin: `AgduBugdu.Plugin.MarkdownLive` live-updating HTML output from markdown documents.
 - [x] **💻 Milestone 6: Integrated Terminal & Workspace Synchronization**
-  - Cross-platform process shell hosting (`LocalTerminalSession`) in `AgduBugdu.Infrastructure``.
+  - Cross-platform process shell hosting (`LocalTerminalSession`) in `AgduBugdu.Infrastructure`.
   - Interactive terminal dock tool panel (`TerminalToolView` + `TerminalToolViewModel`) with input line and clear screen.
   - Dynamic workspace synchronization: automatically re-targets working directory to newly opened workspace folders (`Ctrl+OemTilde`).
   - Terminal commands exposed in menu bar, hotkeys, and Command Palette.
@@ -382,7 +405,16 @@ Use the provided runner scripts in `tools/` to check prerequisites, restore miss
   - Global solution versioning via `Directory.Build.props` and `AppVersionInfo`.
   - GitHub Releases auto-updater modal with release highlights.
   - GitHub Actions multi-platform workflow (`win-x64` setup exe & portable zip, `linux-x64`, `osx-x64`, `osx-arm64`).
-- [x] **🐞 Milestone 8: Built-in Extensions & Debugger Ecosystem**
+- [x] **🪲 Milestone 8: Built-in Extensions & Debugger Ecosystem**
   - **DataGridLive**: RFC 4180 CSV / TSV data table viewer with search and delimiter auto-detection.
   - **TodoExplorer**: Recursive workspace TODO scanner with file/line navigation.
   - **Debugger Workbench**: Breakpoint toggling (`F9`), active execution line highlighting, debug actions (`F5`, `F10`, `F11`, `Shift+F5`), Call Stack, Variables Watch, and Debug Console dock window.
+- [x] **🌐 Milestone 9: Language Support Extensions & Rich Snippet Ecosystem**
+  - **ILanguageService & Contracts**: Language definitions, grammar scopes, comment rules, and snippet triggers in `AgduBugdu.PluginContracts`.
+  - **C/C++ Support** (`AgduBugdu.Plugin.Cpp`): Syntax highlighting (`source.cpp`/`source.c`), starter templates (`main.cpp`, `main.c`), and standard C++ snippets (`main`, `cmain`, `class`, `struct`, `cout`, `cin`, `guard`, `pragma`, `vec`, `try`, `lambda`).
+  - **Java Support** (`AgduBugdu.Plugin.Java`): Syntax highlighting (`source.java`), starter templates (`Main.java`), and idiomatic snippets (`main`, `class`, `sout`, `serr`, `fori`, `foreach`, `interface`, `record`, `singleton`, `test`).
+  - **Golang Support** (`AgduBugdu.Plugin.Go`): Syntax highlighting (`source.go`), starter templates (`main.go`), and Go snippets (`main`, `func`, `meth`, `struct`, `interface`, `iferr`, `go`, `forr`, `test`, `http`).
+  - **Rust Support** (`AgduBugdu.Plugin.Rust`): Syntax highlighting (`source.rust`), starter templates (`main.rs`), and idiomatic Rust snippets (`main`, `fn`, `struct`, `enum`, `impl`, `test`, `match`, `pln`, `forin`, `tokiomain`).
+  - **Python Support** (`AgduBugdu.Plugin.Python`): Syntax highlighting (`source.python`), starter templates (`main.py`), and modern Python snippets (`main`, `def`, `class`, `dataclass`, `try`, `withopen`, `lcomp`, `pf`, `test`, `fastapi`).
+  - **C# / .NET Support** (`AgduBugdu.Plugin.CSharp`): Syntax highlighting (`source.cs`), starter templates (`Program.cs`), and modern C# snippets (`class`, `prop`, `propg`, `ctor`, `record`, `interface`, `asyncm`, `cw`, `try`, `topmain`, `fact`, `di`).
+  - **Command Palette & Extensions Modal Integration**: All snippet insertions and new file generators accessible via `Ctrl+P` and listed under `View -> Extensions...`.

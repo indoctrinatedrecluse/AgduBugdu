@@ -99,6 +99,15 @@ public partial class EditorDocumentView : UserControl
         return null;
     }
 
+    private ILanguageService? GetLanguageService()
+    {
+        if (VisualRoot is MainWindow mw && mw.DataContext is MainViewModel mvm)
+        {
+            return mvm.LanguageService;
+        }
+        return null;
+    }
+
     public void ToggleBreakpoint()
     {
         if (DataContext is EditorDocumentViewModel doc && !string.IsNullOrEmpty(doc.FilePath))
@@ -234,10 +243,25 @@ public partial class EditorDocumentView : UserControl
             var ext = Path.GetExtension(doc.FilePath);
             if (!string.IsNullOrEmpty(ext))
             {
-                var language = _registryOptions?.GetLanguageByExtension(ext);
-                if (language != null)
+                string? scope = null;
+                var langService = GetLanguageService();
+                var customLang = langService?.GetLanguageForFile(doc.FilePath);
+                if (customLang != null && !string.IsNullOrEmpty(customLang.GrammarScope))
                 {
-                    _textMateInstallation.SetGrammar(_registryOptions?.GetScopeByLanguageId(language.Id));
+                    scope = customLang.GrammarScope;
+                }
+                else
+                {
+                    var language = _registryOptions?.GetLanguageByExtension(ext);
+                    if (language != null)
+                    {
+                        scope = _registryOptions?.GetScopeByLanguageId(language.Id);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(scope))
+                {
+                    _textMateInstallation.SetGrammar(scope);
                 }
             }
         }

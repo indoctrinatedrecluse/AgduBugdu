@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🌐 [1.0.3] - 2026-10-04
+
+### ✨ Added
+- **🌐 Dedicated Language Support Extensions for 6 Core Languages**:
+  - **⚡ C/C++ Language Support** (`AgduBugdu.Plugin.Cpp`): TextMate syntax highlighting for `source.cpp` and `source.c` across `.cpp`, `.c`, `.h`, `.hpp`, `.cc`, `.cxx`, `.hh`; file creation templates (`main.cpp`, `main.c`); comment rules (`//`, `/* */`); and rich C++ snippets (`main`, `cmain`, `class`, `struct`, `fori`, `forr`, `cout`, `cin`, `guard`, `pragma`, `vec`, `try`, `lambda`).
+  - **☕ Java Language Support** (`AgduBugdu.Plugin.Java`): TextMate syntax highlighting for `source.java` across `.java`; class creation templates (`Main.java`); comment rules; and rich Java snippets (`main`, `class`, `sout`, `serr`, `fori`, `foreach`, `interface`, `record`, `try`, `singleton`, `test`).
+  - **🐹 Go Language Support** (`AgduBugdu.Plugin.Go`): TextMate syntax highlighting for `source.go` across `.go`; package creation templates (`main.go`); comment rules; and idiomatic Go snippets (`main`, `func`, `meth`, `struct`, `interface`, `iferr`, `go`, `forr`, `test`, `http`).
+  - **🦀 Rust Language Support** (`AgduBugdu.Plugin.Rust`): TextMate syntax highlighting for `source.rust` across `.rs`; module creation templates (`main.rs`); comment rules; and idiomatic Rust snippets (`main`, `fn`, `struct`, `enum`, `impl`, `test`, `match`, `pln`, `forin`, `tokiomain`).
+  - **🐍 Python Language Support** (`AgduBugdu.Plugin.Python`): TextMate syntax highlighting for `source.python` across `.py` and `.pyw`; script creation templates (`main.py`); comment rules (`#`, `"""`); and modern Python snippets (`main`, `def`, `class`, `dataclass`, `try`, `withopen`, `lcomp`, `pf`, `test`, `fastapi`).
+  - **🔷 C# / .NET Language Support** (`AgduBugdu.Plugin.CSharp`): TextMate syntax highlighting for `source.cs` across `.cs` and `.csx`; program creation templates (`Program.cs`); comment rules; and modern C# snippets (`class`, `prop`, `propg`, `ctor`, `record`, `interface`, `asyncm`, `cw`, `try`, `topmain`, `fact`, `di`).
+- **🧩 Language Subsystem in Contracts & Host** (`ILanguageService`):
+  - Added `LanguageDefinition` record capturing Language ID, Name, GrammarScope, FileExtensions, and comment symbols.
+  - Added `Snippet` record capturing ID, Name, Prefix, Description, Body, LanguageId, and searchable Tags.
+  - Added `ILanguageService` contract to `AgduBugdu.PluginContracts` and implemented `DefaultLanguageService` in `AgduBugdu.Extensibility`.
+  - Added `InsertText`, `GetActiveDocumentText`, `SetActiveDocumentText`, and `NewDocument` to `IEditorService`.
+  - Exposed `ILanguageService Languages { get; }` through `IExtensionContext`.
+- **⚡ Command Palette & Editor Integration**:
+  - Over 70 code snippets registered directly into the Command Palette (`Ctrl+P`), enabling instant lookup and insertion into active buffers.
+  - New file commands for every language (`File: New C++ Source File`, `File: New Java Source File`, `File: New Go Source File`, `File: New Rust Source File`, `File: New Python Script`, `File: New C# Program File`).
+  - All 6 language extensions listed and tracked in `View -> Extensions...` modal.
+
+---
+
 ## 🛠️ [1.0.2] - 2026-10-03
 
 ### 🐛 Fixed
@@ -30,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🐛 Fixed
 - **🏷️ Asterisk Modification Indicator**: Fixed tab titles appending `*` prematurely upon opening clean files; now accurately tracks buffer modifications against initial file content and clears upon save or undo.
 - **🗕 Pane Minimize Button & Dynamic Layout Re-render**: Fixed the `🗕 Minimize` button on Terminal and Output panes to actively cycle and re-render the dock layout via UI thread dispatcher, restoring panes back to their original 28% height dimensions.
-- **📑 Document & Tool Tab Title Visibility**: Added global dock styling for `DocumentTabStripItem` and `ToolTabStripItem` foregrounds ensuring tab titles are always clearly visible in all states (normal, hovered, and selected) rather than only on hover.
+- **📰 Document & Tool Tab Title Visibility**: Added global dock styling for `DocumentTabStripItem` and `ToolTabStripItem` foregrounds ensuring tab titles are always clearly visible in all states (normal, hovered, and selected) rather than only on hover.
 - **📝 Editor Text Visibility & Editing**: Included missing `AvaloniaEdit` Fluent theme styles (`avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml`) in `App.axaml` and linked property synchronization, restoring complete text rendering and editing capabilities in editor tabs.
 - **🚪 Clean Terminal Exit**: Added graceful session handling when typing `exit` in the terminal pane, cleanly terminating the underlying process and notifying the user.
 
@@ -83,10 +106,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **📦 Branding, Packaging & Multi-Platform CI/CD**:
   - Custom AI-generated high-resolution app icon and logo assets (`agdubugdu-logo.ico`, `agdubugdu-logo.png`).
-  - Centralized global versioning via `Directory.Build.props` (`1.0.2`).
+  - Centralized global versioning via `Directory.Build.props` (`1.0.3`).
   - Dedicated runner scripts: `tools/run.ps1` (PowerShell) and `tools/run.sh` (POSIX / Cygwin / MSYS2).
   - Multi-platform GitHub Actions Release workflow (`.github/workflows/release.yml`) producing:
-    - 🪟 Windows: `AgduBugdu-v1.0.2-win-x64-setup.exe` (Inno Setup) & `AgduBugdu-v1.0.2-win-x64-portable.zip`
-    - 🐧 Linux: `AgduBugdu-v1.0.2-linux-x64.tar.gz`
-    - 🍏 macOS: `AgduBugdu-v1.0.2-osx-x64.tar.gz` & `AgduBugdu-v1.0.2-osx-arm64.tar.gz`
+    - 🪟 Windows: `AgduBugdu-v1.0.3-win-x64-setup.exe` (Inno Setup) & `AgduBugdu-v1.0.3-win-x64-portable.zip`
+    - 🐧 Linux: `AgduBugdu-v1.0.3-linux-x64.tar.gz`
+    - 🍎 macOS: `AgduBugdu-v1.0.3-osx-x64.tar.gz` & `AgduBugdu-v1.0.3-osx-arm64.tar.gz`
     - Automatic SHA-256 checksums (`SHA256SUMS.txt`).
