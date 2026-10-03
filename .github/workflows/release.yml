@@ -67,7 +67,8 @@ jobs:
 
           if ($iscc -and (Test-Path $iscc)) {
             Write-Host "Compiling installer with: $iscc"
-            & $iscc tools/installer.iss
+            $rawVer = "${{ github.ref_name }}".TrimStart('v')
+            & $iscc "/DMyAppVersion=$rawVer" tools/installer.iss
             # Move compiled setup exe from publish/installer/ into flat dist/ folder
             Get-ChildItem -Path "publish/installer" -Filter "*.exe" | ForEach-Object {
               Move-Item -Path $_.FullName -Destination "dist/" -Force
