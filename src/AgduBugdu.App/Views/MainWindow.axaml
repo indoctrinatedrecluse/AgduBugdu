@@ -97,7 +97,7 @@
                     <Separator />
                     <MenuItem Header="Toggle _Bottom Panel" InputGesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
                     <MenuItem Header="_Explorer" InputGesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
-                    <MenuItem Header="_Terminal" InputGesture="Ctrl+`" Command="{Binding FocusTerminalCommand}" />
+                    <MenuItem Header="_Terminal" InputGesture="Ctrl+OemTilde" Command="{Binding FocusTerminalCommand}" />
                     <MenuItem Header="_Output" Command="{Binding FocusOutputCommand}" />
                     <MenuItem Header="_TODO Tasks" Command="{Binding FocusTodoCommand}" />
                     <MenuItem Header="_Run &amp; Debug" InputGesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />

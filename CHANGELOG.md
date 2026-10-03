@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 🛠️ [1.0.2] - 2026-10-03
 
 ### 🐛 Fixed
+- **🚀 Startup / Launch Crash Fix**: Fixed immediate launch crash caused by unsupported raw backtick key in Avalonia UI menu `InputGesture="Ctrl+`"`; updated gesture binding to `Ctrl+OemTilde` with regression test suite coverage.
 - **🗕 Pane Minimize Button**: Fixed the minimize button on Terminal, Output, TODO Tasks, and Run & Debug pane headers to strictly display only the glyph (`🗕`) without text, and actively collapse the bottom panel to yield 100% vertical viewport space to active document tabs.
 - **📐 Reset Panel to Default Sizes**: Completely overhauled layout reset (`View -> Reset Panel to Default Sizes` and Command Palette `View: Reset Panel to Default sizes`) to cleanly recompute the proportional docking hierarchy back to exact default proportions (22% Explorer, 72% Editor, 28% Bottom Panel) while seamlessly preserving all open document tabs and active tool instances.
 - **🧲 Dock Snapping & Alignment**: Resolved dock snapping issues by binding `DockControl.Factory` in `MainWindow.axaml`, assigning explicit `Alignment.Left` on Explorer and `Alignment.Bottom` on the panel container, setting `GripMode.Visible`, and registering all container and tool IDs in `DockableLocator` for reliable drag, drop, and docking operations across all zones.
