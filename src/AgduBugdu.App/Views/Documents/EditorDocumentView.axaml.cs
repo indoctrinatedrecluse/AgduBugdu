@@ -78,6 +78,7 @@ public partial class EditorDocumentView : UserControl
 
         DataContextChanged += OnDataContextChanged;
         Editor.TextArea.Caret.PositionChanged += OnCaretPositionChanged;
+        Editor.TextArea.SelectionChanged += OnSelectionChanged;
         Editor.TextChanged += OnTextChanged;
         Editor.KeyDown += OnEditorKeyDown;
 
@@ -87,6 +88,66 @@ public partial class EditorDocumentView : UserControl
         if (ToggleBreakpointMenuItem != null)
         {
             ToggleBreakpointMenuItem.Click += (s, e) => ToggleBreakpoint();
+        }
+
+        // Overlay keyboard shortcuts
+        SearchBox.KeyDown += OnSearchBoxKeyDown;
+        ReplaceBox.KeyDown += OnReplaceBoxKeyDown;
+        GoToLineBox.KeyDown += OnGoToLineBoxKeyDown;
+    }
+
+    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not EditorDocumentViewModel doc) return;
+
+        if (e.Key == Key.Enter)
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                doc.FindPrevious();
+            }
+            else
+            {
+                doc.FindNext();
+            }
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            doc.CloseFind();
+            e.Handled = true;
+        }
+    }
+
+    private void OnReplaceBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not EditorDocumentViewModel doc) return;
+
+        if (e.Key == Key.Enter)
+        {
+            doc.ReplaceCurrent();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            doc.CloseFind();
+            e.Handled = true;
+        }
+    }
+
+    private void OnGoToLineBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not EditorDocumentViewModel doc) return;
+
+        if (e.Key == Key.Enter)
+        {
+            doc.ConfirmGoToLine();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            doc.CancelGoToLine();
+            e.Handled = true;
         }
     }
 
@@ -123,10 +184,68 @@ public partial class EditorDocumentView : UserControl
 
     private void OnEditorKeyDown(object? sender, KeyEventArgs e)
     {
+        if (DataContext is not EditorDocumentViewModel doc) return;
+
         if (e.Key == Key.F9)
         {
             ToggleBreakpoint();
             e.Handled = true;
+            return;
+        }
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            if (e.Key == Key.F)
+            {
+                var sel = Editor.SelectedText;
+                doc.OpenFind(!string.IsNullOrEmpty(sel) ? sel : null);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.H)
+            {
+                var sel = Editor.SelectedText;
+                doc.OpenReplace(!string.IsNullOrEmpty(sel) ? sel : null);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.G)
+            {
+                doc.OpenGoToLine();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.M)
+            {
+                doc.GoToMatchingBracket();
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if (e.Key == Key.F3)
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                doc.FindPrevious();
+            }
+            else
+            {
+                doc.FindNext();
+            }
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            if (doc.IsFindVisible || doc.IsGoToLineVisible)
+            {
+                doc.CloseFind();
+                doc.CancelGoToLine();
+                e.Handled = true;
+                return;
+            }
         }
     }
 
@@ -158,6 +277,8 @@ public partial class EditorDocumentView : UserControl
                 Editor.Document = doc.TextDocument;
             }
 
+            doc.GetSelectedTextFunc = () => Editor.SelectedText;
+
             doc.PropertyChanged += (s, args) =>
             {
                 if (args.PropertyName == nameof(EditorDocumentViewModel.TextDocument))
@@ -181,6 +302,46 @@ public partial class EditorDocumentView : UserControl
                     }
                 }
                 catch { }
+            };
+
+            doc.SelectTextRequested += (s, req) =>
+            {
+                try
+                {
+                    if (req.Offset >= 0 && req.Offset + req.Length <= Editor.Document.TextLength)
+                    {
+                        Editor.Select(req.Offset, req.Length);
+                        Editor.CaretOffset = req.Offset + req.Length;
+                        Editor.TextArea.Caret.BringCaretToView();
+                    }
+                }
+                catch { }
+            };
+
+            doc.FocusSearchBoxRequested += (s, args) =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    SearchBox.Focus();
+                    SearchBox.SelectAll();
+                });
+            };
+
+            doc.FocusGoToLineRequested += (s, args) =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    GoToLineBox.Focus();
+                    GoToLineBox.SelectAll();
+                });
+            };
+
+            doc.FocusEditorRequested += (s, args) =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    Editor.Focus();
+                });
             };
 
             if (doc.Line > 1)
@@ -277,6 +438,16 @@ public partial class EditorDocumentView : UserControl
         {
             doc.Line = Editor.TextArea.Caret.Line;
             doc.Column = Editor.TextArea.Caret.Column;
+            doc.CaretOffset = Editor.CaretOffset;
+        }
+    }
+
+    private void OnSelectionChanged(object? sender, EventArgs e)
+    {
+        if (DataContext is EditorDocumentViewModel doc)
+        {
+            doc.CaretOffset = Editor.CaretOffset;
+            doc.SelectedLength = Editor.SelectionLength;
         }
     }
 
@@ -285,6 +456,10 @@ public partial class EditorDocumentView : UserControl
         if (DataContext is EditorDocumentViewModel doc)
         {
             doc.CheckModified();
+            if (doc.IsFindVisible)
+            {
+                doc.UpdateSearchMatches();
+            }
         }
     }
 }

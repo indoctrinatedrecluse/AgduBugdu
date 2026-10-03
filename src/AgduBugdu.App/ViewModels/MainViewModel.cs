@@ -514,6 +514,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("file.saveAs", "File: Save As...", () => { _ = SaveFileAsAsync(); }, "Ctrl+Shift+S");
         CommandPalette.RegisterCommand("terminal.restart", "Terminal: Restart Shell in Workspace", () => RestartTerminal(), "Ctrl+`");
         CommandPalette.RegisterCommand("terminal.clear", "Terminal: Clear Screen", () => _dockFactory.TerminalTool?.ClearTerminal());
+        CommandPalette.RegisterCommand("edit.find", "Edit: Find in File", () => OpenFind(), "Ctrl+F");
+        CommandPalette.RegisterCommand("edit.replace", "Edit: Replace in File", () => OpenReplace(), "Ctrl+H");
+        CommandPalette.RegisterCommand("edit.goToLine", "Edit: Go to Line / Column", () => OpenGoToLine(), "Ctrl+G");
+        CommandPalette.RegisterCommand("edit.goToMatchingBracket", "Edit: Go to Matching Bracket", () => GoToMatchingBracket(), "Ctrl+M");
         CommandPalette.RegisterCommand("view.toggleBottomPanel", "View: Toggle Bottom Panel", () => ToggleBottomPane(), "Ctrl+J");
         CommandPalette.RegisterCommand("view.resetPanes", "View: Reset Panel to Default sizes", () => ResetPaneLayout());
         CommandPalette.RegisterCommand("view.extensions", "View: Manage Extensions...", () => ShowExtensionsModal());
@@ -527,6 +531,40 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.toggleTodo", "View: Focus TODO Tasks", () => FocusDockable(_dockFactory.TodoTool));
         CommandPalette.RegisterCommand("view.toggleDebugger", "View: Focus Run & Debug", () => FocusDockable(_dockFactory.DebuggerTool));
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
+    }
+
+    [RelayCommand]
+    public void OpenFind()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            var sel = doc.GetSelectedTextFunc?.Invoke();
+            doc.OpenFind(!string.IsNullOrEmpty(sel) ? sel : null);
+        }
+    }
+
+    [RelayCommand]
+    public void OpenReplace()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            var sel = doc.GetSelectedTextFunc?.Invoke();
+            doc.OpenReplace(!string.IsNullOrEmpty(sel) ? sel : null);
+        }
+    }
+
+    [RelayCommand]
+    public void OpenGoToLine()
+    {
+        GetActiveEditorDocument()?.OpenGoToLine();
+    }
+
+    [RelayCommand]
+    public void GoToMatchingBracket()
+    {
+        GetActiveEditorDocument()?.GoToMatchingBracket();
     }
 
     [RelayCommand]

@@ -22,11 +22,223 @@
                     <MenuItem Header="Copy" Command="{Binding $parent[ae:TextEditor].Copy}" InputGesture="Ctrl+C" />
                     <MenuItem Header="Paste" Command="{Binding $parent[ae:TextEditor].Paste}" InputGesture="Ctrl+V" />
                     <Separator />
+                    <MenuItem Header="Find..." Command="{Binding OpenFindCommand}" InputGesture="Ctrl+F" />
+                    <MenuItem Header="Replace..." Command="{Binding OpenReplaceCommand}" InputGesture="Ctrl+H" />
+                    <MenuItem Header="Go to Line..." Command="{Binding OpenGoToLineCommand}" InputGesture="Ctrl+G" />
+                    <MenuItem Header="Go to Matching Bracket" Command="{Binding GoToMatchingBracketCommand}" InputGesture="Ctrl+M" />
+                    <Separator />
                     <MenuItem Header="Select All" Command="{Binding $parent[ae:TextEditor].SelectAll}" InputGesture="Ctrl+A" />
                     <Separator />
                     <MenuItem Header="Toggle Breakpoint" x:Name="ToggleBreakpointMenuItem" InputGesture="F9" />
                 </ContextMenu>
             </ae:TextEditor.ContextMenu>
         </ae:TextEditor>
+
+        <!-- Find & Replace Floating Panel -->
+        <Border IsVisible="{Binding IsFindVisible}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,8,22,0"
+                Background="#252526"
+                BorderBrush="#3E3E42"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="6"
+                BoxShadow="0 4 14 0 #60000000"
+                Width="390">
+            <StackPanel Spacing="6">
+                <!-- Find Row -->
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+                    <!-- Toggle Replace View -->
+                    <Button Grid.Column="0"
+                            Command="{Binding ToggleReplaceCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="4,2"
+                            Margin="0,0,4,0"
+                            ToolTip.Tip="Toggle Replace Mode (Ctrl+H)">
+                        <TextBlock Text="⇄"
+                                   Foreground="#AAAAAA"
+                                   FontSize="12" />
+                    </Button>
+
+                    <!-- Search Input Box -->
+                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                        <TextBox x:Name="SearchBox"
+                                 Text="{Binding SearchQuery, Mode=TwoWay}"
+                                 Watermark="Find in file (Enter for next, Shift+Enter for prev)"
+                                 FontSize="12"
+                                 Padding="6,3"
+                                 Height="26"
+                                 CornerRadius="4"
+                                 Background="#1E1E1E"
+                                 Foreground="#FFFFFF"
+                                 BorderBrush="#3E3E42" />
+
+                        <!-- Options inside search field -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="-85,0,0,0" VerticalAlignment="Center">
+                            <ToggleButton IsChecked="{Binding MatchCase, Mode=TwoWay}"
+                                          Padding="3,1"
+                                          FontSize="10"
+                                          FontWeight="Bold"
+                                          Content="Aa"
+                                          ToolTip.Tip="Match Case (Alt+C)"
+                                          Background="Transparent"
+                                          BorderThickness="0" />
+                            <ToggleButton IsChecked="{Binding MatchWholeWord, Mode=TwoWay}"
+                                          Padding="3,1"
+                                          FontSize="10"
+                                          FontWeight="Bold"
+                                          Content="|b|"
+                                          ToolTip.Tip="Match Whole Word (Alt+W)"
+                                          Background="Transparent"
+                                          BorderThickness="0" />
+                            <ToggleButton IsChecked="{Binding UseRegex, Mode=TwoWay}"
+                                          Padding="3,1"
+                                          FontSize="10"
+                                          FontWeight="Bold"
+                                          Content=".*"
+                                          ToolTip.Tip="Use Regular Expression (Alt+R)"
+                                          Background="Transparent"
+                                          BorderThickness="0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Match Results Counter -->
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding SearchMatchStatus}"
+                               Foreground="#AAAAAA"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Margin="8,0,4,0" />
+
+                    <!-- Prev Match -->
+                    <Button Grid.Column="3"
+                            Command="{Binding FindPreviousCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="5,2"
+                            ToolTip.Tip="Previous Match (Shift+Enter / Shift+F3)">
+                        <TextBlock Text="▲" FontSize="10" Foreground="#CCCCCC" />
+                    </Button>
+
+                    <!-- Next Match -->
+                    <Button Grid.Column="4"
+                            Command="{Binding FindNextCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="5,2"
+                            ToolTip.Tip="Next Match (Enter / F3)">
+                        <TextBlock Text="▼" FontSize="10" Foreground="#CCCCCC" />
+                    </Button>
+
+                    <!-- Close Button -->
+                    <Button Grid.Column="5"
+                            Command="{Binding CloseFindCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="5,2"
+                            ToolTip.Tip="Close (Esc)">
+                        <TextBlock Text="✕" FontSize="11" Foreground="#AAAAAA" />
+                    </Button>
+                </Grid>
+
+                <!-- Replace Row -->
+                <Grid Grid.Row="1"
+                      IsVisible="{Binding IsReplaceVisible}"
+                      ColumnDefinitions="20,*,Auto,Auto"
+                      Margin="0,2,0,0">
+                    <TextBox Grid.Column="1"
+                             x:Name="ReplaceBox"
+                             Text="{Binding ReplaceQuery, Mode=TwoWay}"
+                             Watermark="Replace with..."
+                             FontSize="12"
+                             Padding="6,3"
+                             Height="26"
+                             CornerRadius="4"
+                             Background="#1E1E1E"
+                             Foreground="#FFFFFF"
+                             BorderBrush="#3E3E42" />
+
+                    <Button Grid.Column="2"
+                            Command="{Binding ReplaceCurrentCommand}"
+                            Content="Replace"
+                            FontSize="11"
+                            Padding="8,2"
+                            Height="26"
+                            Margin="6,0,0,0"
+                            Background="#333333"
+                            Foreground="#E0E0E0"
+                            CornerRadius="3"
+                            ToolTip.Tip="Replace Current Occurrence (Alt+R)" />
+
+                    <Button Grid.Column="3"
+                            Command="{Binding ReplaceAllCommand}"
+                            Content="Replace All"
+                            FontSize="11"
+                            Padding="8,2"
+                            Height="26"
+                            Margin="4,0,0,0"
+                            Background="#333333"
+                            Foreground="#E0E0E0"
+                            CornerRadius="3"
+                            ToolTip.Tip="Replace All Occurrences (Alt+A)" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Go To Line Modal Overlay -->
+        <Border IsVisible="{Binding IsGoToLineVisible}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,18,0,0"
+                Background="#252526"
+                BorderBrush="#3E3E42"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="12,10"
+                BoxShadow="0 6 18 0 #70000000"
+                Width="320">
+            <StackPanel Spacing="6">
+                <TextBlock Text="{Binding GoToLinePrompt}"
+                           FontSize="11"
+                           Foreground="#AAAAAA" />
+
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2,0,0">
+                    <TextBox x:Name="GoToLineBox"
+                             Text="{Binding GoToLineInput, Mode=TwoWay}"
+                             Watermark="Line:Column (e.g. 42:10)"
+                             FontSize="13"
+                             Height="28"
+                             Padding="6,3"
+                             CornerRadius="4"
+                             Background="#1E1E1E"
+                             Foreground="#FFFFFF"
+                             BorderBrush="#3E3E42" />
+
+                    <Button Grid.Column="1"
+                            Command="{Binding ConfirmGoToLineCommand}"
+                            Content="Go"
+                            FontSize="11"
+                            Height="28"
+                            Padding="10,2"
+                            Margin="6,0,0,0"
+                            Background="#7C3AED"
+                            Foreground="#FFFFFF"
+                            CornerRadius="3" />
+
+                    <Button Grid.Column="2"
+                            Command="{Binding CancelGoToLineCommand}"
+                            Content="✕"
+                            FontSize="11"
+                            Height="28"
+                            Padding="8,2"
+                            Margin="4,0,0,0"
+                            Background="#333333"
+                            Foreground="#AAAAAA"
+                            CornerRadius="3" />
+                </Grid>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>
