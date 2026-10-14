@@ -55,6 +55,10 @@
         <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding FocusSearchCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+G" Command="{Binding FocusGitCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+OemOpenBrackets" Command="{Binding FoldCurrentBlockCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+OemCloseBrackets" Command="{Binding UnfoldCurrentBlockCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding FocusSqlStudioCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+M" Command="{Binding FocusDiagnosticsCommand}" />
         <KeyBinding Gesture="Ctrl+OemComma" Command="{Binding OpenSettingsCommand}" />
     </Window.KeyBindings>
 
@@ -143,6 +147,11 @@
                     <Separator />
                     <MenuItem Header="Transform to _Uppercase" InputGesture="Ctrl+Shift+U" Command="{Binding TransformUppercaseCommand}" />
                     <MenuItem Header="Transform to _Lowercase" InputGesture="Ctrl+U" Command="{Binding TransformLowercaseCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Fold Current Block" InputGesture="Ctrl+Shift+OemOpenBrackets" Command="{Binding FoldCurrentBlockCommand}" />
+                    <MenuItem Header="_Unfold Current Block" InputGesture="Ctrl+Shift+OemCloseBrackets" Command="{Binding UnfoldCurrentBlockCommand}" />
+                    <MenuItem Header="Fold _All Blocks" Command="{Binding FoldAllCommand}" />
+                    <MenuItem Header="Unfold A_ll Blocks" Command="{Binding UnfoldAllCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Terminal">
                     <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+Shift+OemTilde" Command="{Binding RestartTerminalCommand}" />
@@ -165,6 +174,7 @@
                     <MenuItem Header="_Move Tab to Other Pane" InputGesture="Ctrl+Alt+Right" Command="{Binding MoveDocumentToOtherPaneCommand}" />
                     <Separator />
                     <MenuItem Header="Toggle Code _Minimap" InputGesture="Alt+M" Command="{Binding ToggleMinimapCommand}" />
+                    <MenuItem Header="Toggle Semantic _CodeLens" Command="{Binding ToggleCodeLensCommand}" />
                     <MenuItem Header="Toggle _Word Wrap" InputGesture="Alt+Z" Command="{Binding ToggleWordWrapCommand}" />
                     <MenuItem Header="Toggle _Bottom Panel" InputGesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
                     <Separator />
@@ -179,6 +189,9 @@
                     <MenuItem Header="_Network &amp; Sockets Workbench" Command="{Binding FocusNetworkSuiteCommand}" />
                     <MenuItem Header="_Docker &amp; Containers" InputGesture="Ctrl+Shift+K" Command="{Binding FocusDockerCommand}" />
                     <MenuItem Header="Reg_Ex &amp; Text Laboratory" Command="{Binding FocusRegexToolCommand}" />
+                    <MenuItem Header="_SQL &amp; Database Studio" InputGesture="Ctrl+Shift+B" Command="{Binding FocusSqlStudioCommand}" />
+                    <MenuItem Header="_Process Diagnostics &amp; Profiler" InputGesture="Ctrl+Shift+M" Command="{Binding FocusDiagnosticsCommand}" />
+                    <MenuItem Header="_API Mock Server &amp; Traffic Studio" Command="{Binding FocusMockServerCommand}" />
                     <Separator />
                     <MenuItem Header="_Reset Panel to Default Sizes" Command="{Binding ResetPaneLayoutCommand}" />
                     <MenuItem Header="_Extensions..." Command="{Binding ShowExtensionsModalCommand}" />

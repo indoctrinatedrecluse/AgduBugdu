@@ -189,6 +189,42 @@ public partial class EditorDocumentViewModel : Document
         }
     }
 
+    [ObservableProperty]
+    private bool _showCodeLens = true;
+
+    public ObservableCollection<CodeLensItem> CodeLenses { get; } = new();
+
+    public void RefreshCodeLenses()
+    {
+        if (!ShowCodeLens || TextDocument == null)
+        {
+            CodeLenses.Clear();
+            return;
+        }
+
+        try
+        {
+            var ext = !string.IsNullOrEmpty(FilePath) ? Path.GetExtension(FilePath) : ".cs";
+            var items = CodeLensEngine.ResolveCodeLenses(TextDocument.Text, ext);
+            CodeLenses.Clear();
+            foreach (var item in items)
+            {
+                CodeLenses.Add(item);
+            }
+        }
+        catch
+        {
+            // Resilient during active edits
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleCodeLens()
+    {
+        ShowCodeLens = !ShowCodeLens;
+        RefreshCodeLenses();
+    }
+
     // --- Search & Replace State ---
     [ObservableProperty]
     private bool _isFindVisible;
@@ -238,11 +274,27 @@ public partial class EditorDocumentViewModel : Document
     public event EventHandler? CopyRequested;
     public event EventHandler? PasteRequested;
     public event EventHandler? SelectAllRequested;
+    public event EventHandler? FoldCurrentBlockRequested;
+    public event EventHandler? UnfoldCurrentBlockRequested;
+    public event EventHandler? FoldAllRequested;
+    public event EventHandler? UnfoldAllRequested;
 
     public void RequestCut() => CutRequested?.Invoke(this, EventArgs.Empty);
     public void RequestCopy() => CopyRequested?.Invoke(this, EventArgs.Empty);
     public void RequestPaste() => PasteRequested?.Invoke(this, EventArgs.Empty);
     public void RequestSelectAll() => SelectAllRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    public void FoldCurrentBlock() => FoldCurrentBlockRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    public void UnfoldCurrentBlock() => UnfoldCurrentBlockRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    public void FoldAll() => FoldAllRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    public void UnfoldAll() => UnfoldAllRequested?.Invoke(this, EventArgs.Empty);
 
     public void Undo()
     {
@@ -273,6 +325,7 @@ public partial class EditorDocumentViewModel : Document
         _originalText = TextDocument.Text;
         TextDocument.UndoStack.MarkAsOriginalFile();
         RefreshBreadcrumbs();
+        RefreshCodeLenses();
     }
 
     partial void OnFileNameChanged(string value)
@@ -284,6 +337,7 @@ public partial class EditorDocumentViewModel : Document
     partial void OnFilePathChanged(string value)
     {
         RefreshBreadcrumbs();
+        RefreshCodeLenses();
     }
 
     partial void OnTextDocumentChanged(TextDocument value)
@@ -301,6 +355,7 @@ public partial class EditorDocumentViewModel : Document
         Title = FileName;
         UpdateSearchMatches();
         RefreshBreadcrumbs();
+        RefreshCodeLenses();
     }
 
     partial void OnLineChanged(int value)

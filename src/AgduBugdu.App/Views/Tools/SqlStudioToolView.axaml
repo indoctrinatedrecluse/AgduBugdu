@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:db="using:AgduBugdu.Core.Database"
+             x:Class="AgduBugdu.App.Views.Tools.SqlStudioToolView"
+             x:DataType="vm:SqlStudioToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Control Bar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="🗄️" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="DATABASE &amp; SQL STUDIO"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Content="▶ Run Query (F5)"
+                            Command="{Binding ExecuteQueryCommand}"
+                            Background="#10B981"
+                            Foreground="#000000"
+                            FontWeight="Bold"
+                            FontSize="11"
+                            Padding="10,4"
+                            CornerRadius="3" />
+                    <Button Content="Clear"
+                            Command="{Binding ClearQueryCommand}"
+                            Background="#333333"
+                            Foreground="#CCCCCC"
+                            FontSize="11"
+                            Padding="8,4"
+                            CornerRadius="3" />
+                    <Button Content="Export CSV"
+                            Command="{Binding ExportCsvCommand}"
+                            Background="#2A2A2D"
+                            Foreground="#93C5FD"
+                            FontSize="11"
+                            Padding="8,4"
+                            CornerRadius="3" />
+                    <Button Content="Export JSON"
+                            Command="{Binding ExportJsonCommand}"
+                            Background="#2A2A2D"
+                            Foreground="#FDE047"
+                            FontSize="11"
+                            Padding="8,4"
+                            CornerRadius="3" />
+                    <Button Content="Export Markdown"
+                            Command="{Binding ExportMarkdownCommand}"
+                            Background="#2A2A2D"
+                            Foreground="#C084FC"
+                            FontSize="11"
+                            Padding="8,4"
+                            CornerRadius="3" />
+                </StackPanel>
+
+                <!-- Status Text -->
+                <TextBlock Grid.Column="3"
+                           Text="{Binding StatusText}"
+                           FontSize="11"
+                           Foreground="#888888"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="450" />
+            </Grid>
+        </Border>
+
+        <!-- Main Body: Split between Schema Explorer and Query / Results -->
+        <Grid Grid.Row="1" ColumnDefinitions="200,4,*">
+            <!-- Left: Tables & Schema Explorer -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#181818" Margin="4">
+                <Border Grid.Row="0" Padding="4,2" Background="#222222" CornerRadius="2">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="TABLES &amp; SCHEMAS" FontSize="10" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="↻" Command="{Binding RefreshSchemaCommand}" Background="Transparent" Foreground="#AAAAAA" Padding="4,0" FontSize="11" />
+                    </Grid>
+                </Border>
+                <ListBox Grid.Row="1" ItemsSource="{Binding Tables}" SelectedItem="{Binding SelectedTable}" Background="Transparent" BorderThickness="0" Margin="0,4,0,0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="db:SqlTableSchema">
+                            <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="📋" FontSize="11" />
+                                    <TextBlock Text="{Binding TableName}" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" />
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding Columns}" Margin="12,0,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="db:SqlColumnSchema">
+                                            <TextBlock Text="{Binding Name}" FontSize="10" Foreground="#888888" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="4" Background="#333333" />
+
+            <!-- Right: SQL Query Editor + Results Area -->
+            <Grid Grid.Column="2" RowDefinitions="140,4,*" Margin="4">
+                <!-- SQL Editor -->
+                <Grid Grid.Row="0" RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="SQL QUERY CONSOLE" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+                    <TextBox Grid.Row="1"
+                             Text="{Binding SqlQuery, Mode=TwoWay}"
+                             FontFamily="Cascadia Code, Consolas, monospace"
+                             FontSize="12"
+                             Background="#141414"
+                             Foreground="#EEEEEE"
+                             BorderBrush="#333333"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap" />
+                </Grid>
+
+                <GridSplitter Grid.Row="1" Height="4" Background="#333333" />
+
+                <!-- Results, Export Buffer & History TabControl -->
+                <TabControl Grid.Row="2" Background="#141414">
+                    <TabItem Header="Results Data">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Grid.Row="0" Text="{Binding StatusText}" FontSize="11" Foreground="#10B981" Margin="4,2" />
+                            <TextBox Grid.Row="1"
+                                     Text="{Binding ExportPreview}"
+                                     IsReadOnly="True"
+                                     FontFamily="Cascadia Code, Consolas, monospace"
+                                     FontSize="11"
+                                     Background="#0E0E0E"
+                                     Foreground="#CCCCCC"
+                                     BorderThickness="0"
+                                     AcceptsReturn="True"
+                                     Watermark="Query results will be formatted here or use Export buttons to view CSV / JSON / Markdown..." />
+                        </Grid>
+                    </TabItem>
+                    <TabItem Header="Query History">
+                        <ListBox ItemsSource="{Binding History}" Background="#121212" BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="db:SqlQueryHistoryItem">
+                                    <Border BorderBrush="#252526" BorderThickness="0,0,0,1" Padding="6,4">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" FontSize="10" Foreground="#888888" Margin="0,0,8,0" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Query}" FontSize="11" Foreground="#38BDF8" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="2" Text="{Binding DurationMs, StringFormat='{}{0}ms'}" FontSize="10" Foreground="#10B981" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

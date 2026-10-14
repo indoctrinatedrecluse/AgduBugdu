@@ -1,0 +1,159 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:net="using:AgduBugdu.Core.Network"
+             x:Class="AgduBugdu.App.Views.Tools.MockServerToolView"
+             x:DataType="vm:MockServerToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <TextBlock Text="🌐" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="API MOCK SERVER &amp; TRAFFIC STUDIO"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Content="{Binding ToggleButtonText}"
+                            Command="{Binding ToggleServerCommand}"
+                            Background="{Binding ToggleButtonColor}"
+                            Foreground="#FFFFFF"
+                            FontWeight="Bold"
+                            FontSize="11"
+                            Padding="12,4"
+                            CornerRadius="3" />
+
+                    <TextBlock Text="Port:" FontSize="11" Foreground="#888888" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    <TextBox Text="{Binding Port, Mode=TwoWay}"
+                             Width="60"
+                             Height="26"
+                             FontSize="11"
+                             Background="#141414"
+                             Foreground="#EEEEEE"
+                             BorderBrush="#333333"
+                             VerticalContentAlignment="Center" />
+                    <Button Content="Clear Logs"
+                            Command="{Binding ClearLogsCommand}"
+                            Background="#333333"
+                            Foreground="#CCCCCC"
+                            FontSize="11"
+                            Padding="8,4"
+                            CornerRadius="3" />
+                </StackPanel>
+
+                <!-- Status Text -->
+                <TextBlock Grid.Column="3"
+                           Text="{Binding StatusText}"
+                           FontSize="11"
+                           Foreground="{Binding ServerStatusColor}"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Main Body: 3-Column Studio Layout (Routes | Route Editor | Traffic Interceptor) -->
+        <Grid Grid.Row="1" ColumnDefinitions="220,4,*,4,280" Margin="4">
+            <!-- 1. Left: Routes List -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#181818" Margin="2">
+                <Border Grid.Row="0" Padding="4,2" Background="#222222" CornerRadius="2">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Text="MOCK ROUTES" FontSize="10" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="+" Command="{Binding AddRouteCommand}" Background="Transparent" Foreground="#10B981" FontWeight="Bold" Padding="6,0" FontSize="13" />
+                        <Button Grid.Column="2" Content="-" Command="{Binding DeleteRouteCommand}" Background="Transparent" Foreground="#EF4444" FontWeight="Bold" Padding="6,0" FontSize="13" />
+                    </Grid>
+                </Border>
+                <ListBox Grid.Row="1" ItemsSource="{Binding Routes}" SelectedItem="{Binding SelectedRoute}" Background="Transparent" BorderThickness="0" Margin="0,4,0,0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="net:MockRouteRule">
+                            <Border BorderBrush="#252526" BorderThickness="0,0,0,1" Padding="4,3">
+                                <StackPanel Spacing="2">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Grid.Column="0" Background="#1D4ED8" CornerRadius="2" Padding="3,0" Margin="0,0,6,0">
+                                            <TextBlock Text="{Binding Method}" FontSize="9" FontWeight="Bold" Foreground="White" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Path}" FontSize="10" Foreground="#888888" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="4" Background="#333333" />
+
+            <!-- 2. Middle: Selected Route Editor -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" Margin="4">
+                <TextBlock Grid.Row="0" Text="ROUTE CONFIGURATION" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+
+                <!-- Config Inputs Strip -->
+                <Border Grid.Row="1" Background="#181818" BorderBrush="#2A2A2D" BorderThickness="1" CornerRadius="3" Padding="8,6" Margin="0,0,0,6">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="6">
+                        <TextBlock Grid.Column="0" Text="Path:" FontSize="11" Foreground="#888888" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding SelectedRoute.Path, Mode=TwoWay}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Height="26" VerticalContentAlignment="Center" Background="#252526" Foreground="#EEEEEE" BorderBrush="#3E3E42" />
+
+                        <TextBlock Grid.Column="2" Text="Method:" FontSize="11" Foreground="#888888" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="3" Text="{Binding SelectedRoute.Method, Mode=TwoWay}" Width="65" Height="26" FontSize="11" VerticalContentAlignment="Center" Background="#252526" Foreground="#93C5FD" BorderBrush="#3E3E42" />
+
+                        <TextBlock Grid.Column="4" Text="Status:" FontSize="11" Foreground="#888888" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="5" Text="{Binding SelectedRoute.StatusCode, Mode=TwoWay}" Width="50" Height="26" FontSize="11" VerticalContentAlignment="Center" Background="#252526" Foreground="#86EFAC" BorderBrush="#3E3E42" />
+                    </Grid>
+                </Border>
+
+                <!-- Response Body -->
+                <Grid Grid.Row="2" RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="MOCK JSON RESPONSE BODY" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+                    <TextBox Grid.Row="1"
+                             Text="{Binding SelectedRoute.ResponseBody, Mode=TwoWay}"
+                             FontFamily="Cascadia Code, Consolas, monospace"
+                             FontSize="12"
+                             Background="#141414"
+                             Foreground="#A7F3D0"
+                             BorderBrush="#333333"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap" />
+                </Grid>
+            </Grid>
+
+            <GridSplitter Grid.Column="3" Width="4" Background="#333333" />
+
+            <!-- 3. Right: Live Traffic Interceptor & Logs -->
+            <Grid Grid.Column="4" RowDefinitions="Auto,*,Auto" Margin="2" Background="#181818">
+                <Border Grid.Row="0" Padding="4,2" Background="#222222" CornerRadius="2">
+                    <TextBlock Text="LIVE REQUEST INTERCEPTOR" FontSize="10" FontWeight="Bold" Foreground="#888888" />
+                </Border>
+                <ListBox Grid.Row="1" ItemsSource="{Binding RequestLogs}" SelectedItem="{Binding SelectedLog}" Background="Transparent" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="net:MockRequestLogItem">
+                            <Border BorderBrush="#252526" BorderThickness="0,0,0,1" Padding="4,3">
+                                <StackPanel Spacing="1">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Method}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,4,0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Path}" FontSize="10" Foreground="#DDDDDD" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="2" Text="{Binding ResponseStatusCode}" FontSize="10" FontWeight="Bold" Foreground="#10B981" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" FontSize="9" Foreground="#666666" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Selected Request Body Preview -->
+                <Border Grid.Row="2" Height="100" Background="#121212" BorderBrush="#2A2A2D" BorderThickness="0,1,0,0" Padding="4">
+                    <TextBox Text="{Binding SelectedLog.RequestBody}" IsReadOnly="True" Watermark="Payload body..." FontFamily="Cascadia Code, Consolas, monospace" FontSize="10" Background="Transparent" Foreground="#CCCCCC" BorderThickness="0" AcceptsReturn="True" TextWrapping="Wrap" />
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

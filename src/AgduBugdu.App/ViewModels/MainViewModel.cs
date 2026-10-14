@@ -930,11 +930,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("edit.copy", "Edit: Copy", () => Copy(), "Ctrl+C");
         CommandPalette.RegisterCommand("edit.paste", "Edit: Paste", () => Paste(), "Ctrl+V");
         CommandPalette.RegisterCommand("edit.selectAll", "Edit: Select All", () => SelectAll(), "Ctrl+A");
+        CommandPalette.RegisterCommand("editor.fold", "Editor: Fold Current Block", () => FoldCurrentBlock(), "Ctrl+Shift+OemOpenBrackets");
+        CommandPalette.RegisterCommand("editor.unfold", "Editor: Unfold Current Block", () => UnfoldCurrentBlock(), "Ctrl+Shift+OemCloseBrackets");
+        CommandPalette.RegisterCommand("editor.foldAll", "Editor: Fold All Blocks", () => FoldAll());
+        CommandPalette.RegisterCommand("editor.unfoldAll", "Editor: Unfold All Blocks", () => UnfoldAll());
         CommandPalette.RegisterCommand("view.toggleTodo", "View: Focus TODO Tasks", () => FocusDockable(_dockFactory.TodoTool));
         CommandPalette.RegisterCommand("view.toggleDebugger", "View: Focus Run & Debug", () => FocusDockable(_dockFactory.DebuggerTool));
         CommandPalette.RegisterCommand("view.toggleNetworkSuite", "View: Focus Network & Sockets Workbench", () => FocusDockable(_dockFactory.NetworkSuiteTool));
         CommandPalette.RegisterCommand("view.toggleDocker", "View: Focus Docker & Container Workbench", () => FocusDockable(_dockFactory.DockerTool), "Ctrl+Shift+K");
         CommandPalette.RegisterCommand("view.toggleRegex", "View: Focus RegEx & Text Utility Laboratory", () => FocusDockable(_dockFactory.RegexTool));
+        CommandPalette.RegisterCommand("view.toggleSqlStudio", "View: Focus SQL & Database Studio", () => FocusDockable(_dockFactory.SqlStudioTool), "Ctrl+Shift+B");
+        CommandPalette.RegisterCommand("view.toggleDiagnostics", "View: Focus Process Diagnostics & Profiler", () => FocusDockable(_dockFactory.DiagnosticsTool), "Ctrl+Shift+M");
+        CommandPalette.RegisterCommand("view.toggleMockServer", "View: Focus API Mock Server & Traffic Studio", () => FocusDockable(_dockFactory.MockServerTool));
         CommandPalette.RegisterCommand("view.toggleSearch", "View: Focus Search in Files", () => FocusSearch(), "Ctrl+Shift+F");
         CommandPalette.RegisterCommand("view.toggleGit", "View: Focus Source Control", () => FocusGit(), "Ctrl+Shift+G");
         CommandPalette.RegisterCommand("git.refresh", "Git: Refresh Status", () => { _ = _dockFactory.GitTool?.RefreshAsync(); });
@@ -951,6 +958,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.moveDocumentToOtherPane", "View: Move Tab to Other Pane", () => MoveDocumentToOtherPane(), "Ctrl+Alt+Right");
         CommandPalette.RegisterCommand("view.outline", "View: Focus Symbol Outline", () => FocusOutline(), "Ctrl+Shift+O");
         CommandPalette.RegisterCommand("view.toggleMinimap", "View: Toggle Code Minimap", () => ToggleMinimap(), "Alt+M");
+        CommandPalette.RegisterCommand("view.toggleCodeLens", "View: Toggle Semantic CodeLens", () => ToggleCodeLens());
         CommandPalette.RegisterCommand("view.settings", "Preferences: Open Settings (Ctrl+,)", () => OpenSettings(), "Ctrl+OemComma");
         CommandPalette.RegisterCommand("view.keymap", "Preferences: Keyboard Shortcuts", () => OpenKeymapSettings());
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
@@ -1135,6 +1143,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    public void FoldCurrentBlock() => GetActiveEditorDocument()?.FoldCurrentBlock();
+
+    [RelayCommand]
+    public void UnfoldCurrentBlock() => GetActiveEditorDocument()?.UnfoldCurrentBlock();
+
+    [RelayCommand]
+    public void FoldAll() => GetActiveEditorDocument()?.FoldAll();
+
+    [RelayCommand]
+    public void UnfoldAll() => GetActiveEditorDocument()?.UnfoldAll();
+
+    [RelayCommand]
     public void ConvertToCrlf()
     {
         var doc = GetActiveEditorDocument();
@@ -1252,6 +1272,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     public void FocusRegexTool() => FocusDockable(_dockFactory.RegexTool);
+
+    [RelayCommand]
+    public void FocusSqlStudio() => FocusDockable(_dockFactory.SqlStudioTool);
+
+    [RelayCommand]
+    public void FocusDiagnostics() => FocusDockable(_dockFactory.DiagnosticsTool);
+
+    [RelayCommand]
+    public void FocusMockServer() => FocusDockable(_dockFactory.MockServerTool);
 
     [RelayCommand]
     public void ShowExtensionsModal()
@@ -1372,7 +1401,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (dockable == _dockFactory.TerminalTool || dockable == _dockFactory.OutputTool ||
                 dockable == _dockFactory.TodoTool || dockable == _dockFactory.DebuggerTool ||
                 dockable == _dockFactory.NetworkSuiteTool || dockable == _dockFactory.DockerTool ||
-                dockable == _dockFactory.RegexTool)
+                dockable == _dockFactory.RegexTool || dockable == _dockFactory.SqlStudioTool ||
+                dockable == _dockFactory.DiagnosticsTool || dockable == _dockFactory.MockServerTool)
             {
                 _dockFactory.RestoreBottomPane(dockable);
             }
@@ -1584,6 +1614,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             doc.ToggleMinimap();
             StatusMessage = doc.IsMinimapVisible ? "Minimap shown" : "Minimap hidden";
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleCodeLens()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.ToggleCodeLens();
+            StatusMessage = doc.ShowCodeLens ? "CodeLens enabled" : "CodeLens disabled";
         }
     }
 

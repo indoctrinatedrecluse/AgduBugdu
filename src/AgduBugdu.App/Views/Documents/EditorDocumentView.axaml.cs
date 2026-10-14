@@ -117,6 +117,160 @@ public class DebugMarkerRenderer : IBackgroundRenderer
     }
 }
 
+public class CodeLensRenderer : IBackgroundRenderer
+{
+    private readonly Func<EditorDocumentViewModel?> _getDoc;
+    private readonly TextEditor _editor;
+    private readonly Typeface _typeface = new("Inter, Segoe UI, sans-serif", FontStyle.Normal, FontWeight.SemiBold);
+    private readonly IBrush _lensBrush = new SolidColorBrush(Color.FromArgb(180, 148, 163, 184)); // Slate 400
+    private readonly IBrush _testBadgeBrush = new SolidColorBrush(Color.FromArgb(220, 56, 189, 248)); // Cyan 400
+
+    public KnownLayer Layer => KnownLayer.Selection;
+
+    public CodeLensRenderer(Func<EditorDocumentViewModel?> getDoc, TextEditor editor)
+    {
+        _getDoc = getDoc;
+        _editor = editor;
+    }
+
+    public void Draw(TextView textView, DrawingContext drawingContext)
+    {
+        var doc = _getDoc();
+        if (doc == null || !doc.ShowCodeLens || doc.CodeLenses.Count == 0 || _editor.Document == null)
+            return;
+
+        foreach (var visualLine in textView.VisualLines)
+        {
+            int lineNum = visualLine.FirstDocumentLine.LineNumber;
+            var match = doc.CodeLenses.FirstOrDefault(l => l.Line == lineNum);
+            if (match == null) continue;
+
+            try
+            {
+                var pos = new TextViewPosition(lineNum, 1);
+                var visualPos = textView.GetVisualPosition(pos, VisualYPosition.LineTop);
+
+                var formatted = new FormattedText(
+                    match.DisplayText,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight,
+                    _typeface,
+                    10.0,
+                    match.IsTest ? _testBadgeBrush : _lensBrush
+                );
+
+                double x = Math.Max(2, visualPos.X);
+                double y = Math.Max(0, visualPos.Y - 14);
+                drawingContext.DrawText(formatted, new Point(x, y));
+            }
+            catch
+            {
+                // Fallback for transient rendering states
+            }
+        }
+    }
+}
+
+public class IndentAndBracketRenderer : IBackgroundRenderer
+{
+    private readonly Func<EditorDocumentViewModel?> _getDoc;
+    private readonly TextEditor _editor;
+    private readonly Pen _normalGuidePen = new(new SolidColorBrush(Color.FromArgb(40, 200, 200, 200)), 1.0);
+    private readonly Pen _activeGuidePen = new(new SolidColorBrush(Color.FromArgb(140, 56, 189, 248)), 1.5);
+    private readonly Dictionary<string, IBrush> _rainbowBrushes = new();
+
+    public KnownLayer Layer => KnownLayer.Background;
+
+    public IndentAndBracketRenderer(Func<EditorDocumentViewModel?> getDoc, TextEditor editor)
+    {
+        _getDoc = getDoc;
+        _editor = editor;
+
+        foreach (var hex in BracketColorizerEngine.RainbowPalette)
+        {
+            if (Color.TryParse(hex, out var color))
+            {
+                _rainbowBrushes[hex] = new SolidColorBrush(Color.FromArgb(50, color.R, color.G, color.B));
+            }
+        }
+    }
+
+    public void Draw(TextView textView, DrawingContext drawingContext)
+    {
+        var doc = _getDoc();
+        if (doc == null || _editor.Document == null || _editor.Document.TextLength == 0)
+            return;
+
+        int caretLine = _editor.TextArea.Caret.Line;
+        int tabSize = _editor.Options.IndentationSize;
+
+        // 1. Draw Indentation Guides
+        try
+        {
+            var guides = BracketColorizerEngine.ComputeIndentationGuides(_editor.Document.Text, tabSize, caretLine);
+            foreach (var visualLine in textView.VisualLines)
+            {
+                int lineNum = visualLine.FirstDocumentLine.LineNumber;
+                foreach (var g in guides)
+                {
+                    if (lineNum >= g.StartLine && lineNum <= g.EndLine)
+                    {
+                        var pos = new TextViewPosition(lineNum, g.Column + 1);
+                        var visualPos = textView.GetVisualPosition(pos, VisualYPosition.LineTop);
+                        var pen = g.IsActiveScope ? _activeGuidePen : _normalGuidePen;
+
+                        drawingContext.DrawLine(
+                            pen,
+                            new Point(visualPos.X, visualLine.VisualTop),
+                            new Point(visualPos.X, visualLine.VisualTop + visualLine.Height)
+                        );
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Transient layout fallback
+        }
+
+        // 2. Draw Rainbow Bracket Pairs
+        try
+        {
+            var brackets = BracketColorizerEngine.FindRainbowBrackets(_editor.Document.Text);
+            foreach (var b in brackets)
+            {
+                if (b.OpenOffset >= 0 && b.OpenOffset < _editor.Document.TextLength)
+                {
+                    var segOpen = new TextSegment { StartOffset = b.OpenOffset, Length = 1 };
+                    foreach (var rc in BackgroundGeometryBuilder.GetRectsForSegment(textView, segOpen))
+                    {
+                        if (_rainbowBrushes.TryGetValue(b.ColorHex, out var brush))
+                        {
+                            drawingContext.FillRectangle(brush, rc);
+                        }
+                    }
+                }
+
+                if (b.CloseOffset >= 0 && b.CloseOffset < _editor.Document.TextLength)
+                {
+                    var segClose = new TextSegment { StartOffset = b.CloseOffset, Length = 1 };
+                    foreach (var rc in BackgroundGeometryBuilder.GetRectsForSegment(textView, segClose))
+                    {
+                        if (_rainbowBrushes.TryGetValue(b.ColorHex, out var brush))
+                        {
+                            drawingContext.FillRectangle(brush, rc);
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Transient layout fallback
+        }
+    }
+}
+
 public partial class EditorDocumentView : UserControl
 {
     private TextMate.Installation? _textMateInstallation;
@@ -480,6 +634,18 @@ public partial class EditorDocumentView : UserControl
                     e.Handled = true;
                     return;
                 }
+                if (e.Key == Key.OemOpenBrackets)
+                {
+                    FoldCurrentBlock();
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.OemCloseBrackets)
+                {
+                    UnfoldCurrentBlock();
+                    e.Handled = true;
+                    return;
+                }
             }
             else
             {
@@ -608,6 +774,10 @@ public partial class EditorDocumentView : UserControl
             doc.CopyRequested += (s, ev) => Editor.Copy();
             doc.PasteRequested += (s, ev) => Editor.Paste();
             doc.SelectAllRequested += (s, ev) => Editor.SelectAll();
+            doc.FoldCurrentBlockRequested += (s, ev) => FoldCurrentBlock();
+            doc.UnfoldCurrentBlockRequested += (s, ev) => UnfoldCurrentBlock();
+            doc.FoldAllRequested += (s, ev) => FoldAll();
+            doc.UnfoldAllRequested += (s, ev) => UnfoldAll();
 
             // Hook scroll requests
             doc.ScrollToLineRequested += (s, line) =>
@@ -631,6 +801,8 @@ public partial class EditorDocumentView : UserControl
                     () => GetDebugService()
                 ));
                 Editor.TextArea.TextView.BackgroundRenderers.Add(new MultiCaretRenderer(_multiCaretManager, Editor));
+                Editor.TextArea.TextView.BackgroundRenderers.Add(new CodeLensRenderer(() => DataContext as EditorDocumentViewModel, Editor));
+                Editor.TextArea.TextView.BackgroundRenderers.Add(new IndentAndBracketRenderer(() => DataContext as EditorDocumentViewModel, Editor));
                 _rendererAttached = true;
             }
 
@@ -778,30 +950,21 @@ public partial class EditorDocumentView : UserControl
 
         try
         {
+            var ext = (DataContext as EditorDocumentViewModel)?.FilePath != null
+                ? Path.GetExtension((DataContext as EditorDocumentViewModel)!.FilePath)
+                : null;
+            var detected = AgduBugdu.Core.Folding.CodeFoldingEngine.FindFoldings(Editor.Document.Text, ext);
             var foldings = new List<NewFolding>();
-            var text = Editor.Document.Text;
-            var stack = new Stack<int>();
 
-            for (int i = 0; i < text.Length; i++)
+            foreach (var d in detected)
             {
-                char c = text[i];
-                if (c == '{')
+                if (d.StartOffset >= 0 && d.EndOffset <= Editor.Document.TextLength && d.EndOffset > d.StartOffset)
                 {
-                    stack.Push(i);
-                }
-                else if (c == '}' && stack.Count > 0)
-                {
-                    int openOffset = stack.Pop();
-                    // Only create folding section if multi-line
-                    int openLine = Editor.Document.GetLineByOffset(openOffset).LineNumber;
-                    int closeLine = Editor.Document.GetLineByOffset(i).LineNumber;
-                    if (closeLine > openLine)
+                    foldings.Add(new NewFolding(d.StartOffset, d.EndOffset)
                     {
-                        foldings.Add(new NewFolding(openOffset, i + 1)
-                        {
-                            Name = "{...}"
-                        });
-                    }
+                        Name = d.HeaderText,
+                        DefaultClosed = d.IsDefaultFolded
+                    });
                 }
             }
 
@@ -811,6 +974,46 @@ public partial class EditorDocumentView : UserControl
         catch
         {
             // Ignore folding errors during dynamic edits
+        }
+    }
+
+    public void FoldCurrentBlock()
+    {
+        if (_foldingManager == null || Editor.Document == null) return;
+        int offset = Editor.CaretOffset;
+        var section = _foldingManager.GetFoldingsContaining(offset).LastOrDefault();
+        if (section != null)
+        {
+            section.IsFolded = true;
+        }
+    }
+
+    public void UnfoldCurrentBlock()
+    {
+        if (_foldingManager == null || Editor.Document == null) return;
+        int offset = Editor.CaretOffset;
+        var section = _foldingManager.GetFoldingsContaining(offset).LastOrDefault();
+        if (section != null)
+        {
+            section.IsFolded = false;
+        }
+    }
+
+    public void FoldAll()
+    {
+        if (_foldingManager == null) return;
+        foreach (var f in _foldingManager.AllFoldings)
+        {
+            f.IsFolded = true;
+        }
+    }
+
+    public void UnfoldAll()
+    {
+        if (_foldingManager == null) return;
+        foreach (var f in _foldingManager.AllFoldings)
+        {
+            f.IsFolded = false;
         }
     }
 
@@ -848,6 +1051,7 @@ public partial class EditorDocumentView : UserControl
             UpdateCodeFoldings();
             UpdateMinimap();
             doc.RefreshBreadcrumbs();
+            doc.RefreshCodeLenses();
             UpdateStickyScroll();
         }
     }

@@ -1,0 +1,143 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:diag="using:AgduBugdu.Core.Diagnostics"
+             x:Class="AgduBugdu.App.Views.Tools.ProcessDiagnosticsToolView"
+             x:DataType="vm:ProcessDiagnosticsToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="PROCESS DIAGNOSTICS &amp; PROFILER"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Content="↻ Refresh (F5)"
+                            Command="{Binding RefreshSnapshotCommand}"
+                            Background="#38BDF8"
+                            Foreground="#000000"
+                            FontWeight="Bold"
+                            FontSize="11"
+                            Padding="10,4"
+                            CornerRadius="3" />
+                    <Button Content="🧹 Force GC (Gen 2)"
+                            Command="{Binding ForceGcCommand}"
+                            Background="#333333"
+                            Foreground="#FDE047"
+                            FontSize="11"
+                            Padding="8,4"
+                            CornerRadius="3" />
+                    <Button Content="✂ Trim Working Set"
+                            Command="{Binding TrimMemoryCommand}"
+                            Background="#333333"
+                            Foreground="#86EFAC"
+                            FontSize="11"
+                            Padding="8,4"
+                            CornerRadius="3" />
+                </StackPanel>
+
+                <!-- Status Text -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding UptimeText, StringFormat='Uptime: {0}'}" FontSize="11" Foreground="#AAAAAA" VerticalAlignment="Center" />
+                    <Border Background="#10B981" CornerRadius="3" Padding="6,2">
+                        <TextBlock Text="HEALTHY" FontSize="10" FontWeight="Bold" Foreground="#000000" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Body -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="8" RowSpacing="8">
+            <!-- Metric Cards -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*,*,*" Margin="0,0,0,4">
+                <!-- Managed Memory -->
+                <Border Grid.Column="0" Background="#252526" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="8" Margin="3">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="MANAGED MEM" FontSize="10" Foreground="#888888" FontWeight="Bold" />
+                        <TextBlock Text="{Binding ManagedMemoryMb, StringFormat='{}{0} MB'}" FontSize="16" FontWeight="Bold" Foreground="#10B981" />
+                        <TextBlock Text="GC Total Memory" FontSize="9" Foreground="#666666" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Working Set -->
+                <Border Grid.Column="1" Background="#252526" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="8" Margin="3">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="WORKING SET" FontSize="10" Foreground="#888888" FontWeight="Bold" />
+                        <TextBlock Text="{Binding WorkingSetMb, StringFormat='{}{0} MB'}" FontSize="16" FontWeight="Bold" Foreground="#38BDF8" />
+                        <TextBlock Text="Physical RAM Usage" FontSize="9" Foreground="#666666" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Private Memory -->
+                <Border Grid.Column="2" Background="#252526" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="8" Margin="3">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="PRIVATE MEM" FontSize="10" Foreground="#888888" FontWeight="Bold" />
+                        <TextBlock Text="{Binding PrivateMemoryMb, StringFormat='{}{0} MB'}" FontSize="16" FontWeight="Bold" Foreground="#F59E0B" />
+                        <TextBlock Text="Committed Memory" FontSize="9" Foreground="#666666" />
+                    </StackPanel>
+                </Border>
+
+                <!-- CPU Usage -->
+                <Border Grid.Column="3" Background="#252526" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="8" Margin="3">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="CPU USAGE" FontSize="10" Foreground="#888888" FontWeight="Bold" />
+                        <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0}%'}" FontSize="16" FontWeight="Bold" Foreground="#A855F7" />
+                        <TextBlock Text="Normalized Processor %" FontSize="9" Foreground="#666666" />
+                    </StackPanel>
+                </Border>
+
+                <!-- GC Collections -->
+                <Border Grid.Column="4" Background="#252526" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="8" Margin="3">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="GC RUNS (0/1/2)" FontSize="10" Foreground="#888888" FontWeight="Bold" />
+                        <TextBlock Text="{Binding Gen2Count, StringFormat='Gen 2: {0}'}" FontSize="15" FontWeight="Bold" Foreground="#F472B6" />
+                        <TextBlock Text="{Binding Gen0Count, StringFormat='Gen0: {0} | Gen1: ...'}" FontSize="9" Foreground="#666666" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Threads & Handles -->
+                <Border Grid.Column="5" Background="#252526" BorderBrush="#333333" BorderThickness="1" CornerRadius="4" Padding="8" Margin="3">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="THREADS &amp; HANDLES" FontSize="10" Foreground="#888888" FontWeight="Bold" />
+                        <TextBlock Text="{Binding ThreadCount, StringFormat='{}{0} Threads'}" FontSize="15" FontWeight="Bold" Foreground="#E2E8F0" />
+                        <TextBlock Text="{Binding HandleCount, StringFormat='{}{0} OS Handles'}" FontSize="9" Foreground="#666666" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Snapshot Timeline Log -->
+            <Grid Grid.Row="1" RowDefinitions="Auto,*">
+                <TextBlock Grid.Row="0" Text="PERFORMANCE SNAPSHOT TIMELINE" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="4,0,0,4" />
+                <ListBox Grid.Row="1" ItemsSource="{Binding Snapshots}" Background="#141414" BorderBrush="#252526" BorderThickness="1" CornerRadius="4">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="diag:ProcessMetricSnapshot">
+                            <Border BorderBrush="#222222" BorderThickness="0,0,0,1" Padding="8,4">
+                                <Grid ColumnDefinitions="Auto,*,*,*,*,*,*">
+                                    <TextBlock Grid.Column="0" Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" FontSize="11" Foreground="#888888" Width="70" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ManagedMemoryMb, StringFormat='Managed: {0} MB'}" FontSize="11" Foreground="#10B981" />
+                                    <TextBlock Grid.Column="2" Text="{Binding WorkingSetMb, StringFormat='WS: {0} MB'}" FontSize="11" Foreground="#38BDF8" />
+                                    <TextBlock Grid.Column="3" Text="{Binding PrivateMemoryMb, StringFormat='Private: {0} MB'}" FontSize="11" Foreground="#F59E0B" />
+                                    <TextBlock Grid.Column="4" Text="{Binding CpuPercent, StringFormat='CPU: {0}%'}" FontSize="11" Foreground="#A855F7" />
+                                    <TextBlock Grid.Column="5" Text="{Binding ThreadCount, StringFormat='{}{0} Threads'}" FontSize="11" Foreground="#E2E8F0" />
+                                    <TextBlock Grid.Column="6" Text="{Binding Gen2Count, StringFormat='Gen2: {0}'}" FontSize="11" Foreground="#F472B6" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>
