@@ -84,7 +84,7 @@
                         <MenuItem Header="Move Line Up" Command="{Binding MoveLineUpCommand}" InputGesture="Alt+Up" />
                         <MenuItem Header="Move Line Down" Command="{Binding MoveLineDownCommand}" InputGesture="Alt+Down" />
                         <MenuItem Header="Duplicate Line Down" Command="{Binding DuplicateLineDownCommand}" InputGesture="Shift+Alt+Down" />
-                        <MenuItem Header="Delete Line" Command="{Binding DeleteLineCommand}" InputGesture="Ctrl+Shift+K" />
+                        <MenuItem Header="Delete Line" Command="{Binding DeleteLineCommand}" InputGesture="Ctrl+Shift+L" />
                         <MenuItem Header="Join Lines" Command="{Binding JoinLinesCommand}" InputGesture="Ctrl+Shift+J" />
                         <Separator />
                         <MenuItem Header="Uppercase" Command="{Binding TransformUppercaseCommand}" InputGesture="Ctrl+Shift+U" />

@@ -933,6 +933,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.toggleTodo", "View: Focus TODO Tasks", () => FocusDockable(_dockFactory.TodoTool));
         CommandPalette.RegisterCommand("view.toggleDebugger", "View: Focus Run & Debug", () => FocusDockable(_dockFactory.DebuggerTool));
         CommandPalette.RegisterCommand("view.toggleNetworkSuite", "View: Focus Network & Sockets Workbench", () => FocusDockable(_dockFactory.NetworkSuiteTool));
+        CommandPalette.RegisterCommand("view.toggleDocker", "View: Focus Docker & Container Workbench", () => FocusDockable(_dockFactory.DockerTool), "Ctrl+Shift+K");
         CommandPalette.RegisterCommand("view.toggleSearch", "View: Focus Search in Files", () => FocusSearch(), "Ctrl+Shift+F");
         CommandPalette.RegisterCommand("view.toggleGit", "View: Focus Source Control", () => FocusGit(), "Ctrl+Shift+G");
         CommandPalette.RegisterCommand("git.refresh", "Git: Refresh Status", () => { _ = _dockFactory.GitTool?.RefreshAsync(); });
@@ -1244,6 +1245,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     public void FocusNetworkSuite() => FocusDockable(_dockFactory.NetworkSuiteTool);
+
+    [RelayCommand]
+    public void FocusDocker() => FocusDockable(_dockFactory.DockerTool);
 
     [RelayCommand]
     public void ShowExtensionsModal()

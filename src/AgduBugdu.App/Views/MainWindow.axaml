@@ -137,7 +137,7 @@
                     <MenuItem Header="Move _Line Down" InputGesture="Alt+Down" Command="{Binding MoveLineDownCommand}" />
                     <MenuItem Header="Duplicate Line _Up" InputGesture="Shift+Alt+Up" Command="{Binding DuplicateLineUpCommand}" />
                     <MenuItem Header="_Duplicate Line Down" InputGesture="Shift+Alt+Down" Command="{Binding DuplicateLineDownCommand}" />
-                    <MenuItem Header="Delete Lin_e" InputGesture="Ctrl+Shift+K" Command="{Binding DeleteLineCommand}" />
+                    <MenuItem Header="Delete Lin_e" InputGesture="Ctrl+Shift+L" Command="{Binding DeleteLineCommand}" />
                     <MenuItem Header="_Join Lines" InputGesture="Ctrl+Shift+J" Command="{Binding JoinLinesCommand}" />
                     <Separator />
                     <MenuItem Header="Transform to _Uppercase" InputGesture="Ctrl+Shift+U" Command="{Binding TransformUppercaseCommand}" />
@@ -176,6 +176,7 @@
                     <MenuItem Header="_TODO Tasks" Command="{Binding FocusTodoCommand}" />
                     <MenuItem Header="_Run &amp; Debug" InputGesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />
                     <MenuItem Header="_Network &amp; Sockets Workbench" Command="{Binding FocusNetworkSuiteCommand}" />
+                    <MenuItem Header="_Docker &amp; Containers" InputGesture="Ctrl+Shift+K" Command="{Binding FocusDockerCommand}" />
                     <Separator />
                     <MenuItem Header="_Reset Panel to Default Sizes" Command="{Binding ResetPaneLayoutCommand}" />
                     <MenuItem Header="_Extensions..." Command="{Binding ShowExtensionsModalCommand}" />

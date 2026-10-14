@@ -72,7 +72,7 @@ public class KeyGestureTests
             "Ctrl+Z", "Ctrl+Y", "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+A",
             "Ctrl+F", "Ctrl+H", "Ctrl+G", "Ctrl+M", "Ctrl+OemQuestion",
             "Shift+Alt+A", "Alt+Up", "Alt+Down", "Shift+Alt+Up", "Shift+Alt+Down",
-            "Ctrl+Shift+K", "Ctrl+Shift+J", "Ctrl+Shift+U", "Ctrl+U",
+            "Ctrl+Shift+K", "Ctrl+Shift+L", "Ctrl+Shift+J", "Ctrl+Shift+U", "Ctrl+U",
             "Ctrl+Shift+OemTilde", "Ctrl+OemComma", "Ctrl+P", "Ctrl+OemBackslash", "Ctrl+Alt+Right",
             "Alt+M", "Alt+Z", "Ctrl+J", "Ctrl+Shift+E", "Ctrl+Shift+F",
             "Ctrl+Shift+G", "Ctrl+Shift+O", "Ctrl+OemTilde", "Ctrl+Shift+D"
