@@ -56,6 +56,9 @@ public partial class EditorDocumentViewModel : Document
     [ObservableProperty]
     private string _encodingName = "UTF-8";
 
+    [ObservableProperty]
+    private bool _isReadOnly;
+
     // --- Search & Replace State ---
     [ObservableProperty]
     private bool _isFindVisible;
@@ -100,6 +103,33 @@ public partial class EditorDocumentViewModel : Document
     public event EventHandler? FocusSearchBoxRequested;
     public event EventHandler? FocusGoToLineRequested;
     public event EventHandler? FocusEditorRequested;
+    public event EventHandler? CutRequested;
+    public event EventHandler? CopyRequested;
+    public event EventHandler? PasteRequested;
+    public event EventHandler? SelectAllRequested;
+
+    public void RequestCut() => CutRequested?.Invoke(this, EventArgs.Empty);
+    public void RequestCopy() => CopyRequested?.Invoke(this, EventArgs.Empty);
+    public void RequestPaste() => PasteRequested?.Invoke(this, EventArgs.Empty);
+    public void RequestSelectAll() => SelectAllRequested?.Invoke(this, EventArgs.Empty);
+
+    public void Undo()
+    {
+        if (TextDocument.UndoStack.CanUndo)
+        {
+            TextDocument.UndoStack.Undo();
+            CheckModified();
+        }
+    }
+
+    public void Redo()
+    {
+        if (TextDocument.UndoStack.CanRedo)
+        {
+            TextDocument.UndoStack.Redo();
+            CheckModified();
+        }
+    }
 
     public Func<string?>? GetSelectedTextFunc { get; set; }
 
@@ -306,6 +336,8 @@ public partial class EditorDocumentViewModel : Document
         if (match != null)
         {
             var m = match.Value;
+            SelectionStart = m.Result.Offset;
+            SelectedLength = m.Result.Length;
             SelectTextRequested?.Invoke(this, (m.Result.Offset, m.Result.Length));
             CaretOffset = m.Result.Offset;
             SearchMatchStatus = $"{m.Index + 1} of {m.TotalCount}";
@@ -313,6 +345,7 @@ public partial class EditorDocumentViewModel : Document
         }
         else
         {
+            SelectedLength = 0;
             SearchMatchStatus = "No results";
             HasSearchMatches = false;
         }
@@ -328,6 +361,8 @@ public partial class EditorDocumentViewModel : Document
         if (match != null)
         {
             var m = match.Value;
+            SelectionStart = m.Result.Offset;
+            SelectedLength = m.Result.Length;
             SelectTextRequested?.Invoke(this, (m.Result.Offset, m.Result.Length));
             CaretOffset = m.Result.Offset;
             SearchMatchStatus = $"{m.Index + 1} of {m.TotalCount}";
@@ -335,6 +370,7 @@ public partial class EditorDocumentViewModel : Document
         }
         else
         {
+            SelectedLength = 0;
             SearchMatchStatus = "No results";
             HasSearchMatches = false;
         }
@@ -348,6 +384,11 @@ public partial class EditorDocumentViewModel : Document
 
         var options = GetSearchOptions();
         var selectedText = GetSelectedTextFunc?.Invoke();
+        if (string.IsNullOrEmpty(selectedText) && SelectedLength > 0 &&
+            SelectionStart >= 0 && SelectionStart + SelectedLength <= TextDocument.TextLength)
+        {
+            selectedText = TextDocument.GetText(SelectionStart, SelectedLength);
+        }
         bool isMatch = false;
 
         if (!string.IsNullOrEmpty(selectedText))
@@ -361,8 +402,16 @@ public partial class EditorDocumentViewModel : Document
 
         if (isMatch)
         {
-            TextDocument.Replace(CaretOffset, SelectedLength, ReplaceQuery ?? string.Empty);
+            var replacement = ReplaceQuery ?? string.Empty;
+            int replaceStart = SelectionStart;
+            int replaceLength = SelectedLength;
+            TextDocument.Replace(replaceStart, replaceLength, replacement);
             CheckModified();
+
+            // Advance caret past replacement and clear selection so FindNext searches after it
+            CaretOffset = replaceStart + replacement.Length;
+            SelectionStart = CaretOffset;
+            SelectedLength = 0;
             FindNext();
         }
         else
@@ -1050,6 +1099,17 @@ public partial class EditorDocumentViewModel : Document
         EncodingName = encoding;
     }
 
+    public System.Text.Encoding GetEncoding()
+    {
+        return EncodingName switch
+        {
+            "UTF-8 with BOM" or "UTF-8-BOM" => new System.Text.UTF8Encoding(true),
+            "UTF-16 LE" or "UTF-16LE" => System.Text.Encoding.Unicode,
+            "ASCII" => System.Text.Encoding.ASCII,
+            _ => new System.Text.UTF8Encoding(false)
+        };
+    }
+
     public void DetectLineEndings()
     {
         var text = TextDocument.Text;
@@ -1069,7 +1129,31 @@ public partial class EditorDocumentViewModel : Document
 
     public static EditorDocumentViewModel FromFile(string path)
     {
-        var content = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
+        string content;
+        string encodingName = "UTF-8";
+        if (File.Exists(path))
+        {
+            var bytes = File.ReadAllBytes(path);
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            {
+                encodingName = "UTF-8 with BOM";
+                content = System.Text.Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3);
+            }
+            else if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            {
+                encodingName = "UTF-16 LE";
+                content = System.Text.Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+            }
+            else
+            {
+                content = System.Text.Encoding.UTF8.GetString(bytes);
+            }
+        }
+        else
+        {
+            content = string.Empty;
+        }
+
         var textDoc = new TextDocument(content);
         textDoc.UndoStack.MarkAsOriginalFile();
         var vm = new EditorDocumentViewModel
@@ -1078,6 +1162,7 @@ public partial class EditorDocumentViewModel : Document
             FileName = Path.GetFileName(path),
             Id = path,
             TextDocument = textDoc,
+            EncodingName = encodingName,
             IsModified = false
         };
         vm._originalText = textDoc.Text;
@@ -1091,7 +1176,7 @@ public partial class EditorDocumentViewModel : Document
         if (string.IsNullOrEmpty(FilePath))
             return;
 
-        File.WriteAllText(FilePath, TextDocument.Text);
+        File.WriteAllText(FilePath, TextDocument.Text, GetEncoding());
         _originalText = TextDocument.Text;
         TextDocument.UndoStack.MarkAsOriginalFile();
         IsModified = false;

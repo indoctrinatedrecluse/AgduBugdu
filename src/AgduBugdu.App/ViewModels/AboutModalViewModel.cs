@@ -1,10 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Reflection;
+using CommunityToolkit.Mvvm.Input;
 using AgduBugdu.Core;
 
 namespace AgduBugdu.App.ViewModels;
 
-public partial class AboutModalViewModel : ObservableObject
+public partial class AboutModalViewModel : ViewModelBase
 {
     [ObservableProperty]
     private bool _isVisible;
@@ -16,9 +16,9 @@ public partial class AboutModalViewModel : ObservableObject
         IsVisible = true;
     }
 
+    [RelayCommand]
     public void Close()
     {
         IsVisible = false;
     }
 }
-

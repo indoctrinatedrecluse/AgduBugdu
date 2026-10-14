@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using AgduBugdu.App.ViewModels;
 using AgduBugdu.App.ViewModels.Documents;
+using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.Core.Text;
 using AgduBugdu.PluginContracts;
 using AvaloniaEdit.Document;
@@ -542,5 +544,127 @@ public class TextEditingTests
 
         doc.SetEncoding("UTF-16LE");
         Assert.Equal("UTF-16LE", doc.EncodingName);
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_ReplaceCurrent_AdvancesCaretAndClearsSelection()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TextDocument = new TextDocument("Hello world! Hello universe!")
+        };
+
+        doc.OpenReplace("world");
+        doc.ReplaceQuery = "friend";
+
+        // Find the match
+        doc.FindNext();
+        Assert.True(doc.SelectedLength > 0);
+        int matchStart = doc.SelectionStart;
+
+        // Perform single replacement
+        doc.ReplaceCurrent();
+
+        Assert.Equal("Hello friend! Hello universe!", doc.GetText());
+        Assert.Equal(0, doc.SelectedLength);
+        Assert.Equal(matchStart + "friend".Length, doc.CaretOffset);
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_Encoding_BOM_Detection_And_Persistence()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            var doc = new EditorDocumentViewModel
+            {
+                FilePath = tempFile,
+                TextDocument = new TextDocument("Encoding Test Content")
+            };
+
+            // Save with UTF-8 BOM
+            doc.SetEncoding("UTF-8 with BOM");
+            doc.Save();
+
+            // Reload and verify BOM was detected
+            var reloaded = EditorDocumentViewModel.FromFile(tempFile);
+            Assert.Equal("UTF-8 with BOM", reloaded.EncodingName);
+            Assert.Equal("Encoding Test Content", reloaded.GetText());
+
+            // Save with UTF-16 LE
+            reloaded.SetEncoding("UTF-16 LE");
+            reloaded.Save();
+
+            var reloadedUtf16 = EditorDocumentViewModel.FromFile(tempFile);
+            Assert.Equal("UTF-16 LE", reloadedUtf16.EncodingName);
+            Assert.Equal("Encoding Test Content", reloadedUtf16.GetText());
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void EditorDocumentViewModel_Undo_Redo_Stack()
+    {
+        var doc = new EditorDocumentViewModel
+        {
+            TextDocument = new TextDocument("Initial")
+        };
+
+        doc.NavigateTo(1, 8);
+        doc.InsertText(" Edited");
+        Assert.Equal("Initial Edited", doc.GetText());
+
+        doc.Undo();
+        Assert.Equal("Initial", doc.GetText());
+
+        doc.Redo();
+        Assert.Equal("Initial Edited", doc.GetText());
+    }
+
+    [Fact]
+    public void CommandPalette_ArrowKeyNavigation_WrapsAndUpdatesSelection()
+    {
+        var palette = new CommandPaletteViewModel();
+        palette.RegisterCommand("cmd1", "Command One", () => { });
+        palette.RegisterCommand("cmd2", "Command Two", () => { });
+        palette.RegisterCommand("cmd3", "Command Three", () => { });
+
+        palette.Open();
+        Assert.Equal(3, palette.FilteredCommands.Count);
+        Assert.Equal("cmd1", palette.SelectedItem?.Id);
+
+        palette.SelectNext();
+        Assert.Equal("cmd2", palette.SelectedItem?.Id);
+
+        palette.SelectNext();
+        Assert.Equal("cmd3", palette.SelectedItem?.Id);
+
+        // Wrap around to start
+        palette.SelectNext();
+        Assert.Equal("cmd1", palette.SelectedItem?.Id);
+
+        // Wrap around to end
+        palette.SelectPrevious();
+        Assert.Equal("cmd3", palette.SelectedItem?.Id);
+    }
+
+    [Fact]
+    public void OutputToolViewModel_AppendLog_And_Clear()
+    {
+        var output = new OutputToolViewModel();
+        output.Clear();
+        Assert.Equal(string.Empty, output.OutputText);
+
+        output.AppendLog("Test message", "INFO");
+        Assert.Contains("[INFO] Test message", output.OutputText);
+
+        output.Clear();
+        Assert.Equal(string.Empty, output.OutputText);
     }
 }

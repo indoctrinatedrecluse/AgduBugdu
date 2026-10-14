@@ -37,9 +37,16 @@
         <KeyBinding Gesture="Ctrl+Shift+U" Command="{Binding TransformUppercaseCommand}" />
         <KeyBinding Gesture="Ctrl+U" Command="{Binding TransformLowercaseCommand}" />
         <KeyBinding Gesture="Alt+Z" Command="{Binding ToggleWordWrapCommand}" />
-        <KeyBinding Gesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
+        <KeyBinding Gesture="Ctrl+OemTilde" Command="{Binding FocusTerminalCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+OemTilde" Command="{Binding RestartTerminalCommand}" />
+        <KeyBinding Gesture="F5" Command="{Binding StartOrContinueDebuggingCommand}" />
+        <KeyBinding Gesture="F10" Command="{Binding StepOverDebuggingCommand}" />
+        <KeyBinding Gesture="F11" Command="{Binding StepIntoDebuggingCommand}" />
+        <KeyBinding Gesture="Shift+F5" Command="{Binding StopDebuggingCommand}" />
         <KeyBinding Gesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding FocusSearchCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+G" Command="{Binding FocusGitCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />
     </Window.KeyBindings>
 
@@ -86,17 +93,26 @@
                     <MenuItem Header="_New File" InputGesture="Ctrl+N" Command="{Binding NewFileCommand}" />
                     <MenuItem Header="_Open File..." InputGesture="Ctrl+O" Command="{Binding OpenFileCommand}" />
                     <MenuItem Header="Open _Folder..." Command="{Binding OpenFolderCommand}" />
+                    <MenuItem Header="Open _Recent" ItemsSource="{Binding RecentMenuItems}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem" x:DataType="vm:RecentEntryViewModel" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                <Setter Property="Header" Value="{Binding DisplayText}" />
+                                <Setter Property="Command" Value="{Binding Command}" />
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                    </MenuItem>
                     <Separator />
                     <MenuItem Header="_Save" InputGesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
                     <MenuItem Header="Save _As..." InputGesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Edit">
-                    <MenuItem Header="Undo" InputGesture="Ctrl+Z" />
-                    <MenuItem Header="Redo" InputGesture="Ctrl+Y" />
+                    <MenuItem Header="Undo" InputGesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+                    <MenuItem Header="Redo" InputGesture="Ctrl+Y" Command="{Binding RedoCommand}" />
                     <Separator />
-                    <MenuItem Header="Cut" InputGesture="Ctrl+X" />
-                    <MenuItem Header="Copy" InputGesture="Ctrl+C" />
-                    <MenuItem Header="Paste" InputGesture="Ctrl+V" />
+                    <MenuItem Header="Cut" InputGesture="Ctrl+X" Command="{Binding CutCommand}" />
+                    <MenuItem Header="Copy" InputGesture="Ctrl+C" Command="{Binding CopyCommand}" />
+                    <MenuItem Header="Paste" InputGesture="Ctrl+V" Command="{Binding PasteCommand}" />
+                    <MenuItem Header="Select All" InputGesture="Ctrl+A" Command="{Binding SelectAllCommand}" />
                     <Separator />
                     <MenuItem Header="_Find..." InputGesture="Ctrl+F" Command="{Binding OpenFindCommand}" />
                     <MenuItem Header="_Replace..." InputGesture="Ctrl+H" Command="{Binding OpenReplaceCommand}" />
@@ -117,7 +133,7 @@
                     <MenuItem Header="Transform to _Lowercase" InputGesture="Ctrl+U" Command="{Binding TransformLowercaseCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Terminal">
-                    <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+OemTilde" Command="{Binding RestartTerminalCommand}" />
+                    <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+Shift+`" Command="{Binding RestartTerminalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Preferences">
                     <MenuItem Header="Color Theme">
@@ -131,6 +147,8 @@
                     <MenuItem Header="Toggle _Word Wrap" InputGesture="Alt+Z" Command="{Binding ToggleWordWrapCommand}" />
                     <MenuItem Header="Toggle _Bottom Panel" InputGesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
                     <MenuItem Header="_Explorer" InputGesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
+                    <MenuItem Header="_Search in Files" InputGesture="Ctrl+Shift+F" Command="{Binding FocusSearchCommand}" />
+                    <MenuItem Header="_Source Control" InputGesture="Ctrl+Shift+G" Command="{Binding FocusGitCommand}" />
                     <MenuItem Header="_Terminal" InputGesture="Ctrl+OemTilde" Command="{Binding FocusTerminalCommand}" />
                     <MenuItem Header="_Output" Command="{Binding FocusOutputCommand}" />
                     <MenuItem Header="_TODO Tasks" Command="{Binding FocusTodoCommand}" />
@@ -197,11 +215,11 @@
                                 FontSize="12"
                                 CornerRadius="4" />
                         <Button Content="🎨 Theme"
-                                Command="{Binding SetSolarizedContrastThemeCommand}"
+                                Command="{Binding ToggleThemeCommand}"
                                 Background="Transparent"
                                 BorderThickness="1"
                                 BorderBrush="{Binding BorderBrush}"
-                                Foreground="#CCCCCC"
+                                Foreground="{Binding AccentBrush}"
                                 Padding="8,4"
                                 FontSize="12"
                                 CornerRadius="4" />
@@ -221,8 +239,25 @@
                     Height="24">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <!-- Left status -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                        <!-- Clickable Git Branch indicator -->
+                        <Button Command="{Binding FocusGitCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="Source Control (Ctrl+Shift+G)"
+                                IsVisible="{Binding HasGitRepository}">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <TextBlock Text="🌿" FontSize="11" />
+                                <TextBlock Text="{Binding GitBranchName}" FontSize="11" Foreground="{Binding StatusBarForeground}" FontWeight="SemiBold" />
+                                <Border Background="#1E293B" CornerRadius="3" Padding="4,0" Margin="2,0,0,0" IsVisible="{Binding GitChangesCount}">
+                                    <TextBlock Text="{Binding GitChangesCount}" FontSize="10" Foreground="#38BDF8" />
+                                </Border>
+                            </StackPanel>
+                        </Button>
+
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{Binding StatusBarForeground}" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Right details -->
@@ -235,7 +270,16 @@
                                 ToolTip.Tip="Toggle Word Wrap (Alt+Z)">
                             <TextBlock Text="{Binding WordWrapStatus}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
                         </Button>
-                        <TextBlock Text="{Binding CursorPosition}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+
+                        <!-- Clickable Go to Line / Column -->
+                        <Button Command="{Binding OpenGoToLineCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="Go to Line / Column (Ctrl+G)">
+                            <TextBlock Text="{Binding CursorPosition}" FontSize="11" Foreground="{Binding StatusBarForeground}" />
+                        </Button>
 
                         <!-- Clickable Line Endings CRLF/LF -->
                         <Button Background="Transparent"

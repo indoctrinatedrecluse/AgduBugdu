@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AgduBugdu.App.Models;
+using AgduBugdu.Core.Git;
+using AgduBugdu.Core.Text;
 using AgduBugdu.Infrastructure.Terminal;
 using AgduBugdu.Plugin.Debugger;
 using AgduBugdu.Plugin.TodoExplorer;
@@ -31,6 +36,7 @@ public partial class ExplorerToolViewModel : Tool
     public event EventHandler<string>? FileSelected;
     public event EventHandler<string>? MarkdownPreviewRequested;
     public event EventHandler<string>? CsvPreviewRequested;
+    public event EventHandler<string>? PdfPreviewRequested;
     public event EventHandler? OpenFolderRequested;
 
     public ExplorerToolViewModel()
@@ -133,6 +139,15 @@ public partial class ExplorerToolViewModel : Tool
             CsvPreviewRequested?.Invoke(this, item.FullPath);
         }
     }
+
+    [RelayCommand]
+    public void OpenPdfPreview(FileSystemItem? item)
+    {
+        if (item != null && !item.IsDirectory && item.FullPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            PdfPreviewRequested?.Invoke(this, item.FullPath);
+        }
+    }
 }
 
 public partial class OutputToolViewModel : Tool
@@ -140,10 +155,32 @@ public partial class OutputToolViewModel : Tool
     public event EventHandler? ResetSizeRequested;
     public event EventHandler? MinimizeRequested;
 
+    [ObservableProperty]
+    private string _outputText = "[System] AgduBugdu IDE initialized.\n[Extensibility] Extension subsystem ready.\n";
+
     public OutputToolViewModel()
     {
         Id = "Output";
         Title = "Output";
+    }
+
+    public void AppendLog(string message, string level = "Info")
+    {
+        void Action() => OutputText += $"[{DateTime.Now:HH:mm:ss}] [{level}] {message}{Environment.NewLine}";
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Action();
+        }
+        else
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(Action);
+        }
+    }
+
+    [RelayCommand]
+    public void Clear()
+    {
+        OutputText = string.Empty;
     }
 
     [RelayCommand]
@@ -266,6 +303,11 @@ public partial class TodoToolViewModel : Tool
     [ObservableProperty]
     private string _statusSummary = "0 tasks";
 
+    public ObservableCollection<TodoItem> FilteredItems { get; } = new();
+
+    [ObservableProperty]
+    private TodoItem? _selectedItem;
+
     public TodoToolViewModel()
     {
         Id = "TodoExplorer";
@@ -280,6 +322,16 @@ public partial class TodoToolViewModel : Tool
             Avalonia.Threading.Dispatcher.UIThread.Post(UpdateContent);
         };
         UpdateContent();
+    }
+
+    [RelayCommand]
+    public void OpenSelectedTask(TodoItem? item = null)
+    {
+        var target = item ?? SelectedItem;
+        if (target != null)
+        {
+            _model?.OpenItem(target);
+        }
     }
 
     [RelayCommand]
@@ -307,6 +359,11 @@ public partial class TodoToolViewModel : Tool
         {
             StatusSummary = _model.SummaryText;
             FormattedContent = _model.ToFormattedText();
+            FilteredItems.Clear();
+            foreach (var item in _model.FilteredItems)
+            {
+                FilteredItems.Add(item);
+            }
         }
     }
 }
@@ -403,3 +460,434 @@ public partial class DebuggerToolViewModel : Tool
         }
     }
 }
+
+public class WorkspaceFileGroupItem
+{
+    public string FilePath { get; set; } = string.Empty;
+    public string RelativePath { get; set; } = string.Empty;
+    public string FileName => Path.GetFileName(RelativePath);
+    public string DirectoryPath => Path.GetDirectoryName(RelativePath) ?? string.Empty;
+    public int MatchCount => Matches.Count;
+    public bool IsExpanded { get; set; } = true;
+    public ObservableCollection<WorkspaceSearchMatch> Matches { get; } = new();
+}
+
+public partial class SearchToolViewModel : Tool
+{
+    private string? _currentWorkspacePath;
+    private CancellationTokenSource? _searchCts;
+
+    [ObservableProperty]
+    private string _query = string.Empty;
+
+    [ObservableProperty]
+    private string _replaceText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isReplaceExpanded;
+
+    [ObservableProperty]
+    private bool _matchCase;
+
+    [ObservableProperty]
+    private bool _wholeWord;
+
+    [ObservableProperty]
+    private bool _useRegex;
+
+    [ObservableProperty]
+    private string _filesToInclude = string.Empty;
+
+    [ObservableProperty]
+    private string _filesToExclude = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSearching;
+
+    [ObservableProperty]
+    private string _statusSummary = "Enter a search term and press Search";
+
+    public ObservableCollection<WorkspaceFileGroupItem> Results { get; } = new();
+
+    public event EventHandler<WorkspaceSearchMatch>? MatchSelected;
+
+    public SearchToolViewModel()
+    {
+        Id = "Search";
+        Title = "Search";
+    }
+
+    public void SetWorkspace(string? path)
+    {
+        _currentWorkspacePath = path;
+    }
+
+    [RelayCommand]
+    public void ToggleReplace()
+    {
+        IsReplaceExpanded = !IsReplaceExpanded;
+    }
+
+    [RelayCommand]
+    public async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_currentWorkspacePath) || !Directory.Exists(_currentWorkspacePath))
+        {
+            StatusSummary = "No workspace folder opened.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(Query))
+        {
+            StatusSummary = "Search query is empty.";
+            return;
+        }
+
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
+
+        IsSearching = true;
+        StatusSummary = "Searching workspace...";
+        Results.Clear();
+
+        try
+        {
+            var options = new WorkspaceSearchOptions(
+                Query,
+                MatchCase,
+                WholeWord,
+                UseRegex,
+                string.IsNullOrWhiteSpace(FilesToInclude) ? null : FilesToInclude,
+                string.IsNullOrWhiteSpace(FilesToExclude) ? null : FilesToExclude
+            );
+
+            var summary = await WorkspaceSearchEngine.SearchWorkspaceAsync(_currentWorkspacePath, options, null, ct);
+
+            foreach (var fileResult in summary.FileResults)
+            {
+                var group = new WorkspaceFileGroupItem
+                {
+                    FilePath = fileResult.FilePath,
+                    RelativePath = fileResult.RelativePath,
+                    IsExpanded = true
+                };
+                foreach (var m in fileResult.Matches)
+                {
+                    group.Matches.Add(m);
+                }
+                Results.Add(group);
+            }
+
+            StatusSummary = summary.TotalMatchesCount == 0
+                ? "No matches found"
+                : $"Found {summary.TotalMatchesCount} matches in {summary.MatchingFilesCount} files ({summary.Elapsed.TotalMilliseconds:F0} ms)";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusSummary = "Search cancelled.";
+        }
+        catch (Exception ex)
+        {
+            StatusSummary = $"Search error: {ex.Message}";
+        }
+        finally
+        {
+            IsSearching = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ReplaceAllAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_currentWorkspacePath) || !Directory.Exists(_currentWorkspacePath))
+        {
+            StatusSummary = "No workspace folder opened.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(Query))
+            return;
+
+        IsSearching = true;
+        StatusSummary = "Replacing across workspace...";
+
+        try
+        {
+            var options = new WorkspaceSearchOptions(
+                Query,
+                MatchCase,
+                WholeWord,
+                UseRegex,
+                string.IsNullOrWhiteSpace(FilesToInclude) ? null : FilesToInclude,
+                string.IsNullOrWhiteSpace(FilesToExclude) ? null : FilesToExclude
+            );
+
+            var (totalReplacements, filesModified) = await WorkspaceSearchEngine.ReplaceAllAcrossWorkspaceAsync(
+                _currentWorkspacePath,
+                options,
+                ReplaceText ?? string.Empty
+            );
+
+            StatusSummary = $"Replaced {totalReplacements} occurrences across {filesModified} files.";
+            await SearchAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusSummary = $"Replace error: {ex.Message}";
+        }
+        finally
+        {
+            IsSearching = false;
+        }
+    }
+
+    [RelayCommand]
+    public void Clear()
+    {
+        Query = string.Empty;
+        ReplaceText = string.Empty;
+        Results.Clear();
+        StatusSummary = "Search cleared.";
+    }
+
+    [RelayCommand]
+    public void MatchDoubleClicked(WorkspaceSearchMatch? match)
+    {
+        if (match != null)
+        {
+            MatchSelected?.Invoke(this, match);
+        }
+    }
+}
+
+public partial class GitToolViewModel : Tool
+{
+    private readonly IGitService _gitService;
+    private string? _currentWorkspacePath;
+
+    [ObservableProperty]
+    private string _currentBranch = "detached";
+
+    [ObservableProperty]
+    private bool _hasRepository;
+
+    [ObservableProperty]
+    private bool _isBusy;
+
+    [ObservableProperty]
+    private string _statusText = "Ready";
+
+    [ObservableProperty]
+    private string _commitMessage = string.Empty;
+
+    [ObservableProperty]
+    private string _diffOutput = string.Empty;
+
+    public ObservableCollection<GitFileItem> StagedChanges { get; } = new();
+    public ObservableCollection<GitFileItem> Changes { get; } = new();
+
+    public event EventHandler<string>? FileSelected;
+    public event EventHandler? StatusRefreshed;
+
+    public GitToolViewModel(IGitService? gitService = null)
+    {
+        Id = "SourceControl";
+        Title = "Source Control";
+        _gitService = gitService ?? new GitService();
+    }
+
+    public void SetWorkspace(string? path)
+    {
+        _currentWorkspacePath = path;
+        _ = RefreshAsync();
+    }
+
+    [RelayCommand]
+    public async Task RefreshAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_currentWorkspacePath) || !Directory.Exists(_currentWorkspacePath))
+        {
+            HasRepository = false;
+            CurrentBranch = "none";
+            StagedChanges.Clear();
+            Changes.Clear();
+            StatusText = "No workspace opened";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var status = await _gitService.GetStatusAsync(_currentWorkspacePath);
+            HasRepository = status.IsGitRepository;
+
+            if (status.IsGitRepository)
+            {
+                CurrentBranch = status.CurrentBranch ?? "HEAD";
+                StagedChanges.Clear();
+                foreach (var f in status.StagedFiles)
+                {
+                    StagedChanges.Add(f);
+                }
+
+                Changes.Clear();
+                foreach (var f in status.UnstagedFiles.Concat(status.UntrackedFiles))
+                {
+                    Changes.Add(f);
+                }
+
+                StatusText = $"{status.TotalChangesCount} changes ({CurrentBranch})";
+            }
+            else
+            {
+                CurrentBranch = "not a git repo";
+                StagedChanges.Clear();
+                Changes.Clear();
+                StatusText = "Folder is not a Git repository";
+            }
+            StatusRefreshed?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Git error: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task StageFileAsync(GitFileItem? item)
+    {
+        if (item == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        IsBusy = true;
+        try
+        {
+            await _gitService.StageFileAsync(_currentWorkspacePath, item.RelativePath);
+            await RefreshAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task StageAllAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        IsBusy = true;
+        try
+        {
+            await _gitService.StageAllAsync(_currentWorkspacePath);
+            await RefreshAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task UnstageFileAsync(GitFileItem? item)
+    {
+        if (item == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        IsBusy = true;
+        try
+        {
+            await _gitService.UnstageFileAsync(_currentWorkspacePath, item.RelativePath);
+            await RefreshAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task UnstageAllAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        IsBusy = true;
+        try
+        {
+            await _gitService.UnstageAllAsync(_currentWorkspacePath);
+            await RefreshAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task DiscardChangesAsync(GitFileItem? item)
+    {
+        if (item == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        IsBusy = true;
+        try
+        {
+            await _gitService.DiscardChangesAsync(_currentWorkspacePath, item.RelativePath);
+            await RefreshAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task CommitAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || string.IsNullOrWhiteSpace(CommitMessage))
+        {
+            StatusText = "Please enter a commit message.";
+            return;
+        }
+
+        if (StagedChanges.Count == 0)
+        {
+            if (Changes.Count > 0)
+            {
+                await _gitService.StageAllAsync(_currentWorkspacePath);
+            }
+            else
+            {
+                StatusText = "Nothing to commit.";
+                return;
+            }
+        }
+
+        IsBusy = true;
+        try
+        {
+            var res = await _gitService.CommitAsync(_currentWorkspacePath, CommitMessage.Trim());
+            if (res.Success)
+            {
+                CommitMessage = string.Empty;
+                DiffOutput = string.Empty;
+                StatusText = $"Committed: {res.CommitHash ?? "OK"}";
+                await RefreshAsync();
+            }
+            else
+            {
+                StatusText = $"Commit failed: {res.Error}";
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ShowDiffAsync(GitFileItem? item)
+    {
+        if (item == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        DiffOutput = await _gitService.GetDiffAsync(_currentWorkspacePath, item.RelativePath, item.IsStaged);
+        FileSelected?.Invoke(this, item.FilePath);
+    }
+}
+

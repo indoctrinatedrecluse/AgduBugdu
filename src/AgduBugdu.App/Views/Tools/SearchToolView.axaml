@@ -1,0 +1,224 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:core="using:AgduBugdu.Core.Text"
+             x:Class="AgduBugdu.App.Views.Tools.SearchToolView"
+             x:DataType="vm:SearchToolViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+        <!-- Title Bar -->
+        <Border Grid.Row="0"
+                Padding="12,8"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock Text="SEARCH IN WORKSPACE"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#888888" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                    <Button Content="Clear"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding ClearCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Search Controls -->
+        <Border Grid.Row="1"
+                Padding="10,8"
+                Background="#1E1E1E"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="6">
+                <!-- Search row with options -->
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Button Grid.Column="0"
+                            Content="▶"
+                            Width="22" Height="26"
+                            Padding="0"
+                            Margin="0,0,4,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="#AAAAAA"
+                            ToolTip.Tip="Toggle Replace"
+                            Command="{Binding ToggleReplaceCommand}" />
+
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Query, Mode=TwoWay}"
+                             Watermark="Search..."
+                             FontSize="12"
+                             Height="28"
+                             VerticalContentAlignment="Center"
+                             KeyDown="OnSearchKeyDown" />
+
+                    <!-- Search option toggles -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" Margin="4,0,0,0">
+                        <ToggleButton Content="Aa"
+                                      IsChecked="{Binding MatchCase}"
+                                      ToolTip.Tip="Match Case (Alt+C)"
+                                      Width="28" Height="28"
+                                      Padding="0"
+                                      FontSize="11"
+                                      FontWeight="Bold" />
+                        <ToggleButton Content="|ab|"
+                                      IsChecked="{Binding WholeWord}"
+                                      ToolTip.Tip="Match Whole Word (Alt+W)"
+                                      Width="28" Height="28"
+                                      Padding="0"
+                                      FontSize="11" />
+                        <ToggleButton Content=".*"
+                                      IsChecked="{Binding UseRegex}"
+                                      ToolTip.Tip="Use Regular Expression (Alt+R)"
+                                      Width="28" Height="28"
+                                      Padding="0"
+                                      FontSize="11"
+                                      FontWeight="Bold" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Replace row (Collapsible) -->
+                <Grid ColumnDefinitions="*,Auto"
+                      IsVisible="{Binding IsReplaceExpanded}">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding ReplaceText, Mode=TwoWay}"
+                             Watermark="Replace..."
+                             FontSize="12"
+                             Height="28"
+                             VerticalContentAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Content="Replace All"
+                            Margin="6,0,0,0"
+                            Padding="8,4"
+                            FontSize="11"
+                            Background="#374151"
+                            Foreground="#F3F4F6"
+                            CornerRadius="3"
+                            Command="{Binding ReplaceAllCommand}" />
+                </Grid>
+
+                <!-- Search Action Button & Filters -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding FilesToInclude, Mode=TwoWay}"
+                             Watermark="files to include (e.g. *.cs, *.ts)"
+                             FontSize="11"
+                             Height="26"
+                             VerticalContentAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Content="Search"
+                            Margin="6,0,0,0"
+                            Padding="12,4"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Background="#007ACC"
+                            Foreground="#FFFFFF"
+                            CornerRadius="3"
+                            Command="{Binding SearchCommand}" />
+                </Grid>
+
+                <TextBox Text="{Binding FilesToExclude, Mode=TwoWay}"
+                         Watermark="files to exclude (e.g. bin, obj, *.min.js)"
+                         FontSize="11"
+                         Height="26"
+                         VerticalContentAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Status Summary -->
+        <Border Grid.Row="2"
+                Padding="10,4"
+                Background="#181818"
+                BorderBrush="#2A2A2A"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusSummary}"
+                           FontSize="11"
+                           Foreground="#888888"
+                           TextTrimming="CharacterEllipsis" />
+                <ProgressBar Grid.Column="1"
+                             IsIndeterminate="{Binding IsSearching}"
+                             IsVisible="{Binding IsSearching}"
+                             Width="60"
+                             Height="4" />
+            </Grid>
+        </Border>
+
+        <!-- Results Tree -->
+        <TreeView Grid.Row="3"
+                  ItemsSource="{Binding Results}"
+                  Background="#141414"
+                  Margin="0">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate DataType="vm:WorkspaceFileGroupItem" ItemsSource="{Binding Matches}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,2">
+                        <!-- File Icon / Badge -->
+                        <TextBlock Grid.Column="0"
+                                   Text="📄"
+                                   FontSize="12"
+                                   Margin="0,0,6,0"
+                                   VerticalAlignment="Center" />
+
+                        <!-- File Name & Relative Dir -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FileName}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="#CCCCCC" />
+                            <TextBlock Text="{Binding DirectoryPath}"
+                                       FontSize="11"
+                                       Foreground="#666666" />
+                        </StackPanel>
+
+                        <!-- Match count badge -->
+                        <Border Grid.Column="2"
+                                Background="#2A2D2E"
+                                CornerRadius="8"
+                                Padding="6,1"
+                                Margin="4,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding MatchCount}"
+                                       FontSize="10"
+                                       Foreground="#AAAAAA" />
+                        </Border>
+                    </Grid>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+
+            <TreeView.DataTemplates>
+                <DataTemplate DataType="core:WorkspaceSearchMatch">
+                    <Grid ColumnDefinitions="Auto,*"
+                          Margin="12,1,2,1"
+                          DoubleTapped="OnMatchDoubleTapped"
+                          Cursor="Hand">
+                        <Border Grid.Column="0"
+                                Background="#1F2937"
+                                CornerRadius="2"
+                                Padding="4,1"
+                                Margin="0,0,6,0">
+                            <TextBlock Text="{Binding LineNumber, StringFormat='Ln {0}'}"
+                                       FontSize="10"
+                                       FontWeight="Bold"
+                                       Foreground="#60A5FA" />
+                        </Border>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding LineText}"
+                                   FontFamily="Consolas,Cascadia Code,Courier New"
+                                   FontSize="11"
+                                   Foreground="#D4D4D8"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </TreeView.DataTemplates>
+        </TreeView>
+    </Grid>
+</UserControl>

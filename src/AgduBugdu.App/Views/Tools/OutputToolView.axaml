@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
              x:Class="AgduBugdu.App.Views.Tools.OutputToolView"
@@ -24,15 +24,23 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Content="🗕"
-                        ToolTip.Tip="Minimize bottom panel"
-                        FontSize="10"
-                        Padding="6,2"
-                        Background="#333333"
-                        Foreground="#EEEEEE"
-                        CornerRadius="3"
-                        Command="{Binding MinimizeCommand}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <Button Content="Clear"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding ClearCommand}" />
+                    <Button Content="🗕"
+                            ToolTip.Tip="Minimize bottom panel"
+                            FontSize="10"
+                            Padding="6,2"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding MinimizeCommand}" />
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -44,8 +52,8 @@
                  Background="#141414"
                  Foreground="#CCCCCC"
                  BorderThickness="0"
-                 Text="[System] AgduBugdu IDE initialized.&#x0a;[Extensibility] Extension subsystem ready.&#x0a;[Theme] FluentAvalonia Dark theme active."
+                 Text="{Binding OutputText}"
                  AcceptsReturn="True"
-                 TextWrapping="NoWrap" />
+                 TextWrapping="Wrap" />
     </Grid>
 </UserControl>

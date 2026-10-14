@@ -101,5 +101,20 @@ public partial class CommandPaletteViewModel : ViewModelBase
         IsOpen = false;
         SearchText = string.Empty;
     }
-}
 
+    public void SelectNext()
+    {
+        if (FilteredCommands.Count == 0) return;
+        int idx = SelectedItem != null ? FilteredCommands.IndexOf(SelectedItem) : -1;
+        idx = (idx + 1) % FilteredCommands.Count;
+        SelectedItem = FilteredCommands[idx];
+    }
+
+    public void SelectPrevious()
+    {
+        if (FilteredCommands.Count == 0) return;
+        int idx = SelectedItem != null ? FilteredCommands.IndexOf(SelectedItem) : 0;
+        idx = (idx - 1 + FilteredCommands.Count) % FilteredCommands.Count;
+        SelectedItem = FilteredCommands[idx];
+    }
+}

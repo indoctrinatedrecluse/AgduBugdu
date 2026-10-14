@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using AgduBugdu.Core;
 using AgduBugdu.Core.Text;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
+using AgduBugdu.Infrastructure.History;
 using AgduBugdu.Infrastructure.Updates;
 using AgduBugdu.Plugin.Cpp;
 using AgduBugdu.Plugin.CSharp;
@@ -18,6 +20,7 @@ using AgduBugdu.Plugin.Debugger;
 using AgduBugdu.Plugin.Go;
 using AgduBugdu.Plugin.Java;
 using AgduBugdu.Plugin.MarkdownLive;
+using AgduBugdu.Plugin.PdfLive;
 using AgduBugdu.Plugin.Python;
 using AgduBugdu.Plugin.Rust;
 using AgduBugdu.Plugin.TodoExplorer;
@@ -139,6 +142,13 @@ public class AppEditorService : IEditorService
     }
 }
 
+public class RecentEntryViewModel
+{
+    public string DisplayText { get; set; } = string.Empty;
+    public string FullPath { get; set; } = string.Empty;
+    public IRelayCommand Command { get; set; } = null!;
+}
+
 public partial class MainViewModel : ObservableObject, IDisposable
 {
     public void Dispose()
@@ -154,10 +164,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly AppWorkspaceService _workspaceService;
     private readonly ExtensionContext _extensionContext;
     private readonly GitHubUpdateService _updateService;
+    private readonly IRecentItemsManager _recentItemsManager;
+    private MarkdownLiveExtension? _markdownExtension;
+    private DataGridLiveExtension? _csvExtension;
+    private PdfLiveExtension? _pdfExtension;
 
     public MainDockFactory DockFactory => _dockFactory;
     public IDebugService DebugService => _extensionContext.DebugService;
     public ILanguageService LanguageService => _extensionContext.Languages;
+    public IRecentItemsManager RecentItemsManager => _recentItemsManager;
+
+    public ObservableCollection<RecentEntryViewModel> RecentMenuItems { get; } = new();
 
     [ObservableProperty]
     private IRootDock? _layout;
@@ -196,6 +213,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _activeWorkspaceName = "No Folder Opened";
 
     [ObservableProperty]
+    private string _gitBranchName = "No Git";
+
+    [ObservableProperty]
+    private bool _hasGitRepository;
+
+    [ObservableProperty]
+    private string _gitStatusSummary = string.Empty;
+
+    [ObservableProperty]
+    private int _gitChangesCount;
+
+    [ObservableProperty]
     private string _currentThemeName = "Lonely Dark";
 
     // Dynamic Theme Properties for UI Binding
@@ -217,6 +246,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private IBrush _borderBrush = new SolidColorBrush(ThemeManager.LonelyDark.BorderBrush);
 
+    [ObservableProperty]
+    private IBrush _editorBackground = new SolidColorBrush(ThemeManager.LonelyDark.EditorBackground);
+
+    [ObservableProperty]
+    private IBrush _editorForeground = new SolidColorBrush(ThemeManager.LonelyDark.EditorForeground);
+
+    [ObservableProperty]
+    private IBrush _terminalBackground = new SolidColorBrush(ThemeManager.LonelyDark.TerminalBackground);
+
+    [ObservableProperty]
+    private IBrush _terminalForeground = new SolidColorBrush(ThemeManager.LonelyDark.TerminalForeground);
+
     public string AppTitle => $"{AppVersionInfo.AppName} v{AppVersionInfo.CurrentVersion}";
 
     public MainViewModel()
@@ -233,7 +274,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
             () => GetActiveEditorDocument(),
             (name, content) => CreateNewDocument(name, content));
         _workspaceService = new AppWorkspaceService(path => OpenFolder(path));
-        _extensionContext = new ExtensionContext(_commandRegistry, _toolRegistry, _editorService, _workspaceService);
+        _extensionContext = new ExtensionContext(
+            _commandRegistry,
+            _toolRegistry,
+            _editorService,
+            _workspaceService,
+            logger: (msg, lvl) => _dockFactory.OutputTool?.AppendLog(msg, lvl));
         _extensionManager = new ExtensionManager(_extensionContext);
 
         EditorDocumentViewModel.CommentSyntaxResolver = filePath =>
@@ -245,12 +291,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _updateService = new GitHubUpdateService();
         _updateModal = new UpdateModalViewModel(_updateService);
 
+        _recentItemsManager = new RecentItemsManager();
+
         ThemeManager.ThemeChanged += OnThemeChanged;
 
         HookActiveDocument();
         HookExplorer();
+        HookSearch();
+        HookGit();
         HookPanes();
         RegisterDefaultCommands();
+        RefreshRecentItems();
 
         // Load built-in extensions & check for updates in background
         _ = InitializeExtensionsAsync();
@@ -268,6 +319,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
             StatusBarForeground = new SolidColorBrush(theme.StatusBarForeground);
             AccentBrush = new SolidColorBrush(theme.AccentColor);
             BorderBrush = new SolidColorBrush(theme.BorderBrush);
+            EditorBackground = new SolidColorBrush(theme.EditorBackground);
+            EditorForeground = new SolidColorBrush(theme.EditorForeground);
+            TerminalBackground = new SolidColorBrush(theme.TerminalBackground);
+            TerminalForeground = new SolidColorBrush(theme.TerminalForeground);
             StatusMessage = $"Theme: {theme.Name}";
         });
     }
@@ -288,6 +343,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             var mdExtension = new MarkdownLiveExtension();
             mdExtension.Initialize(_extensionContext);
             await mdExtension.ActivateAsync();
+            _markdownExtension = mdExtension;
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = mdExtension.Id,
@@ -301,6 +357,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             var csvExtension = new DataGridLiveExtension();
             csvExtension.Initialize(_extensionContext);
             await csvExtension.ActivateAsync();
+            _csvExtension = csvExtension;
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = csvExtension.Id,
@@ -310,7 +367,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Description = "Interactive tabular viewer and search for CSV and TSV datasets."
             });
 
-            // 3. Workspace TODO & Task Explorer extension
+            // 3. Live PDF Viewer & Editor extension
+            var pdfExtension = new PdfLiveExtension();
+            pdfExtension.Initialize(_extensionContext);
+            await pdfExtension.ActivateAsync();
+            _pdfExtension = pdfExtension;
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = pdfExtension.Id,
+                Name = pdfExtension.Name,
+                Version = pdfExtension.Version,
+                Status = "Active",
+                Description = "High-performance PDF reader, page layout inspector, page editor, and document merger."
+            });
+
+            // 4. Workspace TODO & Task Explorer extension
             var todoExtension = new TodoExplorerExtension();
             todoExtension.Initialize(_extensionContext);
             await todoExtension.ActivateAsync();
@@ -451,9 +522,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (_dockFactory.DocumentDock != null)
         {
-            if (_dockFactory.DocumentDock.ActiveDockable is EditorDocumentViewModel activeDoc)
+            if (_dockFactory.DocumentDock is System.ComponentModel.INotifyPropertyChanged inpc)
             {
-                AttachDocumentEvents(activeDoc);
+                inpc.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(IDocumentDock.ActiveDockable))
+                    {
+                        if (_dockFactory.DocumentDock.ActiveDockable is EditorDocumentViewModel activeDoc)
+                        {
+                            AttachDocumentEvents(activeDoc);
+                        }
+                        else
+                        {
+                            CursorPosition = "--";
+                        }
+                    }
+                };
+            }
+
+            if (_dockFactory.DocumentDock.ActiveDockable is EditorDocumentViewModel initialDoc)
+            {
+                AttachDocumentEvents(initialDoc);
             }
         }
     }
@@ -490,7 +579,101 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     OpenFile(path);
                 }
             };
+            _dockFactory.ExplorerTool.MarkdownPreviewRequested += (s, path) => OpenMarkdownPreview(path);
+            _dockFactory.ExplorerTool.CsvPreviewRequested += (s, path) => OpenCsvPreview(path);
+            _dockFactory.ExplorerTool.PdfPreviewRequested += (s, path) => OpenPdfPreview(path);
+            _dockFactory.ExplorerTool.OpenFolderRequested += (s, e) => { _ = OpenFolderAsync(); };
         }
+    }
+
+    private void HookSearch()
+    {
+        if (_dockFactory.SearchTool != null)
+        {
+            _dockFactory.SearchTool.MatchSelected += (s, match) =>
+            {
+                OpenFile(match.FilePath, match.LineNumber, match.ColumnNumber);
+            };
+        }
+    }
+
+    private void HookGit()
+    {
+        if (_dockFactory.GitTool != null)
+        {
+            _dockFactory.GitTool.FileSelected += (s, path) =>
+            {
+                if (File.Exists(path))
+                {
+                    OpenFile(path);
+                }
+            };
+            _dockFactory.GitTool.StatusRefreshed += (s, e) =>
+            {
+                UpdateGitStatusBar();
+            };
+        }
+    }
+
+    private void UpdateGitStatusBar()
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_dockFactory.GitTool != null)
+            {
+                HasGitRepository = _dockFactory.GitTool.HasRepository;
+                GitBranchName = _dockFactory.GitTool.CurrentBranch;
+                GitChangesCount = _dockFactory.GitTool.StagedChanges.Count + _dockFactory.GitTool.Changes.Count;
+                GitStatusSummary = HasGitRepository ? $"{GitBranchName} ({GitChangesCount} changes)" : string.Empty;
+            }
+        });
+    }
+
+    public void RefreshRecentItems()
+    {
+        RecentMenuItems.Clear();
+
+        var folders = _recentItemsManager.GetRecentFolders(6);
+        foreach (var dir in folders)
+        {
+            var name = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            RecentMenuItems.Add(new RecentEntryViewModel
+            {
+                DisplayText = $"📁 {name} ({dir})",
+                FullPath = dir,
+                Command = new RelayCommand(() => OpenFolder(dir))
+            });
+        }
+
+        var files = _recentItemsManager.GetRecentFiles(10);
+        foreach (var file in files)
+        {
+            var name = Path.GetFileName(file);
+            RecentMenuItems.Add(new RecentEntryViewModel
+            {
+                DisplayText = $"📄 {name} ({file})",
+                FullPath = file,
+                Command = new RelayCommand(() => OpenFile(file))
+            });
+        }
+
+        if (RecentMenuItems.Count > 0)
+        {
+            RecentMenuItems.Add(new RecentEntryViewModel
+            {
+                DisplayText = "🧹 Clear Recently Opened",
+                FullPath = string.Empty,
+                Command = new RelayCommand(ClearRecentItems)
+            });
+        }
+    }
+
+    [RelayCommand]
+    public void ClearRecentItems()
+    {
+        _recentItemsManager.ClearAll();
+        RefreshRecentItems();
+        StatusMessage = "Cleared recently opened files and workspaces";
     }
 
     private void AttachDocumentEvents(EditorDocumentViewModel doc)
@@ -576,10 +759,41 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.toggleExplorer", "View: Focus Explorer", () => FocusDockable(_dockFactory.ExplorerTool));
         CommandPalette.RegisterCommand("view.toggleTerminal", "View: Focus Terminal", () => FocusDockable(_dockFactory.TerminalTool));
         CommandPalette.RegisterCommand("view.toggleOutput", "View: Focus Output", () => FocusDockable(_dockFactory.OutputTool));
+        CommandPalette.RegisterCommand("edit.undo", "Edit: Undo", () => Undo(), "Ctrl+Z");
+        CommandPalette.RegisterCommand("edit.redo", "Edit: Redo", () => Redo(), "Ctrl+Y");
+        CommandPalette.RegisterCommand("edit.cut", "Edit: Cut", () => Cut(), "Ctrl+X");
+        CommandPalette.RegisterCommand("edit.copy", "Edit: Copy", () => Copy(), "Ctrl+C");
+        CommandPalette.RegisterCommand("edit.paste", "Edit: Paste", () => Paste(), "Ctrl+V");
+        CommandPalette.RegisterCommand("edit.selectAll", "Edit: Select All", () => SelectAll(), "Ctrl+A");
         CommandPalette.RegisterCommand("view.toggleTodo", "View: Focus TODO Tasks", () => FocusDockable(_dockFactory.TodoTool));
         CommandPalette.RegisterCommand("view.toggleDebugger", "View: Focus Run & Debug", () => FocusDockable(_dockFactory.DebuggerTool));
+        CommandPalette.RegisterCommand("view.toggleSearch", "View: Focus Search in Files", () => FocusSearch(), "Ctrl+Shift+F");
+        CommandPalette.RegisterCommand("view.toggleGit", "View: Focus Source Control", () => FocusGit(), "Ctrl+Shift+G");
+        CommandPalette.RegisterCommand("git.refresh", "Git: Refresh Status", () => { _ = _dockFactory.GitTool?.RefreshAsync(); });
+        CommandPalette.RegisterCommand("git.stageAll", "Git: Stage All Changes", () => { _ = _dockFactory.GitTool?.StageAllAsync(); });
+        CommandPalette.RegisterCommand("git.unstageAll", "Git: Unstage All Changes", () => { _ = _dockFactory.GitTool?.UnstageAllAsync(); });
+        CommandPalette.RegisterCommand("git.commit", "Git: Commit Staged Changes", () => { _ = _dockFactory.GitTool?.CommitAsync(); });
+        CommandPalette.RegisterCommand("file.clearRecent", "File: Clear Recently Opened", () => ClearRecentItems());
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
     }
+
+    [RelayCommand]
+    public void Undo() => GetActiveEditorDocument()?.Undo();
+
+    [RelayCommand]
+    public void Redo() => GetActiveEditorDocument()?.Redo();
+
+    [RelayCommand]
+    public void Cut() => GetActiveEditorDocument()?.RequestCut();
+
+    [RelayCommand]
+    public void Copy() => GetActiveEditorDocument()?.RequestCopy();
+
+    [RelayCommand]
+    public void Paste() => GetActiveEditorDocument()?.RequestPaste();
+
+    [RelayCommand]
+    public void SelectAll() => GetActiveEditorDocument()?.RequestSelectAll();
 
     [RelayCommand]
     public void OpenFind()
@@ -779,6 +993,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void FocusExplorer() => FocusDockable(_dockFactory.ExplorerTool);
 
     [RelayCommand]
+    public void FocusSearch() => FocusDockable(_dockFactory.SearchTool);
+
+    [RelayCommand]
+    public void FocusGit() => FocusDockable(_dockFactory.GitTool);
+
+    [RelayCommand]
     public void FocusTerminal() => FocusDockable(_dockFactory.TerminalTool);
 
     [RelayCommand]
@@ -815,6 +1035,19 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    public void ToggleTheme()
+    {
+        if (ThemeManager.CurrentTheme.Mode == AppThemeMode.LonelyDark)
+        {
+            ThemeManager.ApplyTheme(AppThemeMode.SolarizedContrast);
+        }
+        else
+        {
+            ThemeManager.ApplyTheme(AppThemeMode.LonelyDark);
+        }
+    }
+
+    [RelayCommand]
     public async Task CheckForUpdatesExplicitAsync()
     {
         StatusMessage = "Checking for updates...";
@@ -843,13 +1076,50 @@ public partial class MainViewModel : ObservableObject, IDisposable
         StatusMessage = "Terminal restarted";
     }
 
+    [RelayCommand]
+    public async Task StartOrContinueDebuggingAsync()
+    {
+        if (_dockFactory.DebuggerTool != null)
+        {
+            FocusDockable(_dockFactory.DebuggerTool);
+            await _dockFactory.DebuggerTool.StartOrContinueAsync();
+        }
+    }
+
+    [RelayCommand]
+    public async Task StepOverDebuggingAsync()
+    {
+        if (_dockFactory.DebuggerTool != null)
+        {
+            await _dockFactory.DebuggerTool.StepOverAsync();
+        }
+    }
+
+    [RelayCommand]
+    public async Task StepIntoDebuggingAsync()
+    {
+        if (_dockFactory.DebuggerTool != null)
+        {
+            await _dockFactory.DebuggerTool.StepIntoAsync();
+        }
+    }
+
+    [RelayCommand]
+    public async Task StopDebuggingAsync()
+    {
+        if (_dockFactory.DebuggerTool != null)
+        {
+            await _dockFactory.DebuggerTool.StopAsync();
+        }
+    }
+
     private void FocusDockable(IDockable? dockable)
     {
         if (dockable != null)
         {
-            if (dockable == _dockFactory.ExplorerTool)
+            if (dockable == _dockFactory.ExplorerTool || dockable == _dockFactory.SearchTool || dockable == _dockFactory.GitTool)
             {
-                _dockFactory.RestoreLeftPane();
+                _dockFactory.RestoreLeftPane(dockable);
             }
             if (dockable == _dockFactory.TerminalTool || dockable == _dockFactory.OutputTool ||
                 dockable == _dockFactory.TodoTool || dockable == _dockFactory.DebuggerTool)
@@ -962,7 +1232,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _workspaceService.SetWorkspaceDirect(folderPath);
         _dockFactory.ExplorerTool?.LoadFolder(folderPath);
+        _dockFactory.SearchTool?.SetWorkspace(folderPath);
+        _dockFactory.GitTool?.SetWorkspace(folderPath);
         _dockFactory.TerminalTool?.Restart(folderPath);
+
+        _recentItemsManager.AddRecentFolder(folderPath);
+        RefreshRecentItems();
     }
 
     public void OpenFile(string filePath)
@@ -974,6 +1249,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (!File.Exists(filePath))
             return;
+
+        _recentItemsManager.AddRecentFile(filePath);
+        RefreshRecentItems();
+
+        if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenPdfPreview(filePath);
+            return;
+        }
 
         if (_dockFactory.DocumentDock != null)
         {
@@ -1002,6 +1286,98 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    public void OpenMarkdownPreview(string filePath)
+    {
+        if (!File.Exists(filePath)) return;
+        var previewHtml = _markdownExtension?.GetPreviewDocument(filePath);
+        var previewTitle = $"Preview: {Path.GetFileName(filePath)}";
+        var existing = _dockFactory.DocumentDock?.VisibleDockables?
+            .OfType<EditorDocumentViewModel>()
+            .FirstOrDefault(d => d.Title == previewTitle);
+
+        if (existing != null)
+        {
+            _dockFactory.SetActiveDockable(existing);
+            return;
+        }
+
+        var textContent = previewHtml ?? File.ReadAllText(filePath);
+        var previewDoc = new EditorDocumentViewModel
+        {
+            FileName = previewTitle,
+            Title = previewTitle,
+            FilePath = filePath,
+            IsReadOnly = true,
+            TextDocument = new AvaloniaEdit.Document.TextDocument(textContent)
+        };
+        AttachDocumentEvents(previewDoc);
+        _dockFactory.AddDockable(_dockFactory.DocumentDock!, previewDoc);
+        _dockFactory.SetActiveDockable(previewDoc);
+        StatusMessage = $"Opened Markdown Preview for {Path.GetFileName(filePath)}";
+    }
+
+    public void OpenCsvPreview(string filePath)
+    {
+        if (!File.Exists(filePath)) return;
+        var tableVm = new CsvTableViewModel();
+        tableVm.LoadFile(filePath);
+        var formatted = tableVm.ToFormattedText();
+        var previewTitle = $"Data Table: {Path.GetFileName(filePath)}";
+        var existing = _dockFactory.DocumentDock?.VisibleDockables?
+            .OfType<EditorDocumentViewModel>()
+            .FirstOrDefault(d => d.Title == previewTitle);
+
+        if (existing != null)
+        {
+            _dockFactory.SetActiveDockable(existing);
+            return;
+        }
+
+        var previewDoc = new EditorDocumentViewModel
+        {
+            FileName = previewTitle,
+            Title = previewTitle,
+            FilePath = filePath,
+            IsReadOnly = true,
+            TextDocument = new AvaloniaEdit.Document.TextDocument(formatted)
+        };
+        AttachDocumentEvents(previewDoc);
+        _dockFactory.AddDockable(_dockFactory.DocumentDock!, previewDoc);
+        _dockFactory.SetActiveDockable(previewDoc);
+        StatusMessage = $"Opened Data Table for {Path.GetFileName(filePath)}";
+    }
+
+    public void OpenPdfPreview(string filePath)
+    {
+        if (!File.Exists(filePath)) return;
+        var previewTitle = $"PDF: {Path.GetFileName(filePath)}";
+        var existing = _dockFactory.DocumentDock?.VisibleDockables?
+            .OfType<EditorDocumentViewModel>()
+            .FirstOrDefault(d => d.Title == previewTitle);
+
+        if (existing != null)
+        {
+            _dockFactory.SetActiveDockable(existing);
+            return;
+        }
+
+        var textContent = _pdfExtension?.GetPreviewDocument(filePath) 
+            ?? PdfEngine.ToFormattedSummary(PdfEngine.LoadDocument(filePath), 1);
+
+        var previewDoc = new EditorDocumentViewModel
+        {
+            FileName = previewTitle,
+            Title = previewTitle,
+            FilePath = filePath,
+            IsReadOnly = true,
+            TextDocument = new AvaloniaEdit.Document.TextDocument(textContent)
+        };
+        AttachDocumentEvents(previewDoc);
+        _dockFactory.AddDockable(_dockFactory.DocumentDock!, previewDoc);
+        _dockFactory.SetActiveDockable(previewDoc);
+        StatusMessage = $"Opened Live PDF Viewer & Editor for {Path.GetFileName(filePath)}";
+    }
+
     [RelayCommand]
     public async Task SaveFileAsync()
     {
@@ -1016,6 +1392,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 activeDoc.Save();
                 StatusMessage = $"Saved {activeDoc.FileName}";
                 _editorService.NotifySaved(activeDoc.FilePath);
+                _recentItemsManager.AddRecentFile(activeDoc.FilePath);
+                RefreshRecentItems();
+                _ = _dockFactory.GitTool?.RefreshAsync();
             }
         }
     }
@@ -1041,6 +1420,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 activeDoc.SaveAs(newPath);
                 StatusMessage = $"Saved as {activeDoc.FileName}";
                 _editorService.NotifySaved(newPath);
+                _recentItemsManager.AddRecentFile(newPath);
+                RefreshRecentItems();
+                _ = _dockFactory.GitTool?.RefreshAsync();
             }
         }
     }

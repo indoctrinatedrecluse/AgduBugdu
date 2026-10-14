@@ -7,6 +7,7 @@
     <Project Path="plugins/AgduBugdu.Plugin.Go/AgduBugdu.Plugin.Go.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.Java/AgduBugdu.Plugin.Java.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.MarkdownLive/AgduBugdu.Plugin.MarkdownLive.csproj" />
+    <Project Path="plugins/AgduBugdu.Plugin.PdfLive/AgduBugdu.Plugin.PdfLive.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.Python/AgduBugdu.Plugin.Python.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.Rust/AgduBugdu.Plugin.Rust.csproj" />
     <Project Path="plugins/AgduBugdu.Plugin.TodoExplorer/AgduBugdu.Plugin.TodoExplorer.csproj" />

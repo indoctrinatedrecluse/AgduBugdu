@@ -20,6 +20,8 @@ public class MainDockFactory : Factory
     private ProportionalDockSplitter? _bottomSplitter;
     private ProportionalDockSplitter? _leftDockSplitter;
     private ExplorerToolViewModel? _explorerTool;
+    private SearchToolViewModel? _searchTool;
+    private GitToolViewModel? _gitTool;
     private OutputToolViewModel? _outputTool;
     private TerminalToolViewModel? _terminalTool;
     private TodoToolViewModel? _todoTool;
@@ -30,6 +32,8 @@ public class MainDockFactory : Factory
     public ToolDock? BottomDock => _bottomDock;
     public ToolDock? LeftDock => _leftDock;
     public ExplorerToolViewModel? ExplorerTool => _explorerTool;
+    public SearchToolViewModel? SearchTool => _searchTool;
+    public GitToolViewModel? GitTool => _gitTool;
     public OutputToolViewModel? OutputTool => _outputTool;
     public TerminalToolViewModel? TerminalTool => _terminalTool;
     public TodoToolViewModel? TodoTool => _todoTool;
@@ -39,6 +43,8 @@ public class MainDockFactory : Factory
     public override IRootDock CreateLayout()
     {
         _explorerTool ??= new ExplorerToolViewModel();
+        _searchTool ??= new SearchToolViewModel();
+        _gitTool ??= new GitToolViewModel();
         _outputTool ??= new OutputToolViewModel();
         _terminalTool ??= new TerminalToolViewModel();
         _todoTool ??= new TodoToolViewModel();
@@ -60,7 +66,7 @@ public class MainDockFactory : Factory
             Id = "LeftPane",
             Title = "Explorer",
             Proportion = 0.22,
-            VisibleDockables = CreateList<IDockable>(_explorerTool),
+            VisibleDockables = CreateList<IDockable>(_explorerTool, _searchTool, _gitTool),
             ActiveDockable = _explorerTool
         };
         _leftDock = leftDock;
@@ -121,17 +127,24 @@ public class MainDockFactory : Factory
         return rootDock;
     }
 
-    public void RestoreLeftPane()
+    public void RestoreLeftPane(IDockable? activeTool = null)
     {
-        if (_leftDock == null || _explorerTool == null)
+        if (_leftDock == null)
             return;
 
-        if (_leftDock.VisibleDockables == null || !_leftDock.VisibleDockables.Contains(_explorerTool))
-        {
-            _leftDock.VisibleDockables ??= CreateList<IDockable>();
+        _explorerTool ??= new ExplorerToolViewModel();
+        _searchTool ??= new SearchToolViewModel();
+        _gitTool ??= new GitToolViewModel();
+
+        _leftDock.VisibleDockables ??= CreateList<IDockable>();
+        if (!_leftDock.VisibleDockables.Contains(_explorerTool))
             _leftDock.VisibleDockables.Add(_explorerTool);
-        }
-        _leftDock.ActiveDockable = _explorerTool;
+        if (!_leftDock.VisibleDockables.Contains(_searchTool))
+            _leftDock.VisibleDockables.Add(_searchTool);
+        if (!_leftDock.VisibleDockables.Contains(_gitTool))
+            _leftDock.VisibleDockables.Add(_gitTool);
+
+        _leftDock.ActiveDockable = activeTool ?? _explorerTool;
 
         if (_mainLayout?.VisibleDockables != null && _leftDockSplitter != null)
         {
@@ -218,6 +231,7 @@ public class MainDockFactory : Factory
             : null;
         var activeDoc = _documentDock?.ActiveDockable;
         var activeBottom = _bottomDock?.ActiveDockable;
+        var activeLeft = _leftDock?.ActiveDockable;
 
         _isBottomPaneMinimized = false;
 
@@ -238,6 +252,15 @@ public class MainDockFactory : Factory
             }
         }
 
+        if (_leftDock != null && activeLeft != null && _leftDock.VisibleDockables != null)
+        {
+            var match = _leftDock.VisibleDockables.FirstOrDefault(d => d.Id == activeLeft.Id);
+            if (match != null)
+            {
+                _leftDock.ActiveDockable = match;
+            }
+        }
+
         InitLayout(newRoot);
         return newRoot;
     }
@@ -252,6 +275,8 @@ public class MainDockFactory : Factory
         ContextLocator = new Dictionary<string, System.Func<object?>>
         {
             ["Explorer"] = () => _explorerTool,
+            ["Search"] = () => _searchTool,
+            ["SourceControl"] = () => _gitTool,
             ["Output"] = () => _outputTool,
             ["Terminal"] = () => _terminalTool,
             ["TodoExplorer"] = () => _todoTool,
@@ -263,6 +288,8 @@ public class MainDockFactory : Factory
             ["BottomPane"] = () => _bottomDock,
             ["DocumentsPane"] = () => _documentDock,
             ["Explorer"] = () => _explorerTool,
+            ["Search"] = () => _searchTool,
+            ["SourceControl"] = () => _gitTool,
             ["Output"] = () => _outputTool,
             ["Terminal"] = () => _terminalTool,
             ["TodoExplorer"] = () => _todoTool,

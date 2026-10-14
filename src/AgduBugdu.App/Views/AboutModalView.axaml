@@ -23,7 +23,7 @@
                 
                 <Button Content="Close"
                         HorizontalAlignment="Right"
-                        Command="{Binding Close}"
+                        Command="{Binding CloseCommand}"
                         Padding="16,6"
                         Background="#2563EB"
                         Foreground="White"

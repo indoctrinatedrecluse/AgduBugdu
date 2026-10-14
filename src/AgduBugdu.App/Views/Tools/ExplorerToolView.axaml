@@ -72,6 +72,10 @@
                                           IsVisible="{Binding IsCsvFile, FallbackValue=False}"
                                           Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).OpenCsvPreviewCommand}"
                                           CommandParameter="{Binding}" />
+                                <MenuItem Header="Open in Live PDF Viewer &amp; Editor"
+                                          IsVisible="{Binding IsPdfFile, FallbackValue=False}"
+                                          Command="{Binding $parent[TreeView].((vm:ExplorerToolViewModel)DataContext).OpenPdfPreviewCommand}"
+                                          CommandParameter="{Binding}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>
                         <!-- Icon (dY"? or dY",) -->

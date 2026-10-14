@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.3.0] - 2026-10-14
+
+### ✨ Added
+- **📑 Live PDF Viewing & Editing Extension (`AgduBugdu.Plugin.PdfLive`)**:
+  - High-performance, memory-efficient PDF document parser, page layout inspector, and editor backed by `PdfPig` and `PdfSharpCore`.
+  - **Document Inspection**: Extracts detailed document metadata (title, author, subject, keywords, producer, creation/modification dates), page counts, dimensions, orientations, and interactive bookmark / outline tree hierarchies.
+  - **Full-Text In-Document Search**: High-speed text extraction and search across all pages with match snippet extraction.
+  - **Interactive Editing & Page Manipulation**:
+    - **Page Rotation**: Rotate single or multiple pages clockwise (90°, 180°, 270°).
+    - **Page Deletion**: Remove individual pages or ranges with automatic layout re-indexing.
+    - **Document Splitting & Page Extraction**: Extract individual pages or custom ranges to separate standalone PDF files.
+    - **Multi-Document Merging**: Combine multiple PDF files into unified documents.
+    - **Diagonal Watermarking**: Apply customizable text watermarks across pages with opacity and font sizing.
+    - **Metadata Editor**: Update and persist Title, Author, Subject, and Keywords.
+  - Seamless IDE integration with Workspace Explorer context menu ("Open in Live PDF Viewer & Editor"), automatic `.pdf` file association, and tabbed preview renderer.
+- **🔍 Workspace Search / Find & Replace Across Files (`Ctrl+Shift+F`)**:
+  - Comprehensive multi-file text search engine (`WorkspaceSearchEngine`) with asynchronous cancellation support and real-time progress.
+  - Configurable filter options: Match Case (`Aa`), Match Whole Word (`|ab|`), and Regular Expressions (`.*`).
+  - Wildcard file include patterns (`*.cs, *.axaml, *.ts`) and exclude patterns (`bin, obj, node_modules, *.min.js`).
+  - Smart binary file skipping (null-byte analysis & file extension checks).
+  - Global Workspace Replace: single-file replace and workspace-wide "Replace All" with replacement counts and files-modified metrics.
+  - Interactive Dockable UI: TreeView grouped by file with result counters and double-click navigation straight to file line and column.
+- **🌿 Git & Source Control Workbench (`Ctrl+Shift+G`)**:
+  - Cross-platform native Git integration with real-time status tracking (`git status --porcelain=v1 -b`).
+  - Shows active branch with tracking indicators (`ahead` / `behind` commits).
+  - Change Lists: Grouped into **Staged Changes** and **Working Tree Changes** with status badges (`M`odified, `A`dded, `D`eleted, `U`ntracked, `R`enamed, `C`opied, Conflict `!`).
+  - Staging controls: Stage/Unstage individual files (`+` / `-`), Stage All, Unstage All, and Discard Changes (`↩`).
+  - In-app Commit: Commit box supporting `Ctrl+Enter` dispatch with error handling and commit hash reporting.
+  - Diff View: Inline diff inspection via `git diff` and `git diff --cached`.
+  - Auto-refreshes on workspace folder changes and file saves.
+- **📊 Interactive Status Bar & UI Navigation**:
+  - **Interactive Git Branch Pill**: Left-aligned clickable branch button with leaf icon (`🌿`) and change count badge; clicking immediately opens and focuses the Source Control panel.
+  - **Clickable Caret Navigation (`Ln X, Col Y`)**: Clicking the line/column indicator in the status bar directly launches the Go to Line / Column modal (`Ctrl+G`).
+  - Dynamic controls for Line Endings (`CRLF`/`LF`), Indentation (`Spaces: 2/4/8`, `Tabs`, whitespace conversion), and File Encodings (`UTF-8`, `UTF-8-BOM`, `UTF-16LE`, `ASCII`).
+- **📂 Recent Files & Workspaces Persistence**:
+  - Thread-safe JSON persistence tracking recent workspaces and files in `%LOCALAPPDATA%/AgduBugdu/recent_items.json`.
+  - Dynamic `File -> Open Recent` submenu in menu bar displaying recent workspace directories (`📁`), files (`📄`), and "🧹 Clear Recently Opened".
+  - Integrated into Command Palette for quick lookup and clearing.
+
+### 🐛 Fixed
+- **⌨️ Menu & Command Palette Hotkeys**: Fixed missing keyboard shortcuts `Ctrl+Shift+F` (Search), `Ctrl+Shift+G` (Source Control), `Ctrl+Shift+U` (Uppercase), `Ctrl+U` (Lowercase), `Shift+Alt+Up` (Duplicate Line Up), `Shift+Alt+Down` (Duplicate Line Down), and `Ctrl+Shift+J` (Join Lines).
+- **🌐 About Dialog Hyperlinks**: Fixed About Modal GitHub repository button click handler to properly open the browser.
+- **💻 Terminal Prompt Alignment**: Fixed terminal output margin alignment and session restart on directory switch.
+- **📑 Clean File Modification State**: Fixed Welcome document being falsely marked dirty upon initial launch.
+
+---
+
 ## 🚀 [1.2.0] - 2026-10-04
 
 ### ✨ Added

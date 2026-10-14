@@ -1,0 +1,270 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:git="using:AgduBugdu.Core.Git"
+             x:Class="AgduBugdu.App.Views.Tools.GitToolView"
+             x:DataType="vm:GitToolViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <!-- Header Bar -->
+        <Border Grid.Row="0"
+                Padding="12,8"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock Text="SOURCE CONTROL"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#888888" />
+                    <Border Background="#1E293B" CornerRadius="3" Padding="6,1" Margin="4,0,0,0"
+                            IsVisible="{Binding HasRepository}">
+                        <TextBlock Text="{Binding CurrentBranch, StringFormat='🌿 {0}'}"
+                                   FontSize="11"
+                                   Foreground="#38BDF8"
+                                   FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                    <Button Content="+"
+                            ToolTip.Tip="Stage All Changes"
+                            FontSize="12"
+                            Width="24" Height="24"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding StageAllCommand}" />
+                    <Button Content="-"
+                            ToolTip.Tip="Unstage All Changes"
+                            FontSize="12"
+                            Width="24" Height="24"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding UnstageAllCommand}" />
+                    <Button Content="↻"
+                            ToolTip.Tip="Refresh Git Status"
+                            FontSize="12"
+                            Width="24" Height="24"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            CornerRadius="3"
+                            Command="{Binding RefreshCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Commit Input Box -->
+        <Border Grid.Row="1"
+                Padding="10,8"
+                Background="#1E1E1E"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1"
+                IsVisible="{Binding HasRepository}">
+            <StackPanel Spacing="6">
+                <TextBox Text="{Binding CommitMessage, Mode=TwoWay}"
+                         Watermark="Message (Ctrl+Enter to commit)"
+                         AcceptsReturn="True"
+                         Height="56"
+                         FontSize="12"
+                         TextWrapping="Wrap"
+                         KeyDown="OnCommitKeyDown" />
+                <Button Content="Commit"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="0,6"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Background="#007ACC"
+                        Foreground="#FFFFFF"
+                        CornerRadius="3"
+                        Command="{Binding CommitCommand}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Not a Git repo state -->
+        <Border Grid.Row="2"
+                Padding="16"
+                IsVisible="{Binding !HasRepository}">
+            <StackPanel Spacing="10" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="Folder is not a Git repository"
+                           Foreground="#888888"
+                           FontSize="13"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Open a folder containing a .git repository to use Source Control features."
+                           Foreground="#666666"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Changes Lists -->
+        <ScrollViewer Grid.Row="2"
+                      IsVisible="{Binding HasRepository}"
+                      Background="#141414">
+            <StackPanel Spacing="8" Margin="4">
+
+                <!-- Staged Changes Section -->
+                <Expander IsExpanded="True"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Padding="0"
+                          IsVisible="{Binding StagedChanges.Count}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="STAGED CHANGES"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Foreground="#888888" />
+                            <Border Background="#2A2D2E" CornerRadius="8" Padding="5,0">
+                                <TextBlock Text="{Binding StagedChanges.Count}" FontSize="10" Foreground="#AAAAAA" />
+                            </Border>
+                        </StackPanel>
+                    </Expander.Header>
+                    <ItemsControl ItemsSource="{Binding StagedChanges}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="git:GitFileItem">
+                                <Grid ColumnDefinitions="Auto,*,Auto"
+                                      Margin="4,2"
+                                      DoubleTapped="OnFileItemDoubleTapped"
+                                      Cursor="Hand">
+                                    <Border Grid.Column="0"
+                                            Background="#064E3B"
+                                            CornerRadius="2"
+                                            Padding="4,1"
+                                            Margin="0,0,6,0">
+                                        <TextBlock Text="{Binding StatusBadge}"
+                                                   FontSize="10"
+                                                   FontWeight="Bold"
+                                                   Foreground="#34D399" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontSize="12"
+                                                   Foreground="#E4E4E7" />
+                                        <TextBlock Text="{Binding DirectoryName}"
+                                                   FontSize="10"
+                                                   Foreground="#71717A" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Content="-"
+                                            ToolTip.Tip="Unstage file"
+                                            Width="20" Height="20"
+                                            Padding="0"
+                                            FontSize="10"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="#AAAAAA"
+                                            Command="{Binding $parent[UserControl].((vm:GitToolViewModel)DataContext).UnstageFileCommand}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+
+                <!-- Working Tree Changes Section -->
+                <Expander IsExpanded="True"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Padding="0">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="CHANGES"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Foreground="#888888" />
+                            <Border Background="#2A2D2E" CornerRadius="8" Padding="5,0">
+                                <TextBlock Text="{Binding Changes.Count}" FontSize="10" Foreground="#AAAAAA" />
+                            </Border>
+                        </StackPanel>
+                    </Expander.Header>
+                    <ItemsControl ItemsSource="{Binding Changes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="git:GitFileItem">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                                      Margin="4,2"
+                                      DoubleTapped="OnFileItemDoubleTapped"
+                                      Cursor="Hand">
+                                    <Border Grid.Column="0"
+                                            Background="#374151"
+                                            CornerRadius="2"
+                                            Padding="4,1"
+                                            Margin="0,0,6,0">
+                                        <TextBlock Text="{Binding StatusBadge}"
+                                                   FontSize="10"
+                                                   FontWeight="Bold"
+                                                   Foreground="#FBBF24" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontSize="12"
+                                                   Foreground="#E4E4E7" />
+                                        <TextBlock Text="{Binding DirectoryName}"
+                                                   FontSize="10"
+                                                   Foreground="#71717A" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Content="↩"
+                                            ToolTip.Tip="Discard Changes"
+                                            Width="20" Height="20"
+                                            Padding="0"
+                                            FontSize="10"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="#E11D48"
+                                            Command="{Binding $parent[UserControl].((vm:GitToolViewModel)DataContext).DiscardChangesCommand}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Grid.Column="3"
+                                            Content="+"
+                                            ToolTip.Tip="Stage File"
+                                            Width="20" Height="20"
+                                            Padding="0"
+                                            FontSize="10"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="#38BDF8"
+                                            Command="{Binding $parent[UserControl].((vm:GitToolViewModel)DataContext).StageFileCommand}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Status Bottom Bar -->
+        <Border Grid.Row="3"
+                Padding="10,4"
+                Background="#181818"
+                BorderBrush="#2A2A2A"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusText}"
+                           FontSize="11"
+                           Foreground="#888888"
+                           TextTrimming="CharacterEllipsis" />
+                <ProgressBar Grid.Column="1"
+                             IsIndeterminate="{Binding IsBusy}"
+                             IsVisible="{Binding IsBusy}"
+                             Width="60"
+                             Height="4" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

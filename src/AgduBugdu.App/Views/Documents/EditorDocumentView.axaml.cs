@@ -9,6 +9,7 @@ using AvaloniaEdit.Rendering;
 using AvaloniaEdit.TextMate;
 using AgduBugdu.App.ViewModels;
 using AgduBugdu.App.ViewModels.Documents;
+using AgduBugdu.App.Themes;
 using AgduBugdu.PluginContracts;
 using TextMateSharp.Grammars;
 using AvaloniaEdit.Folding;
@@ -99,11 +100,57 @@ public partial class EditorDocumentView : UserControl
         SearchBox.KeyDown += OnSearchBoxKeyDown;
         ReplaceBox.KeyDown += OnReplaceBoxKeyDown;
         GoToLineBox.KeyDown += OnGoToLineBoxKeyDown;
+
+        ThemeManager.ThemeChanged += OnThemeChanged;
+        ApplyTheme(ThemeManager.CurrentTheme);
+    }
+
+    private void OnThemeChanged(object? sender, AgduBugdu.App.Themes.ThemeDefinition theme)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyTheme(theme));
+    }
+
+    private void ApplyTheme(AgduBugdu.App.Themes.ThemeDefinition theme)
+    {
+        var bg = new SolidColorBrush(theme.EditorBackground);
+        var fg = new SolidColorBrush(theme.EditorForeground);
+        Background = bg;
+        Editor.Background = bg;
+        Editor.Foreground = fg;
+        if (_textMateInstallation != null && _registryOptions != null)
+        {
+            var tmTheme = theme.Mode == AgduBugdu.App.Themes.AppThemeMode.SolarizedContrast
+                ? ThemeName.SolarizedDark
+                : ThemeName.DarkPlus;
+            _textMateInstallation.SetTheme(_registryOptions.LoadTheme(tmTheme));
+        }
     }
 
     private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not EditorDocumentViewModel doc) return;
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            if (e.Key == Key.C)
+            {
+                doc.MatchCase = !doc.MatchCase;
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.W)
+            {
+                doc.MatchWholeWord = !doc.MatchWholeWord;
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.R)
+            {
+                doc.UseRegex = !doc.UseRegex;
+                e.Handled = true;
+                return;
+            }
+        }
 
         if (e.Key == Key.Enter)
         {
@@ -127,6 +174,28 @@ public partial class EditorDocumentView : UserControl
     private void OnReplaceBoxKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not EditorDocumentViewModel doc) return;
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            if (e.Key == Key.C)
+            {
+                doc.MatchCase = !doc.MatchCase;
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.W)
+            {
+                doc.MatchWholeWord = !doc.MatchWholeWord;
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.R)
+            {
+                doc.UseRegex = !doc.UseRegex;
+                e.Handled = true;
+                return;
+            }
+        }
 
         if (e.Key == Key.Enter)
         {
@@ -400,6 +469,11 @@ public partial class EditorDocumentView : UserControl
                 Editor.Focus();
             };
 
+            doc.CutRequested += (s, ev) => Editor.Cut();
+            doc.CopyRequested += (s, ev) => Editor.Copy();
+            doc.PasteRequested += (s, ev) => Editor.Paste();
+            doc.SelectAllRequested += (s, ev) => Editor.SelectAll();
+
             // Hook scroll requests
             doc.ScrollToLineRequested += (s, line) =>
             {
@@ -437,6 +511,7 @@ public partial class EditorDocumentView : UserControl
             // Synchronize formatting options with document viewmodel
             Editor.Options.IndentationSize = doc.TabSize;
             Editor.Options.ConvertTabsToSpaces = doc.UseSpacesForTabs;
+            Editor.IsReadOnly = doc.IsReadOnly;
             doc.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(EditorDocumentViewModel.TabSize))
@@ -446,6 +521,14 @@ public partial class EditorDocumentView : UserControl
                 else if (e.PropertyName == nameof(EditorDocumentViewModel.UseSpacesForTabs))
                 {
                     Editor.Options.ConvertTabsToSpaces = doc.UseSpacesForTabs;
+                }
+                else if (e.PropertyName == nameof(EditorDocumentViewModel.IsReadOnly))
+                {
+                    Editor.IsReadOnly = doc.IsReadOnly;
+                }
+                else if (e.PropertyName == nameof(EditorDocumentViewModel.FilePath))
+                {
+                    SetupTextMateGrammar(doc);
                 }
             };
         }
@@ -457,7 +540,10 @@ public partial class EditorDocumentView : UserControl
         {
             if (_textMateInstallation == null)
             {
-                _registryOptions = new RegistryOptions(ThemeName.DarkPlus);
+                var initialTheme = ThemeManager.CurrentTheme.Mode == AgduBugdu.App.Themes.AppThemeMode.SolarizedContrast
+                    ? ThemeName.SolarizedDark
+                    : ThemeName.DarkPlus;
+                _registryOptions = new RegistryOptions(initialTheme);
                 _textMateInstallation = Editor.InstallTextMate(_registryOptions);
             }
 

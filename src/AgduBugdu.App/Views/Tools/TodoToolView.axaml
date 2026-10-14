@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:plugin="using:AgduBugdu.Plugin.TodoExplorer"
              x:Class="AgduBugdu.App.Views.Tools.TodoToolView"
              x:DataType="vm:TodoToolViewModel">
 
@@ -44,16 +45,59 @@
             </Grid>
         </Border>
 
-        <!-- Task List Display -->
-        <TextBox Grid.Row="1"
-                 Text="{Binding FormattedContent}"
-                 IsReadOnly="True"
-                 FontFamily="Cascadia Code, Consolas, Courier New, monospace"
-                 FontSize="12"
+        <!-- Empty State Message -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding FormattedContent}"
+                   Foreground="#888888"
+                   FontSize="12"
+                   Margin="16"
+                   IsVisible="{Binding !FilteredItems.Count}"
+                   TextWrapping="Wrap" />
+
+        <!-- Interactive Task List Display -->
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding FilteredItems}"
+                 SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                 IsVisible="{Binding FilteredItems.Count}"
                  Background="#141414"
-                 Foreground="#CCCCCC"
-                 BorderThickness="0"
-                 AcceptsReturn="True"
-                 TextWrapping="NoWrap" />
+                 Margin="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="plugin:TodoItem">
+                    <Grid ColumnDefinitions="Auto,Auto,*" Margin="2,2">
+                        <!-- Tag Badge -->
+                        <Border Grid.Column="0"
+                                CornerRadius="3"
+                                Padding="6,1"
+                                Margin="0,0,8,0"
+                                Background="#1F2937">
+                            <TextBlock Text="{Binding Tag}"
+                                       FontSize="10"
+                                       FontWeight="Bold"
+                                       Foreground="#60A5FA" />
+                        </Border>
+
+                        <!-- Location (File:Line) -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding RelativePath}"
+                                       FontSize="11"
+                                       Foreground="#A1A1AA" />
+                            <TextBlock Text=":" Foreground="#71717A" FontSize="11" />
+                            <TextBlock Text="{Binding LineNumber}"
+                                       FontSize="11"
+                                       Foreground="#D4D4D8"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+
+                        <!-- Message -->
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Message}"
+                                   FontSize="12"
+                                   Foreground="#F4F4F5"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </Grid>
 </UserControl>
