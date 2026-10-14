@@ -29,7 +29,7 @@ public class DockerCliService
         {
             Id = "c8f93e2b10a4",
             Name = "agdubugdu-api",
-            Image = "agdubugdu/backend:v1.4.0",
+            Image = "agdubugdu/backend:v1.5.0",
             State = "running",
             Status = "Up 3 hours",
             Ports = "0.0.0.0:5000->5000/tcp",
@@ -71,7 +71,7 @@ public class DockerCliService
         {
             Id = "sha256:7b91c0a823e1",
             Repository = "agdubugdu/backend",
-            Tag = "v1.4.0",
+            Tag = "v1.5.0",
             Size = "215 MB",
             Created = "3 days ago"
         });

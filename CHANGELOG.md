@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.5.0] - 2026-10-14
+
+### ✨ Added
+- **🗄️ Database & SQL Studio Workbench (`Ctrl+Shift+B`)**:
+  - Embedded SQLite execution runner with support for both in-memory (`:memory:`) and local file-based databases.
+  - Interactive SQL scratchpad executing custom DDL/DML queries with tabular data results.
+  - Live database schema explorer inspecting tables, column definitions, data types, and primary key indicators.
+  - High-precision query execution duration timing in milliseconds.
+  - 1-click export of query results to CSV, JSON, and formatted Markdown tables.
+  - Complete query execution history tracking.
+- **⚡ Performance Profiler & Process Diagnostics Studio (`Ctrl+Shift+M`)**:
+  - Live system telemetry monitoring Managed Memory, Working Set, Private Memory, CPU load %, GC Gen 0, Gen 1, Gen 2 collection counts, and thread counts.
+  - 1-click Working Set Trim (`SetProcessWorkingSetSize`) and Force Full Garbage Collection.
+  - Timeline snapshot logger capturing memory and processor metrics over time.
+- **🌐 API Mock Server & Traffic Interceptor Studio**:
+  - In-process HTTP mock server with customizable listening port.
+  - Configurable routing engine supporting dynamic HTTP methods, URL path matching, response status codes, simulated network latencies (ms), headers, and JSON body payloads.
+  - Real-time incoming traffic logger and request inspector displaying client IP, timestamps, request headers, query parameters, and payload body.
+- **📂 Advanced Multi-Syntax Code Folding Engine (`Ctrl+Shift+[` / `Ctrl+Shift+]`)**:
+  - Multi-syntax block folding for braced languages (C#, C++, Java, Rust, Go, JavaScript, TypeScript), `#region ... #endregion` directives, XML/HTML markup tags, multi-line comments (`/* ... */`), and indentation-based languages (Python, YAML).
+  - Margin fold glyphs with preview tooltips and keyboard shortcuts: Fold Block (`Ctrl+Shift+[`), Unfold Block (`Ctrl+Shift+]`), Fold All, and Unfold All.
+  - Debounced dynamic updates on document edits.
+- **🔍 Semantic CodeLens & Reference Counter Engine**:
+  - Semantic reference counter lenses floating non-intrusively above method, property, and class declarations.
+  - Interactive `▶ Run Test` test runner hints above unit test methods (xUnit, NUnit, MSTest).
+  - Rendered via AvaloniaEdit `IBackgroundRenderer` with menu toggle under View.
+- **🌈 Smart Indentation Guides & Rainbow Bracket Colorizer**:
+  - 5-tier rotating rainbow bracket colorizer for `()`, `[]`, and `{}`.
+  - Vertical hierarchical indent guide lines rendered at tab/space intervals with active scope guide illumination based on caret position.
+- **📡 Live Network & Socket Workbench**:
+  - Real-time WebSocket testing client with live bidirectional message stream.
+  - Server-Sent Events (SSE) listener and event stream analyzer.
+  - GraphQL query playground with schema introspection, variables panel, and formatted JSON output.
+- **🐳 Docker & Container Workbench (`Ctrl+Shift+K`)**:
+  - Comprehensive container manager: Start, Stop, Restart, Pause, Unpause, Inspect, and Remove.
+  - Image manager: Search, Pull, Tag, and Remove Docker images.
+  - Volume and network browser.
+  - Live streaming container log viewer with auto-scroll and clear controls.
+- **🧪 RegEx Playground & Text Utility Laboratory**:
+  - Interactive regular expression tester with live match highlighting, group extraction, replace preview, and cheat sheet library.
+  - Text transformation laboratory (Base64 encode/decode, URL encode/decode, JWT decoder/inspector, JSON/XML formatter, hash generator MD5/SHA256/SHA512).
+- **🧭 Breadcrumbs Navigation Bar & Sticky Context Scroll**:
+  - Interactive hierarchical breadcrumbs toolbar (`File > Namespace > Class > Method`) at the top of active editor with 1-click symbol jumping.
+  - Sticky context header pinning the current enclosing class/method scope while scrolling through long source files.
+- **🔀 Multi-Caret Selection Engine & Multi-Tabbed Terminal Workbench**:
+  - Multi-caret selection engine with `Ctrl+Alt+Up` / `Down` for column carets, `Ctrl+D` for next occurrence selection, and simultaneous multi-cursor typing.
+  - Multi-tabbed terminal workbench with support for PowerShell, CMD, Git Bash, and WSL, rename tabs, split terminals, and status indicators.
+
 ## 🚀 [1.4.0] - 2026-10-14
 
 ### ✨ Added
