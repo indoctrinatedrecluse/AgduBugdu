@@ -13,6 +13,9 @@ public class MainDockFactory : Factory
 {
     private IRootDock? _rootDock;
     private IDocumentDock? _documentDock;
+    private IDocumentDock? _secondaryDocumentDock;
+    private ProportionalDock? _editorLayout;
+    private ProportionalDockSplitter? _secondarySplitter;
     private ToolDock? _bottomDock;
     private ToolDock? _leftDock;
     private ProportionalDock? _centerLayout;
@@ -22,6 +25,7 @@ public class MainDockFactory : Factory
     private ExplorerToolViewModel? _explorerTool;
     private SearchToolViewModel? _searchTool;
     private GitToolViewModel? _gitTool;
+    private OutlineToolViewModel? _outlineTool;
     private OutputToolViewModel? _outputTool;
     private TerminalToolViewModel? _terminalTool;
     private TodoToolViewModel? _todoTool;
@@ -29,28 +33,41 @@ public class MainDockFactory : Factory
     private bool _isBottomPaneMinimized;
 
     public IDocumentDock? DocumentDock => _documentDock;
+    public IDocumentDock? SecondaryDocumentDock => _secondaryDocumentDock;
+    public bool IsSplitActive => _secondaryDocumentDock != null && _editorLayout?.VisibleDockables?.Contains(_secondaryDocumentDock) == true;
+    public ProportionalDock? EditorLayout => _editorLayout;
     public ToolDock? BottomDock => _bottomDock;
     public ToolDock? LeftDock => _leftDock;
     public ExplorerToolViewModel? ExplorerTool => _explorerTool;
     public SearchToolViewModel? SearchTool => _searchTool;
     public GitToolViewModel? GitTool => _gitTool;
+    public OutlineToolViewModel? OutlineTool => _outlineTool;
     public OutputToolViewModel? OutputTool => _outputTool;
     public TerminalToolViewModel? TerminalTool => _terminalTool;
     public TodoToolViewModel? TodoTool => _todoTool;
     public DebuggerToolViewModel? DebuggerTool => _debuggerTool;
     public bool IsBottomPaneMinimized => _isBottomPaneMinimized;
+    public IDockable? CurrentActiveDockable { get; private set; }
+    public IDockable? ActiveDockable => CurrentActiveDockable ?? _secondaryDocumentDock?.ActiveDockable ?? _documentDock?.ActiveDockable;
+
+    public override void SetActiveDockable(IDockable dockable)
+    {
+        CurrentActiveDockable = dockable;
+        base.SetActiveDockable(dockable);
+    }
 
     public override IRootDock CreateLayout()
     {
         _explorerTool ??= new ExplorerToolViewModel();
         _searchTool ??= new SearchToolViewModel();
         _gitTool ??= new GitToolViewModel();
+        _outlineTool ??= new OutlineToolViewModel();
         _outputTool ??= new OutputToolViewModel();
         _terminalTool ??= new TerminalToolViewModel();
         _todoTool ??= new TodoToolViewModel();
         _debuggerTool ??= new DebuggerToolViewModel();
 
-        var welcomeDoc = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output, TODO Tasks, Run & Debug) are draggable and re-arrangeable.\n");
+        var welcomeDoc = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output, TODO Tasks, Run & Debug, Outline) are draggable and re-arrangeable.\n");
         welcomeDoc.UndoStack.MarkAsOriginalFile();
 
         var doc1 = new EditorDocumentViewModel
@@ -66,7 +83,7 @@ public class MainDockFactory : Factory
             Id = "LeftPane",
             Title = "Explorer",
             Proportion = 0.22,
-            VisibleDockables = CreateList<IDockable>(_explorerTool, _searchTool, _gitTool),
+            VisibleDockables = CreateList<IDockable>(_explorerTool, _searchTool, _gitTool, _outlineTool),
             ActiveDockable = _explorerTool
         };
         _leftDock = leftDock;
@@ -85,12 +102,21 @@ public class MainDockFactory : Factory
         {
             Id = "DocumentsPane",
             Title = "Documents",
-            Proportion = 0.72,
+            Proportion = 1.0,
             VisibleDockables = CreateList<IDockable>(doc1),
             ActiveDockable = doc1,
             CanCreateDocument = true
         };
         _documentDock = documentDock;
+
+        var editorLayout = new ProportionalDock
+        {
+            Id = "EditorLayout",
+            Orientation = Orientation.Horizontal,
+            Proportion = 0.72,
+            VisibleDockables = CreateList<IDockable>(documentDock)
+        };
+        _editorLayout = editorLayout;
 
         _bottomSplitter = new ProportionalDockSplitter();
 
@@ -98,7 +124,7 @@ public class MainDockFactory : Factory
         {
             Orientation = Orientation.Vertical,
             VisibleDockables = CreateList<IDockable>(
-                documentDock,
+                editorLayout,
                 _bottomSplitter,
                 bottomDock
             )
@@ -135,6 +161,7 @@ public class MainDockFactory : Factory
         _explorerTool ??= new ExplorerToolViewModel();
         _searchTool ??= new SearchToolViewModel();
         _gitTool ??= new GitToolViewModel();
+        _outlineTool ??= new OutlineToolViewModel();
 
         _leftDock.VisibleDockables ??= CreateList<IDockable>();
         if (!_leftDock.VisibleDockables.Contains(_explorerTool))
@@ -143,6 +170,8 @@ public class MainDockFactory : Factory
             _leftDock.VisibleDockables.Add(_searchTool);
         if (!_leftDock.VisibleDockables.Contains(_gitTool))
             _leftDock.VisibleDockables.Add(_gitTool);
+        if (!_leftDock.VisibleDockables.Contains(_outlineTool))
+            _leftDock.VisibleDockables.Add(_outlineTool);
 
         _leftDock.ActiveDockable = activeTool ?? _explorerTool;
 
@@ -161,6 +190,124 @@ public class MainDockFactory : Factory
         _leftDock.Proportion = 0.22;
     }
 
+    public void SplitEditor(Orientation orientation = Orientation.Horizontal)
+    {
+        if (_editorLayout == null || _documentDock == null)
+            return;
+
+        _editorLayout.Orientation = orientation;
+
+        if (_secondaryDocumentDock == null)
+        {
+            _secondaryDocumentDock = new DocumentDock
+            {
+                Id = "SecondaryDocumentsPane",
+                Title = "Documents (Split)",
+                Proportion = 0.5,
+                CanCreateDocument = true
+            };
+            _secondarySplitter = new ProportionalDockSplitter();
+        }
+
+        _documentDock.Proportion = 0.5;
+        _secondaryDocumentDock.Proportion = 0.5;
+
+        _editorLayout.VisibleDockables ??= CreateList<IDockable>();
+        if (_secondarySplitter != null && !_editorLayout.VisibleDockables.Contains(_secondarySplitter))
+            _editorLayout.VisibleDockables.Add(_secondarySplitter);
+        if (!_editorLayout.VisibleDockables.Contains(_secondaryDocumentDock))
+            _editorLayout.VisibleDockables.Add(_secondaryDocumentDock);
+
+        // If secondary dock has no documents, clone active document or create welcome
+        if (_secondaryDocumentDock.VisibleDockables == null || _secondaryDocumentDock.VisibleDockables.Count == 0)
+        {
+            if (_documentDock.ActiveDockable is EditorDocumentViewModel activeDoc && !string.IsNullOrEmpty(activeDoc.FilePath))
+            {
+                var clone = EditorDocumentViewModel.FromFile(activeDoc.FilePath);
+                _secondaryDocumentDock.VisibleDockables = CreateList<IDockable>(clone);
+                _secondaryDocumentDock.ActiveDockable = clone;
+            }
+        }
+    }
+
+    public void CloseSplit()
+    {
+        if (_editorLayout == null || _secondaryDocumentDock == null || _secondarySplitter == null)
+            return;
+
+        // Move all documents in secondary dock back to primary dock
+        if (_secondaryDocumentDock.VisibleDockables != null && _documentDock?.VisibleDockables != null)
+        {
+            var docsToMove = _secondaryDocumentDock.VisibleDockables.ToList();
+            foreach (var doc in docsToMove)
+            {
+                _secondaryDocumentDock.VisibleDockables.Remove(doc);
+                if (!_documentDock.VisibleDockables.Contains(doc))
+                {
+                    _documentDock.VisibleDockables.Add(doc);
+                }
+            }
+        }
+
+        if (_editorLayout.VisibleDockables != null)
+        {
+            _editorLayout.VisibleDockables.Remove(_secondarySplitter);
+            _editorLayout.VisibleDockables.Remove(_secondaryDocumentDock);
+        }
+        if (_documentDock != null)
+        {
+            _documentDock.Proportion = 1.0;
+        }
+    }
+
+    public void ToggleSplitEditor()
+    {
+        if (IsSplitActive)
+            CloseSplit();
+        else
+            SplitEditor(Orientation.Horizontal);
+    }
+
+    public void MoveActiveDocumentToOtherPane()
+    {
+        if (!IsSplitActive)
+        {
+            SplitEditor(Orientation.Horizontal);
+        }
+
+        if (_documentDock == null || _secondaryDocumentDock == null)
+            return;
+
+        // If secondary dock is active or contains the current active dockable
+        bool isSecondaryActive = _secondaryDocumentDock.ActiveDockable != null && 
+            (ActiveDockable == _secondaryDocumentDock.ActiveDockable || _documentDock.ActiveDockable == null);
+
+        if (isSecondaryActive && _secondaryDocumentDock.ActiveDockable != null)
+        {
+            var doc = _secondaryDocumentDock.ActiveDockable;
+            _secondaryDocumentDock.VisibleDockables?.Remove(doc);
+            _documentDock.VisibleDockables ??= CreateList<IDockable>();
+            if (!_documentDock.VisibleDockables.Contains(doc))
+            {
+                _documentDock.VisibleDockables.Add(doc);
+            }
+            _documentDock.ActiveDockable = doc;
+            SetActiveDockable(doc);
+        }
+        else if (_documentDock.ActiveDockable != null)
+        {
+            var doc = _documentDock.ActiveDockable;
+            _documentDock.VisibleDockables?.Remove(doc);
+            _secondaryDocumentDock.VisibleDockables ??= CreateList<IDockable>();
+            if (!_secondaryDocumentDock.VisibleDockables.Contains(doc))
+            {
+                _secondaryDocumentDock.VisibleDockables.Add(doc);
+            }
+            _secondaryDocumentDock.ActiveDockable = doc;
+            SetActiveDockable(doc);
+        }
+    }
+
     public void MinimizeBottomPane()
     {
         if (_isBottomPaneMinimized || _centerLayout?.VisibleDockables == null || _bottomDock == null || _bottomSplitter == null)
@@ -168,9 +315,9 @@ public class MainDockFactory : Factory
 
         _centerLayout.VisibleDockables.Remove(_bottomSplitter);
         _centerLayout.VisibleDockables.Remove(_bottomDock);
-        if (_documentDock != null)
+        if (_editorLayout != null)
         {
-            _documentDock.Proportion = double.NaN;
+            _editorLayout.Proportion = double.NaN;
         }
         _isBottomPaneMinimized = true;
     }
@@ -194,9 +341,9 @@ public class MainDockFactory : Factory
             _bottomDock.VisibleDockables.Add(activeTool);
         }
 
-        if (_documentDock != null)
+        if (_editorLayout != null)
         {
-            _documentDock.Proportion = 0.72;
+            _editorLayout.Proportion = 0.72;
         }
         _bottomDock.Proportion = 0.28;
 
@@ -277,6 +424,7 @@ public class MainDockFactory : Factory
             ["Explorer"] = () => _explorerTool,
             ["Search"] = () => _searchTool,
             ["SourceControl"] = () => _gitTool,
+            ["Outline"] = () => _outlineTool,
             ["Output"] = () => _outputTool,
             ["Terminal"] = () => _terminalTool,
             ["TodoExplorer"] = () => _todoTool,
@@ -287,9 +435,11 @@ public class MainDockFactory : Factory
             ["LeftPane"] = () => _leftDock,
             ["BottomPane"] = () => _bottomDock,
             ["DocumentsPane"] = () => _documentDock,
+            ["SecondaryDocumentsPane"] = () => _secondaryDocumentDock,
             ["Explorer"] = () => _explorerTool,
             ["Search"] = () => _searchTool,
             ["SourceControl"] = () => _gitTool,
+            ["Outline"] = () => _outlineTool,
             ["Output"] = () => _outputTool,
             ["Terminal"] = () => _terminalTool,
             ["TodoExplorer"] = () => _todoTool,

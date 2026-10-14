@@ -44,6 +44,12 @@
         <KeyBinding Gesture="F11" Command="{Binding StepIntoDebuggingCommand}" />
         <KeyBinding Gesture="Shift+F5" Command="{Binding StopDebuggingCommand}" />
         <KeyBinding Gesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
+        <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseActiveTabCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
+        <KeyBinding Gesture="Ctrl+OemBackslash" Command="{Binding SplitEditorRightCommand}" />
+        <KeyBinding Gesture="Ctrl+Alt+Right" Command="{Binding MoveDocumentToOtherPaneCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+O" Command="{Binding FocusOutlineCommand}" />
+        <KeyBinding Gesture="Alt+M" Command="{Binding ToggleMinimapCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding FocusSearchCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+G" Command="{Binding FocusGitCommand}" />
@@ -104,6 +110,10 @@
                     <Separator />
                     <MenuItem Header="_Save" InputGesture="Ctrl+S" Command="{Binding SaveFileCommand}" />
                     <MenuItem Header="Save _As..." InputGesture="Ctrl+Shift+S" Command="{Binding SaveFileAsCommand}" />
+                    <Separator />
+                    <MenuItem Header="_Close Tab" InputGesture="Ctrl+W" Command="{Binding CloseActiveTabCommand}" />
+                    <MenuItem Header="_Reopen Closed Tab" InputGesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
+                    <MenuItem Header="Restore Previous _Session" Command="{Binding RestorePreviousSessionCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Edit">
                     <MenuItem Header="Undo" InputGesture="Ctrl+Z" Command="{Binding UndoCommand}" />
@@ -144,11 +154,19 @@
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
                     <Separator />
+                    <MenuItem Header="Split Editor _Right" InputGesture="Ctrl+\" Command="{Binding SplitEditorRightCommand}" />
+                    <MenuItem Header="Split Editor _Down" Command="{Binding SplitEditorDownCommand}" />
+                    <MenuItem Header="Toggle _Split Editor" Command="{Binding ToggleSplitEditorCommand}" />
+                    <MenuItem Header="_Move Tab to Other Pane" InputGesture="Ctrl+Alt+Right" Command="{Binding MoveDocumentToOtherPaneCommand}" />
+                    <Separator />
+                    <MenuItem Header="Toggle Code _Minimap" InputGesture="Alt+M" Command="{Binding ToggleMinimapCommand}" />
                     <MenuItem Header="Toggle _Word Wrap" InputGesture="Alt+Z" Command="{Binding ToggleWordWrapCommand}" />
                     <MenuItem Header="Toggle _Bottom Panel" InputGesture="Ctrl+J" Command="{Binding ToggleBottomPaneCommand}" />
+                    <Separator />
                     <MenuItem Header="_Explorer" InputGesture="Ctrl+Shift+E" Command="{Binding FocusExplorerCommand}" />
                     <MenuItem Header="_Search in Files" InputGesture="Ctrl+Shift+F" Command="{Binding FocusSearchCommand}" />
                     <MenuItem Header="_Source Control" InputGesture="Ctrl+Shift+G" Command="{Binding FocusGitCommand}" />
+                    <MenuItem Header="Symbol _Outline" InputGesture="Ctrl+Shift+O" Command="{Binding FocusOutlineCommand}" />
                     <MenuItem Header="_Terminal" InputGesture="Ctrl+OemTilde" Command="{Binding FocusTerminalCommand}" />
                     <MenuItem Header="_Output" Command="{Binding FocusOutputCommand}" />
                     <MenuItem Header="_TODO Tasks" Command="{Binding FocusTodoCommand}" />

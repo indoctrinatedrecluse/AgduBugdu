@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -9,11 +10,14 @@ using AgduBugdu.App.ViewModels.Documents;
 using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.Core;
 using AgduBugdu.Core.Licensing;
+using AgduBugdu.Core.Session;
+using AgduBugdu.Core.Snippets;
 using AgduBugdu.Core.Text;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
 using AgduBugdu.Infrastructure.History;
 using AgduBugdu.Infrastructure.Licensing;
+using AgduBugdu.Infrastructure.Session;
 using AgduBugdu.Infrastructure.Updates;
 using AgduBugdu.Plugin.Cpp;
 using AgduBugdu.Plugin.CSharp;
@@ -155,6 +159,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 {
     public void Dispose()
     {
+        SaveCurrentSession();
         _dockFactory?.TerminalTool?.OnClose();
     }
 
@@ -167,6 +172,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly ExtensionContext _extensionContext;
     private readonly GitHubUpdateService _updateService;
     private readonly IRecentItemsManager _recentItemsManager;
+    private readonly ISessionService _sessionService;
+    private readonly List<string> _recentlyClosedDocuments = new();
     private MarkdownLiveExtension? _markdownExtension;
     private DataGridLiveExtension? _csvExtension;
     private PdfLiveExtension? _pdfExtension;
@@ -175,6 +182,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public IDebugService DebugService => _extensionContext.DebugService;
     public ILanguageService LanguageService => _extensionContext.Languages;
     public IRecentItemsManager RecentItemsManager => _recentItemsManager;
+    public ISessionService SessionService => _sessionService;
 
     public ObservableCollection<RecentEntryViewModel> RecentMenuItems { get; } = new();
 
@@ -305,6 +313,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _licenseService.LicenseChanged += OnLicenseChanged;
 
         _recentItemsManager = new RecentItemsManager();
+        _sessionService = new SessionService();
+
+        // Register default productivity snippets across all supported languages
+        foreach (var snip in BuiltInSnippets.GetDefaultSnippets())
+        {
+            _extensionContext.Languages.RegisterSnippet(snip);
+        }
 
         ThemeManager.ThemeChanged += OnThemeChanged;
 
@@ -315,6 +330,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         HookPanes();
         RegisterDefaultCommands();
         RefreshRecentItems();
+
+        // Restore previous workspace session
+        RestoreSession();
 
         // Load built-in extensions & check for updates in background
         _ = InitializeExtensionsAsync();
@@ -614,6 +632,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
             _dockFactory.OutputTool.MinimizeRequested += (s, e) => MinimizeBottomPane();
             _dockFactory.OutputTool.ResetSizeRequested += (s, e) => ResetPaneLayout();
         }
+        if (_dockFactory.OutlineTool != null)
+        {
+            _dockFactory.OutlineTool.SymbolSelected += (s, sym) =>
+            {
+                var doc = GetActiveEditorDocument();
+                if (doc != null && !string.IsNullOrEmpty(doc.FilePath))
+                {
+                    OpenFile(doc.FilePath, sym.LineNumber, sym.Column);
+                }
+            };
+        }
     }
 
     [RelayCommand]
@@ -771,6 +800,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
         }
+
+        _dockFactory.OutlineTool?.UpdateSymbols(doc.FilePath, doc.GetText());
+        doc.TextDocument.TextChanged += (s, e) =>
+        {
+            _dockFactory.OutlineTool?.UpdateSymbols(doc.FilePath, doc.GetText());
+            SaveCurrentSession();
+        };
     }
 
     private void RegisterDefaultCommands()
@@ -830,6 +866,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("git.unstageAll", "Git: Unstage All Changes", () => { _ = _dockFactory.GitTool?.UnstageAllAsync(); });
         CommandPalette.RegisterCommand("git.commit", "Git: Commit Staged Changes", () => { _ = _dockFactory.GitTool?.CommitAsync(); });
         CommandPalette.RegisterCommand("file.clearRecent", "File: Clear Recently Opened", () => ClearRecentItems());
+        CommandPalette.RegisterCommand("file.closeTab", "File: Close Active Tab", () => CloseActiveTab(), "Ctrl+W");
+        CommandPalette.RegisterCommand("file.reopenClosedTab", "File: Reopen Closed Tab", () => ReopenClosedTab(), "Ctrl+Shift+T");
+        CommandPalette.RegisterCommand("file.restoreSession", "File: Restore Previous Session", () => RestorePreviousSession());
+        CommandPalette.RegisterCommand("view.splitRight", "View: Split Editor Right", () => SplitEditorRight(), "Ctrl+\\");
+        CommandPalette.RegisterCommand("view.splitDown", "View: Split Editor Down", () => SplitEditorDown());
+        CommandPalette.RegisterCommand("view.toggleSplit", "View: Toggle Split Editor", () => ToggleSplitEditor());
+        CommandPalette.RegisterCommand("view.moveDocumentToOtherPane", "View: Move Tab to Other Pane", () => MoveDocumentToOtherPane(), "Ctrl+Alt+Right");
+        CommandPalette.RegisterCommand("view.outline", "View: Focus Symbol Outline", () => FocusOutline(), "Ctrl+Shift+O");
+        CommandPalette.RegisterCommand("view.toggleMinimap", "View: Toggle Code Minimap", () => ToggleMinimap(), "Alt+M");
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
     }
 
@@ -1216,7 +1261,226 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public EditorDocumentViewModel? GetActiveEditorDocument()
     {
-        return _dockFactory.DocumentDock?.ActiveDockable as EditorDocumentViewModel;
+        if (_dockFactory.SecondaryDocumentDock?.ActiveDockable is EditorDocumentViewModel secDoc &&
+            _dockFactory.ActiveDockable == secDoc)
+        {
+            return secDoc;
+        }
+
+        if (_dockFactory.DocumentDock?.ActiveDockable is EditorDocumentViewModel primDoc)
+        {
+            return primDoc;
+        }
+
+        if (_dockFactory.SecondaryDocumentDock?.ActiveDockable is EditorDocumentViewModel secFallback)
+        {
+            return secFallback;
+        }
+
+        return null;
+    }
+
+    public void SaveCurrentSession()
+    {
+        try
+        {
+            var session = new WorkspaceSessionData
+            {
+                WorkspaceFolderPath = _workspaceService.CurrentDirectory,
+                IsSplitActive = _dockFactory.IsSplitActive,
+                IsBottomPaneMinimized = _dockFactory.IsBottomPaneMinimized,
+                ActiveLeftToolId = _dockFactory.LeftDock?.ActiveDockable?.Id,
+                ActiveBottomToolId = _dockFactory.BottomDock?.ActiveDockable?.Id
+            };
+
+            var activeDoc = GetActiveEditorDocument();
+            session.ActiveDocumentPath = activeDoc?.FilePath;
+
+            if (_dockFactory.DocumentDock?.VisibleDockables != null)
+            {
+                foreach (var doc in _dockFactory.DocumentDock.VisibleDockables.OfType<EditorDocumentViewModel>())
+                {
+                    if (!string.IsNullOrEmpty(doc.FilePath) && File.Exists(doc.FilePath))
+                    {
+                        session.PrimaryDocuments.Add(new DocumentSessionData
+                        {
+                            FilePath = doc.FilePath,
+                            CaretLine = doc.Line,
+                            CaretColumn = doc.Column
+                        });
+                    }
+                }
+            }
+
+            if (_dockFactory.SecondaryDocumentDock?.VisibleDockables != null)
+            {
+                foreach (var doc in _dockFactory.SecondaryDocumentDock.VisibleDockables.OfType<EditorDocumentViewModel>())
+                {
+                    if (!string.IsNullOrEmpty(doc.FilePath) && File.Exists(doc.FilePath))
+                    {
+                        session.SecondaryDocuments.Add(new DocumentSessionData
+                        {
+                            FilePath = doc.FilePath,
+                            CaretLine = doc.Line,
+                            CaretColumn = doc.Column
+                        });
+                    }
+                }
+            }
+
+            _sessionService.SaveSession(session);
+        }
+        catch { }
+    }
+
+    public void RestoreSession()
+    {
+        try
+        {
+            var session = _sessionService.LoadSession();
+            if (session == null) return;
+
+            if (!string.IsNullOrEmpty(session.WorkspaceFolderPath) && Directory.Exists(session.WorkspaceFolderPath))
+            {
+                OpenFolder(session.WorkspaceFolderPath);
+            }
+
+            if (session.IsSplitActive)
+            {
+                _dockFactory.SplitEditor(string.Equals(session.SplitOrientation, "Vertical", StringComparison.OrdinalIgnoreCase)
+                    ? Orientation.Vertical
+                    : Orientation.Horizontal);
+            }
+
+            foreach (var docData in session.PrimaryDocuments)
+            {
+                if (File.Exists(docData.FilePath))
+                {
+                    OpenFile(docData.FilePath, docData.CaretLine, docData.CaretColumn);
+                }
+            }
+
+            if (session.IsSplitActive && _dockFactory.SecondaryDocumentDock != null)
+            {
+                foreach (var docData in session.SecondaryDocuments)
+                {
+                    if (File.Exists(docData.FilePath))
+                    {
+                        var doc = EditorDocumentViewModel.FromFile(docData.FilePath);
+                        AttachDocumentEvents(doc);
+                        doc.NavigateTo(docData.CaretLine, docData.CaretColumn);
+                        _dockFactory.AddDockable(_dockFactory.SecondaryDocumentDock, doc);
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(session.ActiveDocumentPath) && File.Exists(session.ActiveDocumentPath))
+            {
+                OpenFile(session.ActiveDocumentPath);
+            }
+
+            StatusMessage = "Restored previous workspace session.";
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void SplitEditorRight()
+    {
+        _dockFactory.SplitEditor(Orientation.Horizontal);
+        StatusMessage = "Editor split horizontally (Side-by-Side)";
+        SaveCurrentSession();
+    }
+
+    [RelayCommand]
+    public void SplitEditorDown()
+    {
+        _dockFactory.SplitEditor(Orientation.Vertical);
+        StatusMessage = "Editor split vertically";
+        SaveCurrentSession();
+    }
+
+    [RelayCommand]
+    public void ToggleSplitEditor()
+    {
+        _dockFactory.ToggleSplitEditor();
+        StatusMessage = _dockFactory.IsSplitActive ? "Editor split active" : "Editor split closed";
+        SaveCurrentSession();
+    }
+
+    [RelayCommand]
+    public void MoveDocumentToOtherPane()
+    {
+        _dockFactory.MoveActiveDocumentToOtherPane();
+        StatusMessage = "Moved document to other pane";
+        SaveCurrentSession();
+    }
+
+    [RelayCommand]
+    public void FocusOutline()
+    {
+        _dockFactory.RestoreLeftPane(_dockFactory.OutlineTool);
+        StatusMessage = "Focused Symbol Outline";
+    }
+
+    [RelayCommand]
+    public void ToggleMinimap()
+    {
+        var doc = GetActiveEditorDocument();
+        if (doc != null)
+        {
+            doc.ToggleMinimap();
+            StatusMessage = doc.IsMinimapVisible ? "Minimap shown" : "Minimap hidden";
+        }
+    }
+
+    [RelayCommand]
+    public void CloseActiveTab()
+    {
+        var activeDoc = GetActiveEditorDocument();
+        if (activeDoc == null) return;
+
+        if (!string.IsNullOrEmpty(activeDoc.FilePath))
+        {
+            _recentlyClosedDocuments.Add(activeDoc.FilePath);
+            _editorService.NotifyClosed(activeDoc.FilePath);
+        }
+
+        if (_dockFactory.DocumentDock?.VisibleDockables?.Contains(activeDoc) == true)
+        {
+            _dockFactory.DocumentDock.VisibleDockables.Remove(activeDoc);
+        }
+        else if (_dockFactory.SecondaryDocumentDock?.VisibleDockables?.Contains(activeDoc) == true)
+        {
+            _dockFactory.SecondaryDocumentDock.VisibleDockables.Remove(activeDoc);
+            if (_dockFactory.SecondaryDocumentDock.VisibleDockables.Count == 0)
+            {
+                _dockFactory.CloseSplit();
+            }
+        }
+
+        SaveCurrentSession();
+    }
+
+    [RelayCommand]
+    public void ReopenClosedTab()
+    {
+        if (_recentlyClosedDocuments.Count > 0)
+        {
+            string path = _recentlyClosedDocuments[^1];
+            _recentlyClosedDocuments.RemoveAt(_recentlyClosedDocuments.Count - 1);
+            if (File.Exists(path))
+            {
+                OpenFile(path);
+                StatusMessage = $"Reopened closed file: {Path.GetFileName(path)}";
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void RestorePreviousSession()
+    {
+        RestoreSession();
     }
 
     public void InsertSnippet(Snippet snippet)
@@ -1315,30 +1579,56 @@ public partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (_dockFactory.DocumentDock != null)
+        // Check if already opened in primary dock
+        var existingPrim = _dockFactory.DocumentDock?.VisibleDockables?
+            .OfType<EditorDocumentViewModel>()
+            .FirstOrDefault(d => string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+
+        if (existingPrim != null)
         {
-            // Check if already opened in a tab
-            var existing = _dockFactory.DocumentDock.VisibleDockables?
-                .OfType<EditorDocumentViewModel>()
-                .FirstOrDefault(d => string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+            _dockFactory.SetActiveDockable(existingPrim);
+            AttachDocumentEvents(existingPrim);
+            existingPrim.NavigateTo(line, column);
+            StatusMessage = $"Switched to {existingPrim.FileName}";
+            _editorService.NotifyOpened(filePath);
+            SaveCurrentSession();
+            return;
+        }
 
-            if (existing != null)
-            {
-                _dockFactory.SetActiveDockable(existing);
-                AttachDocumentEvents(existing);
-                existing.NavigateTo(line, column);
-                StatusMessage = $"Switched to {existing.FileName}";
-                _editorService.NotifyOpened(filePath);
-                return;
-            }
+        // Check if already opened in secondary dock
+        var existingSec = _dockFactory.SecondaryDocumentDock?.VisibleDockables?
+            .OfType<EditorDocumentViewModel>()
+            .FirstOrDefault(d => string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
 
+        if (existingSec != null)
+        {
+            _dockFactory.SetActiveDockable(existingSec);
+            AttachDocumentEvents(existingSec);
+            existingSec.NavigateTo(line, column);
+            StatusMessage = $"Switched to {existingSec.FileName}";
+            _editorService.NotifyOpened(filePath);
+            SaveCurrentSession();
+            return;
+        }
+
+        IDocumentDock? targetDock = _dockFactory.DocumentDock;
+        if (_dockFactory.IsSplitActive && _dockFactory.SecondaryDocumentDock != null &&
+            _dockFactory.ActiveDockable != null &&
+            _dockFactory.SecondaryDocumentDock.VisibleDockables?.Contains(_dockFactory.ActiveDockable) == true)
+        {
+            targetDock = _dockFactory.SecondaryDocumentDock;
+        }
+
+        if (targetDock != null)
+        {
             var doc = EditorDocumentViewModel.FromFile(filePath);
             AttachDocumentEvents(doc);
             doc.NavigateTo(line, column);
-            _dockFactory.AddDockable(_dockFactory.DocumentDock, doc);
+            _dockFactory.AddDockable(targetDock, doc);
             _dockFactory.SetActiveDockable(doc);
             StatusMessage = $"Opened {doc.FileName}";
             _editorService.NotifyOpened(filePath);
+            SaveCurrentSession();
         }
     }
 

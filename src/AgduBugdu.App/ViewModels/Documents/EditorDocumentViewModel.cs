@@ -59,6 +59,15 @@ public partial class EditorDocumentViewModel : Document
     [ObservableProperty]
     private bool _isReadOnly;
 
+    [ObservableProperty]
+    private bool _isMinimapVisible = true;
+
+    [RelayCommand]
+    public void ToggleMinimap()
+    {
+        IsMinimapVisible = !IsMinimapVisible;
+    }
+
     // --- Search & Replace State ---
     [ObservableProperty]
     private bool _isFindVisible;

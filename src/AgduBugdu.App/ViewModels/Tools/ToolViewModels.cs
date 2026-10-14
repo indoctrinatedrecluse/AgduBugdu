@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AgduBugdu.App.Models;
 using AgduBugdu.Core.Git;
+using AgduBugdu.Core.Symbols;
 using AgduBugdu.Core.Text;
 using AgduBugdu.Infrastructure.Terminal;
 using AgduBugdu.Plugin.Debugger;
@@ -888,6 +889,78 @@ public partial class GitToolViewModel : Tool
         if (item == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
         DiffOutput = await _gitService.GetDiffAsync(_currentWorkspacePath, item.RelativePath, item.IsStaged);
         FileSelected?.Invoke(this, item.FilePath);
+    }
+}
+
+public partial class OutlineToolViewModel : Tool
+{
+    [ObservableProperty]
+    private string _activeFileName = "No Document";
+
+    [ObservableProperty]
+    private string _filterQuery = string.Empty;
+
+    public ObservableCollection<CodeSymbol> AllSymbols { get; } = new();
+    public ObservableCollection<CodeSymbol> FilteredSymbols { get; } = new();
+
+    public event EventHandler<CodeSymbol>? SymbolSelected;
+
+    public OutlineToolViewModel()
+    {
+        Id = "Outline";
+        Title = "Outline";
+    }
+
+    public void UpdateSymbols(string? filePath, string? content)
+    {
+        AllSymbols.Clear();
+        FilteredSymbols.Clear();
+
+        if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(content))
+        {
+            ActiveFileName = "No Document";
+            return;
+        }
+
+        ActiveFileName = Path.GetFileName(filePath);
+        var parsed = CodeSymbolParser.ParseSymbols(content, filePath);
+        foreach (var sym in parsed)
+        {
+            AllSymbols.Add(sym);
+        }
+
+        ApplyFilter();
+    }
+
+    partial void OnFilterQueryChanged(string value)
+    {
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        FilteredSymbols.Clear();
+        string q = (FilterQuery ?? string.Empty).Trim().ToLowerInvariant();
+
+        foreach (var sym in AllSymbols)
+        {
+            if (string.IsNullOrEmpty(q) ||
+                sym.Name.ToLowerInvariant().Contains(q) ||
+                sym.Kind.ToString().ToLowerInvariant().Contains(q) ||
+                sym.Signature.ToLowerInvariant().Contains(q))
+            {
+                FilteredSymbols.Add(sym);
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void SelectSymbol(CodeSymbol? symbol)
+    {
+        if (symbol != null)
+        {
+            SymbolSelected?.Invoke(this, symbol);
+        }
     }
 }
 

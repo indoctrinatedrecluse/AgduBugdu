@@ -5,8 +5,10 @@
              x:Class="AgduBugdu.App.Views.Documents.EditorDocumentView"
              x:DataType="vm:EditorDocumentViewModel">
 
-    <Grid Background="#1E1E1E">
-        <ae:TextEditor x:Name="Editor"
+    <Grid Background="#1E1E1E" ColumnDefinitions="*,Auto">
+        <!-- Main Editor Column -->
+        <Grid Grid.Column="0">
+            <ae:TextEditor x:Name="Editor"
                        Document="{Binding TextDocument}"
                        ShowLineNumbers="True"
                        FontFamily="Cascadia Code, Consolas, Courier New, monospace"
@@ -42,6 +44,8 @@
                     <MenuItem Header="Select All" Command="{Binding $parent[ae:TextEditor].SelectAll}" InputGesture="Ctrl+A" />
                     <Separator />
                     <MenuItem Header="Toggle Breakpoint" x:Name="ToggleBreakpointMenuItem" InputGesture="F9" />
+                    <Separator />
+                    <MenuItem Header="Toggle Minimap" Command="{Binding ToggleMinimapCommand}" InputGesture="Alt+M" />
                 </ContextMenu>
             </ae:TextEditor.ContextMenu>
         </ae:TextEditor>
@@ -266,6 +270,21 @@
                     </Button>
                 </Grid>
             </StackPanel>
+        </Border>
+        </Grid>
+
+        <!-- Minimap Column -->
+        <Border Grid.Column="1"
+                Width="68"
+                Background="#181818"
+                BorderBrush="#2B2B2B"
+                BorderThickness="1,0,0,0"
+                IsVisible="{Binding IsMinimapVisible}"
+                ClipToBounds="True">
+            <Canvas x:Name="MinimapCanvas"
+                    Background="Transparent"
+                    PointerPressed="OnMinimapPointerPressed"
+                    PointerMoved="OnMinimapPointerMoved" />
         </Border>
     </Grid>
 </UserControl>

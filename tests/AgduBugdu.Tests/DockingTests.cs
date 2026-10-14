@@ -24,7 +24,9 @@ public class DockingTests
         Assert.NotNull(factory.BottomDock);
         Assert.NotNull(factory.LeftDock);
         Assert.Equal(0.22, factory.LeftDock.Proportion);
-        Assert.Equal(0.72, factory.DocumentDock.Proportion);
+        Assert.NotNull(factory.EditorLayout);
+        Assert.Equal(0.72, factory.EditorLayout.Proportion);
+        Assert.Equal(1.0, factory.DocumentDock.Proportion);
         Assert.Equal(0.28, factory.BottomDock.Proportion);
     }
 
@@ -128,7 +130,8 @@ public class DockingTests
 
         var newLayout = factory.ResetLayout();
         Assert.NotNull(newLayout);
-        Assert.Equal(0.72, factory.DocumentDock?.Proportion);
+        Assert.Equal(0.72, factory.EditorLayout?.Proportion);
+        Assert.Equal(1.0, factory.DocumentDock?.Proportion);
         Assert.Equal(0.28, factory.BottomDock?.Proportion);
 
         var docNames = factory.DocumentDock?.VisibleDockables?.OfType<EditorDocumentViewModel>().Select(d => d.FileName).ToList();
@@ -144,7 +147,7 @@ public class DockingTests
         var layout = factory.CreateLayout();
         factory.InitLayout(layout);
 
-        var expectedIds = new[] { "LeftPane", "BottomPane", "DocumentsPane", "Explorer", "Output", "Terminal", "TodoExplorer", "Debugger" };
+        var expectedIds = new[] { "LeftPane", "BottomPane", "DocumentsPane", "Explorer", "Outline", "Output", "Terminal", "TodoExplorer", "Debugger" };
         foreach (var id in expectedIds)
         {
             var dockable = factory.GetDockable<IDockable>(id);

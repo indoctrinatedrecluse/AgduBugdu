@@ -14,6 +14,8 @@ using AgduBugdu.PluginContracts;
 using TextMateSharp.Grammars;
 using AvaloniaEdit.Folding;
 using System.Collections.Generic;
+using System.Linq;
+using AgduBugdu.Core.Snippets;
 using AgduBugdu.Core.Text;
 
 namespace AgduBugdu.App.Views.Documents;
@@ -87,6 +89,9 @@ public partial class EditorDocumentView : UserControl
         Editor.TextChanged += OnTextChanged;
         Editor.KeyDown += OnEditorKeyDown;
         Editor.TextArea.TextEntering += OnTextAreaTextEntering;
+
+        Editor.TextArea.TextView.ScrollOffsetChanged += (s, e) => UpdateMinimap();
+        MinimapCanvas.SizeChanged += (s, e) => UpdateMinimap();
 
         // Ctrl + MouseWheel to zoom font size
         Editor.PointerWheelChanged += OnPointerWheelChanged;
@@ -267,6 +272,16 @@ public partial class EditorDocumentView : UserControl
             return;
         }
 
+        // Tab key for Snippet Template Expansion
+        if (e.Key == Key.Tab && e.KeyModifiers == KeyModifiers.None && Editor.TextArea.Selection.IsEmpty)
+        {
+            if (TryExpandSnippet())
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+
         // Shift + Alt combinations
         if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
@@ -293,6 +308,12 @@ public partial class EditorDocumentView : UserControl
         // Alt combinations (no Shift)
         if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
         {
+            if (e.Key == Key.M)
+            {
+                doc.ToggleMinimap();
+                e.Handled = true;
+                return;
+            }
             if (e.Key == Key.Up)
             {
                 doc.MoveLineUp();
@@ -696,6 +717,196 @@ public partial class EditorDocumentView : UserControl
                 doc.UpdateSearchMatches();
             }
             UpdateCodeFoldings();
+            UpdateMinimap();
+        }
+    }
+
+    private bool TryExpandSnippet()
+    {
+        if (DataContext is not EditorDocumentViewModel doc || Editor.Document == null)
+            return false;
+
+        int offset = Editor.CaretOffset;
+        if (offset <= 0)
+            return false;
+
+        var line = Editor.Document.GetLineByOffset(offset);
+        string lineText = Editor.Document.GetText(line.Offset, offset - line.Offset);
+
+        int wordStart = lineText.Length - 1;
+        while (wordStart >= 0 && (char.IsLetterOrDigit(lineText[wordStart]) || lineText[wordStart] == '_'))
+        {
+            wordStart--;
+        }
+        wordStart++;
+
+        if (wordStart >= lineText.Length)
+            return false;
+
+        string prefix = lineText.Substring(wordStart);
+        if (string.IsNullOrWhiteSpace(prefix))
+            return false;
+
+        var langDef = GetLanguageService()?.GetLanguageForFile(doc.FilePath);
+        string langId = langDef?.Id ?? Path.GetExtension(doc.FilePath).TrimStart('.').ToLowerInvariant();
+
+        var snippets = GetLanguageService()?.GetSnippets(langId);
+        var match = snippets?.FirstOrDefault(s => string.Equals(s.Prefix, prefix, StringComparison.OrdinalIgnoreCase));
+
+        if (match == null)
+        {
+            match = BuiltInSnippets.GetDefaultSnippets().FirstOrDefault(s =>
+                (string.IsNullOrEmpty(langId) || string.Equals(s.LanguageId, langId, StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(s.Prefix, prefix, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (match != null)
+        {
+            int prefixStart = line.Offset + wordStart;
+            int prefixLength = prefix.Length;
+            string indent = new string(lineText.TakeWhile(char.IsWhiteSpace).ToArray());
+
+            string normalizedBody = match.Body.Replace("\r\n", "\n").Replace("\r", "\n");
+            var bodyLines = normalizedBody.Split('\n');
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < bodyLines.Length; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(indent);
+                }
+                sb.Append(bodyLines[i]);
+                if (i < bodyLines.Length - 1)
+                {
+                    sb.AppendLine();
+                }
+            }
+
+            string expanded = sb.ToString();
+            int cursorRelOffset = expanded.IndexOf("$0", StringComparison.Ordinal);
+            if (cursorRelOffset >= 0)
+            {
+                expanded = expanded.Remove(cursorRelOffset, 2);
+            }
+            else
+            {
+                int pStart = expanded.IndexOf("${", StringComparison.Ordinal);
+                if (pStart >= 0)
+                {
+                    int pEnd = expanded.IndexOf('}', pStart);
+                    if (pEnd > pStart)
+                    {
+                        string defaultVal = expanded.Substring(pStart + 2, pEnd - pStart - 2);
+                        cursorRelOffset = pStart;
+                        expanded = expanded.Remove(pStart, pEnd - pStart + 1).Insert(pStart, defaultVal);
+                    }
+                    else
+                    {
+                        cursorRelOffset = expanded.Length;
+                    }
+                }
+                else
+                {
+                    cursorRelOffset = expanded.Length;
+                }
+            }
+
+            Editor.Document.Replace(prefixStart, prefixLength, expanded);
+            Editor.CaretOffset = prefixStart + cursorRelOffset;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void OnMinimapPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        HandleMinimapPointer(e.GetPosition(MinimapCanvas));
+        e.Handled = true;
+    }
+
+    private void OnMinimapPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (e.GetCurrentPoint(MinimapCanvas).Properties.IsLeftButtonPressed)
+        {
+            HandleMinimapPointer(e.GetPosition(MinimapCanvas));
+            e.Handled = true;
+        }
+    }
+
+    private void HandleMinimapPointer(Point pos)
+    {
+        if (Editor.Document == null || MinimapCanvas.Bounds.Height <= 0) return;
+        int lineCount = Editor.Document.LineCount;
+        if (lineCount <= 0) return;
+
+        double ratio = Math.Clamp(pos.Y / MinimapCanvas.Bounds.Height, 0.0, 1.0);
+        int targetLine = (int)Math.Round(ratio * (lineCount - 1)) + 1;
+        targetLine = Math.Clamp(targetLine, 1, lineCount);
+
+        Editor.ScrollToLine(targetLine);
+        UpdateMinimap();
+    }
+
+    private void UpdateMinimap()
+    {
+        if (MinimapCanvas == null || Editor.Document == null) return;
+        double canvasHeight = MinimapCanvas.Bounds.Height;
+        double canvasWidth = MinimapCanvas.Bounds.Width;
+        if (canvasHeight <= 10 || canvasWidth <= 10) return;
+
+        MinimapCanvas.Children.Clear();
+
+        int totalLines = Editor.Document.LineCount;
+        if (totalLines <= 0) return;
+
+        double lineH = Math.Max(1.0, Math.Min(3.0, canvasHeight / totalLines));
+        double maxLineWidth = canvasWidth - 10;
+
+        int step = Math.Max(1, totalLines / 250);
+        for (int i = 1; i <= totalLines; i += step)
+        {
+            var docLine = Editor.Document.GetLineByNumber(i);
+            int len = docLine.Length;
+            if (len == 0) continue;
+
+            double width = Math.Min(maxLineWidth, Math.Max(4, len * 0.8));
+            double y = ((double)(i - 1) / totalLines) * canvasHeight;
+
+            var lineBorder = new Border
+            {
+                Width = width,
+                Height = Math.Max(1, lineH - 0.5),
+                Background = new SolidColorBrush(Color.FromArgb(90, 150, 150, 150)),
+                CornerRadius = new CornerRadius(0.5)
+            };
+            Canvas.SetLeft(lineBorder, 4);
+            Canvas.SetTop(lineBorder, y);
+            MinimapCanvas.Children.Add(lineBorder);
+        }
+
+        var textView = Editor.TextArea.TextView;
+        if (textView != null && textView.DocumentHeight > 0)
+        {
+            double scrollRatio = textView.ScrollOffset.Y / Math.Max(1, textView.DocumentHeight);
+            double visibleRatio = textView.Bounds.Height / Math.Max(1, textView.DocumentHeight);
+
+            double viewTop = Math.Clamp(scrollRatio * canvasHeight, 0, canvasHeight - 16);
+            double viewHeight = Math.Clamp(visibleRatio * canvasHeight, 16, canvasHeight);
+
+            var viewRect = new Border
+            {
+                Width = canvasWidth,
+                Height = viewHeight,
+                Background = new SolidColorBrush(Color.FromArgb(45, 56, 189, 248)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(140, 56, 189, 248)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(2),
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(viewRect, 0);
+            Canvas.SetTop(viewRect, viewTop);
+            MinimapCanvas.Children.Add(viewRect);
         }
     }
 }

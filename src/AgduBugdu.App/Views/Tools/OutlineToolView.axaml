@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:symbols="using:AgduBugdu.Core.Symbols"
+             x:Class="AgduBugdu.App.Views.Tools.OutlineToolView"
+             x:DataType="vm:OutlineToolViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- Header Bar -->
+        <Border Grid.Row="0"
+                Padding="12,8"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ActiveFileName}"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Foreground="#CCCCCC"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding FilteredSymbols.Count, StringFormat='{}{0} symbols'}"
+                           FontSize="10"
+                           Foreground="#888888"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Search / Filter Input -->
+        <Border Grid.Row="1"
+                Padding="8,6"
+                Background="#1E1E1E"
+                BorderBrush="#2D2D2D"
+                BorderThickness="0,0,0,1">
+            <TextBox Text="{Binding FilterQuery, Mode=TwoWay}"
+                     Watermark="Filter symbols..."
+                     FontSize="11"
+                     Padding="6,3"
+                     Height="26"
+                     Background="#252526"
+                     Foreground="#EEEEEE"
+                     BorderBrush="#3E3E42"
+                     BorderThickness="1"
+                     CornerRadius="3" />
+        </Border>
+
+        <!-- Empty state -->
+        <Border Grid.Row="2"
+                Padding="16"
+                IsVisible="{Binding !FilteredSymbols.Count}">
+            <TextBlock Text="No symbols found in document"
+                       Foreground="#777777"
+                       FontSize="12"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       TextAlignment="Center" />
+        </Border>
+
+        <!-- Symbols List -->
+        <ListBox Grid.Row="2"
+                 ItemsSource="{Binding FilteredSymbols}"
+                 Background="Transparent"
+                 IsVisible="{Binding FilteredSymbols.Count}"
+                 DoubleTapped="OnSymbolDoubleTapped">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="symbols:CodeSymbol">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                        <!-- Kind Badge Pill -->
+                        <Border Grid.Column="0"
+                                Background="{Binding KindBadgeColor}"
+                                CornerRadius="3"
+                                Width="18"
+                                Height="18"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding KindBadge}"
+                                       FontSize="10"
+                                       FontWeight="Bold"
+                                       Foreground="#000000"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+
+                        <!-- Symbol Name & Signature -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="#E0E0E0"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Signature}"
+                                       FontSize="10"
+                                       Foreground="#888888"
+                                       TextTrimming="CharacterEllipsis"
+                                       IsVisible="{Binding Signature, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+
+                        <!-- Line Number Pill -->
+                        <Border Grid.Column="2"
+                                Background="#2A2A2D"
+                                CornerRadius="3"
+                                Padding="4,1"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding LineNumber, StringFormat=':\{0\}'}"
+                                       FontSize="10"
+                                       Foreground="#999999" />
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>
