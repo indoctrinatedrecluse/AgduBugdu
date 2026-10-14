@@ -7,48 +7,141 @@
 
     <Grid Background="#1E1E1E" ColumnDefinitions="*,Auto">
         <!-- Main Editor Column -->
-        <Grid Grid.Column="0">
-            <ae:TextEditor x:Name="Editor"
-                       Document="{Binding TextDocument}"
-                       ShowLineNumbers="{Binding ShowLineNumbers}"
-                       FontFamily="{Binding FontFamily}"
-                       FontSize="{Binding FontSize}"
-                       WordWrap="{Binding WordWrap}"
-                       HorizontalScrollBarVisibility="Auto"
-                       VerticalScrollBarVisibility="Visible"
-                       Background="#1E1E1E"
-                       Foreground="#D4D4D4">
-            <ae:TextEditor.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="Cut" Command="{Binding $parent[ae:TextEditor].Cut}" InputGesture="Ctrl+X" />
-                    <MenuItem Header="Copy" Command="{Binding $parent[ae:TextEditor].Copy}" InputGesture="Ctrl+C" />
-                    <MenuItem Header="Paste" Command="{Binding $parent[ae:TextEditor].Paste}" InputGesture="Ctrl+V" />
-                    <Separator />
-                    <MenuItem Header="Find..." Command="{Binding OpenFindCommand}" InputGesture="Ctrl+F" />
-                    <MenuItem Header="Replace..." Command="{Binding OpenReplaceCommand}" InputGesture="Ctrl+H" />
-                    <MenuItem Header="Go to Line..." Command="{Binding OpenGoToLineCommand}" InputGesture="Ctrl+G" />
-                    <MenuItem Header="Go to Matching Bracket" Command="{Binding GoToMatchingBracketCommand}" InputGesture="Ctrl+M" />
-                    <Separator />
-                    <MenuItem Header="Toggle Line Comment" Command="{Binding ToggleLineCommentCommand}" InputGesture="Ctrl+OemQuestion" />
-                    <MenuItem Header="Toggle Block Comment" Command="{Binding ToggleBlockCommentCommand}" InputGesture="Shift+Alt+A" />
-                    <Separator />
-                    <MenuItem Header="Move Line Up" Command="{Binding MoveLineUpCommand}" InputGesture="Alt+Up" />
-                    <MenuItem Header="Move Line Down" Command="{Binding MoveLineDownCommand}" InputGesture="Alt+Down" />
-                    <MenuItem Header="Duplicate Line Down" Command="{Binding DuplicateLineDownCommand}" InputGesture="Shift+Alt+Down" />
-                    <MenuItem Header="Delete Line" Command="{Binding DeleteLineCommand}" InputGesture="Ctrl+Shift+K" />
-                    <MenuItem Header="Join Lines" Command="{Binding JoinLinesCommand}" InputGesture="Ctrl+Shift+J" />
-                    <Separator />
-                    <MenuItem Header="Uppercase" Command="{Binding TransformUppercaseCommand}" InputGesture="Ctrl+Shift+U" />
-                    <MenuItem Header="Lowercase" Command="{Binding TransformLowercaseCommand}" InputGesture="Ctrl+U" />
-                    <Separator />
-                    <MenuItem Header="Select All" Command="{Binding $parent[ae:TextEditor].SelectAll}" InputGesture="Ctrl+A" />
-                    <Separator />
-                    <MenuItem Header="Toggle Breakpoint" x:Name="ToggleBreakpointMenuItem" InputGesture="F9" />
-                    <Separator />
-                    <MenuItem Header="Toggle Minimap" Command="{Binding ToggleMinimapCommand}" InputGesture="Alt+M" />
-                </ContextMenu>
-            </ae:TextEditor.ContextMenu>
-        </ae:TextEditor>
+        <Grid Grid.Column="0" RowDefinitions="Auto,*">
+            <!-- Breadcrumbs Navigation Bar (Row 0) -->
+            <Border Grid.Row="0"
+                    Background="#252526"
+                    BorderBrush="#333333"
+                    BorderThickness="0,0,0,1"
+                    Padding="6,2"
+                    Height="26"
+                    IsVisible="{Binding ShowBreadcrumbs}">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Breadcrumbs}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                    <Button Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="4,2"
+                                            CornerRadius="3"
+                                            Cursor="Hand"
+                                            Command="{Binding $parent[UserControl].((vm:EditorDocumentViewModel)DataContext).NavigateToBreadcrumbCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Icon}"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontSize="11"
+                                                       Foreground="#CCCCCC"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Text="›"
+                                               FontSize="11"
+                                               Foreground="#666666"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding !IsLast}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Editor & Overlays (Row 1) -->
+            <Grid Grid.Row="1">
+                <ae:TextEditor x:Name="Editor"
+                           Document="{Binding TextDocument}"
+                           ShowLineNumbers="{Binding ShowLineNumbers}"
+                           FontFamily="{Binding FontFamily}"
+                           FontSize="{Binding FontSize}"
+                           WordWrap="{Binding WordWrap}"
+                           HorizontalScrollBarVisibility="Auto"
+                           VerticalScrollBarVisibility="Visible"
+                           Background="#1E1E1E"
+                           Foreground="#D4D4D4">
+                <ae:TextEditor.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Cut" Command="{Binding $parent[ae:TextEditor].Cut}" InputGesture="Ctrl+X" />
+                        <MenuItem Header="Copy" Command="{Binding $parent[ae:TextEditor].Copy}" InputGesture="Ctrl+C" />
+                        <MenuItem Header="Paste" Command="{Binding $parent[ae:TextEditor].Paste}" InputGesture="Ctrl+V" />
+                        <Separator />
+                        <MenuItem Header="Find..." Command="{Binding OpenFindCommand}" InputGesture="Ctrl+F" />
+                        <MenuItem Header="Replace..." Command="{Binding OpenReplaceCommand}" InputGesture="Ctrl+H" />
+                        <MenuItem Header="Go to Line..." Command="{Binding OpenGoToLineCommand}" InputGesture="Ctrl+G" />
+                        <MenuItem Header="Go to Matching Bracket" Command="{Binding GoToMatchingBracketCommand}" InputGesture="Ctrl+M" />
+                        <Separator />
+                        <MenuItem Header="Toggle Line Comment" Command="{Binding ToggleLineCommentCommand}" InputGesture="Ctrl+OemQuestion" />
+                        <MenuItem Header="Toggle Block Comment" Command="{Binding ToggleBlockCommentCommand}" InputGesture="Shift+Alt+A" />
+                        <Separator />
+                        <MenuItem Header="Move Line Up" Command="{Binding MoveLineUpCommand}" InputGesture="Alt+Up" />
+                        <MenuItem Header="Move Line Down" Command="{Binding MoveLineDownCommand}" InputGesture="Alt+Down" />
+                        <MenuItem Header="Duplicate Line Down" Command="{Binding DuplicateLineDownCommand}" InputGesture="Shift+Alt+Down" />
+                        <MenuItem Header="Delete Line" Command="{Binding DeleteLineCommand}" InputGesture="Ctrl+Shift+K" />
+                        <MenuItem Header="Join Lines" Command="{Binding JoinLinesCommand}" InputGesture="Ctrl+Shift+J" />
+                        <Separator />
+                        <MenuItem Header="Uppercase" Command="{Binding TransformUppercaseCommand}" InputGesture="Ctrl+Shift+U" />
+                        <MenuItem Header="Lowercase" Command="{Binding TransformLowercaseCommand}" InputGesture="Ctrl+U" />
+                        <Separator />
+                        <MenuItem Header="Select All" Command="{Binding $parent[ae:TextEditor].SelectAll}" InputGesture="Ctrl+A" />
+                        <Separator />
+                        <MenuItem Header="Toggle Breakpoint" x:Name="ToggleBreakpointMenuItem" InputGesture="F9" />
+                        <Separator />
+                        <MenuItem Header="Toggle Minimap" Command="{Binding ToggleMinimapCommand}" InputGesture="Alt+M" />
+                        <MenuItem Header="Toggle Breadcrumbs" Command="{Binding ToggleBreadcrumbsCommand}" />
+                        <MenuItem Header="Toggle Sticky Scroll" Command="{Binding ToggleStickyScrollCommand}" />
+                    </ContextMenu>
+                </ae:TextEditor.ContextMenu>
+            </ae:TextEditor>
+
+            <!-- Sticky Context Scroll Header -->
+            <Border HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="#202227"
+                    BorderBrush="#3B82F6"
+                    BorderThickness="0,0,0,1"
+                    Padding="8,3"
+                    BoxShadow="0 2 6 0 #40000000"
+                    Cursor="Hand"
+                    IsVisible="{Binding IsStickyHeaderVisible}">
+                <Button Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Command="{Binding NavigateToStickyHeaderCommand}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding StickyHeaderIcon}"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding StickyHeaderTitle}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#60A5FA"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Border Grid.Column="2"
+                                Background="#1E293B"
+                                CornerRadius="3"
+                                Padding="6,1"
+                                Margin="0,0,24,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding StickyHeaderLineNumber, StringFormat='Line {0}'}"
+                                       FontSize="10"
+                                       Foreground="#94A3B8" />
+                        </Border>
+                    </Grid>
+                </Button>
+            </Border>
 
         <!-- Find & Replace Floating Panel -->
         <Border IsVisible="{Binding IsFindVisible}"
@@ -272,6 +365,7 @@
             </StackPanel>
         </Border>
         </Grid>
+    </Grid>
 
         <!-- Minimap Column -->
         <Border Grid.Column="1"

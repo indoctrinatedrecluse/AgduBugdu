@@ -144,7 +144,11 @@ public partial class EditorDocumentView : UserControl
         Editor.TextArea.TextEntering += OnTextAreaTextEntering;
         Editor.TextArea.PointerPressed += OnEditorPointerPressed;
 
-        Editor.TextArea.TextView.ScrollOffsetChanged += (s, e) => UpdateMinimap();
+        Editor.TextArea.TextView.ScrollOffsetChanged += (s, e) =>
+        {
+            UpdateMinimap();
+            UpdateStickyScroll();
+        };
         MinimapCanvas.SizeChanged += (s, e) => UpdateMinimap();
 
         // Ctrl + MouseWheel to zoom font size
@@ -843,6 +847,32 @@ public partial class EditorDocumentView : UserControl
             }
             UpdateCodeFoldings();
             UpdateMinimap();
+            doc.RefreshBreadcrumbs();
+            UpdateStickyScroll();
+        }
+    }
+
+    private void UpdateStickyScroll()
+    {
+        if (DataContext is not EditorDocumentViewModel doc || !doc.ShowStickyScroll)
+            return;
+
+        try
+        {
+            var firstVisualLine = Editor.TextArea.TextView.VisualLines.FirstOrDefault();
+            if (firstVisualLine != null)
+            {
+                int topVisibleLine = firstVisualLine.FirstDocumentLine.LineNumber;
+                doc.UpdateStickyContext(topVisibleLine);
+            }
+            else
+            {
+                doc.IsStickyHeaderVisible = false;
+            }
+        }
+        catch
+        {
+            doc.IsStickyHeaderVisible = false;
         }
     }
 

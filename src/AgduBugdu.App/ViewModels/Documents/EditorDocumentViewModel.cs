@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using AgduBugdu.Core.Symbols;
 using AgduBugdu.Core.Text;
 using AvaloniaEdit.Document;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -89,6 +91,104 @@ public partial class EditorDocumentViewModel : Document
         IsMinimapVisible = !IsMinimapVisible;
     }
 
+    // --- Breadcrumbs & Sticky Context Scroll ---
+    public ObservableCollection<BreadcrumbItem> Breadcrumbs { get; } = new();
+
+    [ObservableProperty]
+    private bool _showBreadcrumbs = true;
+
+    [ObservableProperty]
+    private bool _showStickyScroll = true;
+
+    [ObservableProperty]
+    private bool _isStickyHeaderVisible;
+
+    [ObservableProperty]
+    private string _stickyHeaderTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _stickyHeaderIcon = "•";
+
+    [ObservableProperty]
+    private string _stickyHeaderBadgeColor = "#60A5FA";
+
+    [ObservableProperty]
+    private int _stickyHeaderLineNumber = 1;
+
+    [RelayCommand]
+    public void NavigateToBreadcrumb(BreadcrumbItem? item)
+    {
+        if (item != null)
+        {
+            ScrollToLine(item.LineNumber);
+        }
+    }
+
+    [RelayCommand]
+    public void NavigateToStickyHeader()
+    {
+        if (StickyHeaderLineNumber >= 1)
+        {
+            ScrollToLine(StickyHeaderLineNumber);
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleBreadcrumbs()
+    {
+        ShowBreadcrumbs = !ShowBreadcrumbs;
+        RefreshBreadcrumbs();
+    }
+
+    [RelayCommand]
+    public void ToggleStickyScroll()
+    {
+        ShowStickyScroll = !ShowStickyScroll;
+        if (!ShowStickyScroll)
+        {
+            IsStickyHeaderVisible = false;
+        }
+    }
+
+    public void RefreshBreadcrumbs()
+    {
+        if (!ShowBreadcrumbs)
+        {
+            Breadcrumbs.Clear();
+            return;
+        }
+
+        var items = BreadcrumbResolver.ResolveBreadcrumbs(FilePath, TextDocument.Text, Line);
+        Breadcrumbs.Clear();
+        foreach (var item in items)
+        {
+            Breadcrumbs.Add(item);
+        }
+    }
+
+    public void UpdateStickyContext(int topVisibleLine)
+    {
+        if (!ShowStickyScroll || topVisibleLine <= 1)
+        {
+            IsStickyHeaderVisible = false;
+            return;
+        }
+
+        var scope = BreadcrumbResolver.ResolveStickyScope(FilePath, TextDocument.Text, topVisibleLine);
+        if (scope != null)
+        {
+            StickyHeaderTitle = scope.Title;
+            StickyHeaderIcon = scope.Icon;
+            StickyHeaderBadgeColor = scope.IconColor;
+            StickyHeaderLineNumber = scope.LineNumber;
+            IsStickyHeaderVisible = true;
+        }
+        else
+        {
+            IsStickyHeaderVisible = false;
+        }
+    }
+
     // --- Search & Replace State ---
     [ObservableProperty]
     private bool _isFindVisible;
@@ -129,6 +229,7 @@ public partial class EditorDocumentViewModel : Document
 
     public event EventHandler? CaretMoved;
     public event EventHandler<int>? ScrollToLineRequested;
+    public void ScrollToLine(int line) => ScrollToLineRequested?.Invoke(this, line);
     public event EventHandler<(int Offset, int Length)>? SelectTextRequested;
     public event EventHandler? FocusSearchBoxRequested;
     public event EventHandler? FocusGoToLineRequested;
@@ -171,11 +272,18 @@ public partial class EditorDocumentViewModel : Document
         Title = FileName;
         _originalText = TextDocument.Text;
         TextDocument.UndoStack.MarkAsOriginalFile();
+        RefreshBreadcrumbs();
     }
 
     partial void OnFileNameChanged(string value)
     {
         Title = IsModified ? $"{value}*" : value;
+        RefreshBreadcrumbs();
+    }
+
+    partial void OnFilePathChanged(string value)
+    {
+        RefreshBreadcrumbs();
     }
 
     partial void OnTextDocumentChanged(TextDocument value)
@@ -192,11 +300,13 @@ public partial class EditorDocumentViewModel : Document
         IsModified = false;
         Title = FileName;
         UpdateSearchMatches();
+        RefreshBreadcrumbs();
     }
 
     partial void OnLineChanged(int value)
     {
         CaretMoved?.Invoke(this, EventArgs.Empty);
+        RefreshBreadcrumbs();
     }
 
     partial void OnColumnChanged(int value)
