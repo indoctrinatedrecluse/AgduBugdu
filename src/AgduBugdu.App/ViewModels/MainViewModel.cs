@@ -942,13 +942,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("file.closeTab", "File: Close Active Tab", () => CloseActiveTab(), "Ctrl+W");
         CommandPalette.RegisterCommand("file.reopenClosedTab", "File: Reopen Closed Tab", () => ReopenClosedTab(), "Ctrl+Shift+T");
         CommandPalette.RegisterCommand("file.restoreSession", "File: Restore Previous Session", () => RestorePreviousSession());
-        CommandPalette.RegisterCommand("view.splitRight", "View: Split Editor Right", () => SplitEditorRight(), "Ctrl+\\");
+        CommandPalette.RegisterCommand("view.splitRight", "View: Split Editor Right", () => SplitEditorRight(), "Ctrl+OemBackslash");
         CommandPalette.RegisterCommand("view.splitDown", "View: Split Editor Down", () => SplitEditorDown());
         CommandPalette.RegisterCommand("view.toggleSplit", "View: Toggle Split Editor", () => ToggleSplitEditor());
         CommandPalette.RegisterCommand("view.moveDocumentToOtherPane", "View: Move Tab to Other Pane", () => MoveDocumentToOtherPane(), "Ctrl+Alt+Right");
         CommandPalette.RegisterCommand("view.outline", "View: Focus Symbol Outline", () => FocusOutline(), "Ctrl+Shift+O");
         CommandPalette.RegisterCommand("view.toggleMinimap", "View: Toggle Code Minimap", () => ToggleMinimap(), "Alt+M");
-        CommandPalette.RegisterCommand("view.settings", "Preferences: Open Settings (Ctrl+,)", () => OpenSettings(), "Ctrl+,");
+        CommandPalette.RegisterCommand("view.settings", "Preferences: Open Settings (Ctrl+,)", () => OpenSettings(), "Ctrl+OemComma");
         CommandPalette.RegisterCommand("view.keymap", "Preferences: Keyboard Shortcuts", () => OpenKeymapSettings());
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
     }

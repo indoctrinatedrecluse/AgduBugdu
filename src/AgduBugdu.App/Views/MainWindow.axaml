@@ -147,7 +147,7 @@
                     <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+Shift+OemTilde" Command="{Binding RestartTerminalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Preferences">
-                    <MenuItem Header="_Settings..." InputGesture="Ctrl+," Command="{Binding OpenSettingsCommand}" />
+                    <MenuItem Header="_Settings..." InputGesture="Ctrl+OemComma" Command="{Binding OpenSettingsCommand}" />
                     <MenuItem Header="_Keyboard Shortcuts" Command="{Binding OpenKeymapSettingsCommand}" />
                     <Separator />
                     <MenuItem Header="Color Theme">
@@ -158,7 +158,7 @@
                 <MenuItem Header="_View">
                     <MenuItem Header="_Command Palette..." InputGesture="Ctrl+P" Command="{Binding OpenCommandPaletteCommand}" />
                     <Separator />
-                    <MenuItem Header="Split Editor _Right" InputGesture="Ctrl+\" Command="{Binding SplitEditorRightCommand}" />
+                    <MenuItem Header="Split Editor _Right" InputGesture="Ctrl+OemBackslash" Command="{Binding SplitEditorRightCommand}" />
                     <MenuItem Header="Split Editor _Down" Command="{Binding SplitEditorDownCommand}" />
                     <MenuItem Header="Toggle _Split Editor" Command="{Binding ToggleSplitEditorCommand}" />
                     <MenuItem Header="_Move Tab to Other Pane" InputGesture="Ctrl+Alt+Right" Command="{Binding MoveDocumentToOtherPaneCommand}" />

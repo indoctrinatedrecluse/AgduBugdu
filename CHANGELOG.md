@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Silent 24-Hour Heartbeat**: Silent background validation keeps active licenses topped up automatically while online.
   - **HMAC-SHA256 Registry Integrity Check**: Constant-time HMAC verification across all license attributes detects and neutralizes manual tampering in the Windows Registry or fallback files.
 
+### 🐛 Fixed
+- **Fatal UI Startup Crash**: Fixed an unhandled `ArgumentException` on application initialization caused by an unrecognized `KeyGesture` backslash character (`Ctrl+\`) in the Split Editor menu; resolved to standard Avalonia `Ctrl+OemBackslash`. Also standardized Preferences Settings shortcut to `Ctrl+OemComma` and added automated regression guard tests.
+
 ---
 
 ## 🚀 [1.3.2] - 2026-10-14

@@ -62,4 +62,30 @@ public class KeyGestureTests
         }
         // We know Ctrl+OemQuestion is 100% reliable in Avalonia XAML
     }
+
+    [Fact]
+    public void TestMainWindowGestures()
+    {
+        string[] gestures = new[]
+        {
+            "Ctrl+N", "Ctrl+O", "Ctrl+S", "Ctrl+Shift+S", "Ctrl+W", "Ctrl+Shift+T",
+            "Ctrl+Z", "Ctrl+Y", "Ctrl+X", "Ctrl+C", "Ctrl+V", "Ctrl+A",
+            "Ctrl+F", "Ctrl+H", "Ctrl+G", "Ctrl+M", "Ctrl+OemQuestion",
+            "Shift+Alt+A", "Alt+Up", "Alt+Down", "Shift+Alt+Up", "Shift+Alt+Down",
+            "Ctrl+Shift+K", "Ctrl+Shift+J", "Ctrl+Shift+U", "Ctrl+U",
+            "Ctrl+Shift+OemTilde", "Ctrl+OemComma", "Ctrl+P", "Ctrl+OemBackslash", "Ctrl+Alt+Right",
+            "Alt+M", "Alt+Z", "Ctrl+J", "Ctrl+Shift+E", "Ctrl+Shift+F",
+            "Ctrl+Shift+G", "Ctrl+Shift+O", "Ctrl+OemTilde", "Ctrl+Shift+D"
+        };
+
+        foreach (var g in gestures)
+        {
+            var parsed = KeyGesture.Parse(g);
+            Assert.NotNull(parsed);
+        }
+
+        // Regression guard: Verify that raw unescaped 'Ctrl+\' throws ArgumentException in Avalonia
+        // and must never be used directly in XAML InputGesture attributes.
+        Assert.Throws<ArgumentException>(() => KeyGesture.Parse("Ctrl+\\"));
+    }
 }
