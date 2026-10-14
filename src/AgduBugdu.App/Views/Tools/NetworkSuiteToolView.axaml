@@ -1,0 +1,168 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             x:Class="AgduBugdu.App.Views.Tools.NetworkSuiteToolView"
+             x:DataType="vm:NetworkSuiteToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Mode Selector Strip -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Suite Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="🌐" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="NETWORK &amp; SOCKET WORKBENCH"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Mode Switcher Tabs -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <RadioButton Content="🔌 WebSockets"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"
+                                 GroupName="NetworkTabs"
+                                 FontSize="11"
+                                 Padding="8,4" />
+                    <RadioButton Content="📡 Server-Sent Events (SSE)"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}"
+                                 GroupName="NetworkTabs"
+                                 FontSize="11"
+                                 Padding="8,4" />
+                    <RadioButton Content="◈ GraphQL Explorer"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=2}"
+                                 GroupName="NetworkTabs"
+                                 FontSize="11"
+                                 Padding="8,4" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Body Area -->
+        <Grid Grid.Row="1">
+            <!-- 1. WebSockets View (SelectedTabIndex == 0) -->
+            <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}">
+                <!-- WS Connect Bar -->
+                <Border Grid.Row="0" Background="#181818" BorderBrush="#2D2D30" BorderThickness="0,0,0,1" Padding="8,6">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="ws://" FontSize="12" FontWeight="Bold" Foreground="#3B82F6" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBox Grid.Column="1" Text="{Binding WsUrl, Mode=TwoWay}" Watermark="wss://example.com/ws" FontSize="12" Height="28" VerticalContentAlignment="Center" Background="#252526" Foreground="#EEEEEE" BorderBrush="#3E3E42" Margin="0,0,8,0" />
+                        <Button Grid.Column="2" Content="Connect" IsVisible="{Binding !IsWsConnected}" Command="{Binding ConnectWsCommand}" Background="#2563EB" Foreground="White" Padding="12,4" Height="28" CornerRadius="3" Margin="0,0,6,0" />
+                        <Button Grid.Column="2" Content="Disconnect" IsVisible="{Binding IsWsConnected}" Command="{Binding DisconnectWsCommand}" Background="#DC2626" Foreground="White" Padding="12,4" Height="28" CornerRadius="3" Margin="0,0,6,0" />
+                        <Button Grid.Column="3" Content="Clear" Command="{Binding ClearWsMessagesCommand}" Background="#333333" Foreground="#CCCCCC" Padding="8,4" Height="28" CornerRadius="3" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="4" Text="{Binding WsStatusMessage}" FontSize="11" Foreground="#888888" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- WS Messages Log -->
+                <ListBox Grid.Row="1" ItemsSource="{Binding WsMessages}" Background="#0C0C0C" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#202020" BorderThickness="0,0,0,1" Padding="6,4">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                    <Border Grid.Column="0" Background="{Binding BadgeColor}" CornerRadius="3" Padding="4,1" Margin="0,0,8,0" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding DirectionBadge}" FontSize="9" FontWeight="Bold" Foreground="White" />
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding FormattedTime}" FontSize="11" Foreground="#666666" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Payload}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Foreground="#DDDDDD" TextWrapping="Wrap" VerticalAlignment="Top" />
+                                    <TextBlock Grid.Column="3" Text="{Binding ByteLength, StringFormat='{}{0} B'}" FontSize="10" Foreground="#555555" Margin="8,0,0,0" VerticalAlignment="Top" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- WS Message Sender Input -->
+                <Border Grid.Row="2" Background="#181818" BorderBrush="#2D2D30" BorderThickness="0,1,0,0" Padding="8,6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0" Text="{Binding WsMessageInput, Mode=TwoWay}" Watermark="Enter payload to send (Text or JSON)..." FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Height="30" VerticalContentAlignment="Center" Background="#252526" Foreground="#EEEEEE" BorderBrush="#3E3E42" Margin="0,0,8,0" />
+                        <Button Grid.Column="1" Content="Send Frame ⬆" Command="{Binding SendWsMessageCommand}" IsEnabled="{Binding IsWsConnected}" Background="#059669" Foreground="White" FontWeight="SemiBold" Padding="14,4" Height="30" CornerRadius="3" />
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- 2. Server-Sent Events (SSE) View (SelectedTabIndex == 1) -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}">
+                <!-- SSE Connect Bar -->
+                <Border Grid.Row="0" Background="#181818" BorderBrush="#2D2D30" BorderThickness="0,0,0,1" Padding="8,6">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="SSE:" FontSize="12" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBox Grid.Column="1" Text="{Binding SseUrl, Mode=TwoWay}" Watermark="https://api.example.com/v1/stream" FontSize="12" Height="28" VerticalContentAlignment="Center" Background="#252526" Foreground="#EEEEEE" BorderBrush="#3E3E42" Margin="0,0,8,0" />
+                        <Button Grid.Column="2" Content="Connect Stream" IsVisible="{Binding !IsSseConnected}" Command="{Binding ConnectSseCommand}" Background="#059669" Foreground="White" Padding="12,4" Height="28" CornerRadius="3" Margin="0,0,6,0" />
+                        <Button Grid.Column="2" Content="Stop Stream" IsVisible="{Binding IsSseConnected}" Command="{Binding DisconnectSseCommand}" Background="#DC2626" Foreground="White" Padding="12,4" Height="28" CornerRadius="3" Margin="0,0,6,0" />
+                        <Button Grid.Column="3" Content="Clear" Command="{Binding ClearSseEventsCommand}" Background="#333333" Foreground="#CCCCCC" Padding="8,4" Height="28" CornerRadius="3" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="4" Text="{Binding SseStatusMessage}" FontSize="11" Foreground="#888888" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- SSE Stream Log -->
+                <ListBox Grid.Row="1" ItemsSource="{Binding SseEvents}" Background="#0C0C0C" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#202020" BorderThickness="0,0,0,1" Padding="6,4">
+                                <Grid ColumnDefinitions="Auto,Auto,Auto,*">
+                                    <Border Grid.Column="0" Background="#065F46" CornerRadius="3" Padding="4,1" Margin="0,0,6,0" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding EventType}" FontSize="9" FontWeight="Bold" Foreground="#34D399" />
+                                    </Border>
+                                    <Border Grid.Column="1" Background="#333333" CornerRadius="3" Padding="4,1" Margin="0,0,6,0" VerticalAlignment="Top" IsVisible="{Binding HasEventId}">
+                                        <TextBlock Text="{Binding EventId, StringFormat='id:{0}'}" FontSize="9" Foreground="#CCCCCC" />
+                                    </Border>
+                                    <TextBlock Grid.Column="2" Text="{Binding FormattedTime}" FontSize="11" Foreground="#666666" Margin="0,0,10,0" VerticalAlignment="Top" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Data}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Foreground="#DDDDDD" TextWrapping="Wrap" VerticalAlignment="Top" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+
+            <!-- 3. GraphQL Explorer View (SelectedTabIndex == 2) -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=2}">
+                <!-- GraphQL Toolbar -->
+                <Border Grid.Row="0" Background="#181818" BorderBrush="#2D2D30" BorderThickness="0,0,0,1" Padding="8,6">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="Endpoint:" FontSize="12" FontWeight="Bold" Foreground="#EC4899" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBox Grid.Column="1" Text="{Binding GraphQlEndpoint, Mode=TwoWay}" Watermark="https://api.example.com/graphql" FontSize="12" Height="28" VerticalContentAlignment="Center" Background="#252526" Foreground="#EEEEEE" BorderBrush="#3E3E42" Margin="0,0,8,0" />
+                        <Button Grid.Column="2" Content="▶ Run Query" Command="{Binding ExecuteGraphQlCommand}" Background="#DB2777" Foreground="White" FontWeight="Bold" Padding="12,4" Height="28" CornerRadius="3" Margin="0,0,6,0" />
+                        <Button Grid.Column="3" Content="Introspection" Command="{Binding LoadIntrospectionCommand}" Background="#333333" Foreground="#CCCCCC" Padding="8,4" Height="28" CornerRadius="3" Margin="0,0,6,0" />
+                        <Button Grid.Column="4" Content="Clear" Command="{Binding ClearGraphQlCommand}" Background="#333333" Foreground="#CCCCCC" Padding="8,4" Height="28" CornerRadius="3" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="5" Text="{Binding GraphQlStatus}" FontSize="11" Foreground="#AAAAAA" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- GraphQL Editor & Response Split Panes -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,4,*">
+                    <!-- Left: Query & Variables -->
+                    <Grid Grid.Column="0" RowDefinitions="*,4,Auto" Margin="6">
+                        <!-- Query Box -->
+                        <Grid Grid.Row="0" RowDefinitions="Auto,*">
+                            <TextBlock Grid.Row="0" Text="QUERY / MUTATION" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+                            <TextBox Grid.Row="1" Text="{Binding GraphQlQuery, Mode=TwoWay}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Background="#141414" Foreground="#F3E8FF" BorderBrush="#333333" AcceptsReturn="True" TextWrapping="NoWrap" />
+                        </Grid>
+
+                        <GridSplitter Grid.Row="1" Height="4" Background="#222222" />
+
+                        <!-- Variables Box -->
+                        <Grid Grid.Row="2" RowDefinitions="Auto,*" Height="110">
+                            <TextBlock Grid.Row="0" Text="VARIABLES (JSON)" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,2,0,4" />
+                            <TextBox Grid.Row="1" Text="{Binding GraphQlVariables, Mode=TwoWay}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Background="#141414" Foreground="#DDD6FE" BorderBrush="#333333" AcceptsReturn="True" TextWrapping="NoWrap" />
+                        </Grid>
+                    </Grid>
+
+                    <GridSplitter Grid.Column="1" Width="4" Background="#333333" />
+
+                    <!-- Right: Response JSON -->
+                    <Grid Grid.Column="2" RowDefinitions="Auto,*" Margin="6">
+                        <TextBlock Grid.Row="0" Text="RESPONSE" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+                        <TextBox Grid.Row="1" Text="{Binding GraphQlResponseJson}" IsReadOnly="True" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Background="#0C0C0C" Foreground="#A7F3D0" BorderBrush="#333333" AcceptsReturn="True" TextWrapping="Wrap" />
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>
