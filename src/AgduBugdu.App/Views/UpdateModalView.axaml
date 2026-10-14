@@ -8,38 +8,50 @@
           Background="#99000000"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch">
-        
+
         <!-- Modal Card Dialog -->
         <Border HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Width="480"
-                CornerRadius="8"
+                Width="520"
+                CornerRadius="10"
                 Background="#1E1E22"
                 BorderBrush="#3B82F6"
                 BorderThickness="1"
-                BoxShadow="0 8 32 0 #55000000"
+                BoxShadow="0 12 36 0 #77000000"
                 Padding="24">
-            
+
             <StackPanel Spacing="16">
                 <!-- Header with Icon & Title -->
                 <Grid ColumnDefinitions="Auto,*">
                     <Image Grid.Column="0"
                            Source="/Assets/agdubugdu-logo.png"
-                           Width="36"
-                           Height="36"
-                           Margin="0,0,12,0" />
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Software Update Available"
+                           Width="38"
+                           Height="38"
+                           Margin="0,0,14,0"
+                           VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding ModalTitle}"
                                    FontSize="16"
                                    FontWeight="Bold"
                                    Foreground="#F3F4F6" />
-                        <TextBlock Text="{Binding VersionComparisonText}"
-                                   FontSize="12"
-                                   Foreground="#9CA3AF" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding VersionComparisonText}"
+                                       FontSize="12"
+                                       Foreground="#9CA3AF" />
+                            <Border Background="#2563EB"
+                                    CornerRadius="3"
+                                    Padding="6,1"
+                                    IsVisible="{Binding HasDirectDownload}">
+                                <TextBlock Text="{Binding AssetFileName}"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FFFFFF" />
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
 
-                <Separator Background="#2D2D35" Height="1" />
+                <Separator Background="#2D2D35" Height="1" Margin="0,-4,0,-4" />
 
                 <!-- Release Notes / Details -->
                 <TextBlock Text="Release Highlights:"
@@ -48,7 +60,9 @@
                            Foreground="#E5E7EB" />
 
                 <Border Background="#141417"
-                        CornerRadius="4"
+                        CornerRadius="6"
+                        BorderBrush="#27272A"
+                        BorderThickness="1"
                         Padding="12"
                         MaxHeight="160">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -59,32 +73,151 @@
                     </ScrollViewer>
                 </Border>
 
-                <!-- Actions -->
-                <Grid ColumnDefinitions="*,Auto,Auto">
-                    <TextBlock Grid.Column="0"
-                               Text="A new version of AgduBugdu is ready."
-                               FontSize="11"
-                               Foreground="#6B7280"
-                               VerticalAlignment="Center" />
+                <!-- Active Downloading Progress Section -->
+                <StackPanel Spacing="6" IsVisible="{Binding IsDownloading}">
+                    <ProgressBar Minimum="0"
+                                 Maximum="100"
+                                 Value="{Binding DownloadProgress}"
+                                 Height="6"
+                                 CornerRadius="3"
+                                 Background="#27272A"
+                                 Foreground="#3B82F6" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding ProgressText}"
+                                   FontSize="11"
+                                   Foreground="#9CA3AF" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding SpeedText}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="#38BDF8" />
+                    </Grid>
+                </StackPanel>
 
-                    <Button Grid.Column="1"
-                            Content="Dismiss"
-                            Padding="12,6"
-                            Margin="0,0,8,0"
-                            Background="#27272A"
-                            Foreground="#D4D4D8"
-                            CornerRadius="4"
-                            Command="{Binding DismissCommand}" />
+                <!-- Download Succeeded Banner -->
+                <Border Background="#064E3B"
+                        BorderBrush="#059669"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="12,10"
+                        IsVisible="{Binding IsDownloaded}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="✓"
+                                   Foreground="#34D399"
+                                   FontWeight="Bold"
+                                   FontSize="14"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ProgressText}"
+                                   Foreground="#A7F3D0"
+                                   FontSize="12"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
-                    <Button Grid.Column="2"
-                            Content="Download Update"
-                            Padding="14,6"
-                            Background="#2563EB"
-                            Foreground="#FFFFFF"
-                            FontWeight="SemiBold"
-                            CornerRadius="4"
-                            Command="{Binding OpenReleaseUrlCommand}" />
-                </Grid>
+                <!-- Error Banner -->
+                <Border Background="#450A0A"
+                        BorderBrush="#DC2626"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="12,10"
+                        IsVisible="{Binding HasError}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="⚠"
+                                   Foreground="#F87171"
+                                   FontWeight="Bold"
+                                   FontSize="14"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   Foreground="#FECACA"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Action Button Rows -->
+                <Panel>
+                    <!-- Normal State Buttons -->
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" IsVisible="{Binding CanStartDownload}">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding AssetSizeFormatted}"
+                                   FontSize="11"
+                                   Foreground="#6B7280"
+                                   VerticalAlignment="Center" />
+
+                        <Button Grid.Column="1"
+                                Content="Dismiss"
+                                Padding="12,6"
+                                Margin="0,0,8,0"
+                                Background="#27272A"
+                                Foreground="#D4D4D8"
+                                CornerRadius="4"
+                                Command="{Binding DismissCommand}" />
+
+                        <Button Grid.Column="2"
+                                Content="View on GitHub"
+                                Padding="12,6"
+                                Margin="0,0,8,0"
+                                Background="#27272A"
+                                Foreground="#9CA3AF"
+                                CornerRadius="4"
+                                Command="{Binding OpenReleaseUrlCommand}" />
+
+                        <Button Grid.Column="3"
+                                Content="Download &amp; Install"
+                                Padding="14,6"
+                                Background="#2563EB"
+                                Foreground="#FFFFFF"
+                                FontWeight="SemiBold"
+                                CornerRadius="4"
+                                IsVisible="{Binding HasDirectDownload}"
+                                Command="{Binding DownloadAndInstallCommand}" />
+                    </Grid>
+
+                    <!-- Downloading State Buttons -->
+                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsDownloading}">
+                        <TextBlock Grid.Column="0"
+                                   Text="Downloading update in background..."
+                                   FontSize="11"
+                                   Foreground="#6B7280"
+                                   VerticalAlignment="Center" />
+
+                        <Button Grid.Column="1"
+                                Content="Cancel Download"
+                                Padding="12,6"
+                                Background="#374151"
+                                Foreground="#F3F4F6"
+                                CornerRadius="4"
+                                Command="{Binding CancelDownloadCommand}" />
+                    </Grid>
+
+                    <!-- Downloaded State Buttons -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding IsDownloaded}">
+                        <TextBlock Grid.Column="0"
+                                   Text="Ready to install."
+                                   FontSize="11"
+                                   Foreground="#10B981"
+                                   VerticalAlignment="Center" />
+
+                        <Button Grid.Column="1"
+                                Content="Dismiss"
+                                Padding="12,6"
+                                Margin="0,0,8,0"
+                                Background="#27272A"
+                                Foreground="#D4D4D8"
+                                CornerRadius="4"
+                                Command="{Binding DismissCommand}" />
+
+                        <Button Grid.Column="2"
+                                Content="Restart &amp; Install"
+                                Padding="14,6"
+                                Background="#059669"
+                                Foreground="#FFFFFF"
+                                FontWeight="Bold"
+                                CornerRadius="4"
+                                Command="{Binding InstallAndRestartCommand}" />
+                    </Grid>
+                </Panel>
             </StackPanel>
         </Border>
     </Grid>

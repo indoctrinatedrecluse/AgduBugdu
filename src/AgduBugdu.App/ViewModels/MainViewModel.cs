@@ -1054,7 +1054,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var result = await _updateService.CheckForUpdatesAsync();
         if (result.IsUpdateAvailable)
         {
-            UpdateModal.ShowUpdate(result.LatestVersion, result.ReleaseNotes, result.ReleaseUrl);
+            UpdateModal.ShowUpdate(result);
             StatusMessage = $"Update v{result.LatestVersion} available!";
         }
         else
