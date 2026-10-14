@@ -133,7 +133,7 @@
                     <MenuItem Header="Transform to _Lowercase" InputGesture="Ctrl+U" Command="{Binding TransformLowercaseCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Terminal">
-                    <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+Shift+`" Command="{Binding RestartTerminalCommand}" />
+                    <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+Shift+OemTilde" Command="{Binding RestartTerminalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Preferences">
                     <MenuItem Header="Color Theme">

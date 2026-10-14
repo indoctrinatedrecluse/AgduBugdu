@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Accessible via `Help -> Software License...`, the Status Bar badge pill, or the Command Palette (`Ctrl+P` -> `Help: Software License & Entitlements...`).
     - Features masked key entry with a 1-click **Reveal/Hide** toggle, dynamic credential inputs, live HWID fingerprint display, and a 1-click **Remove License** button that frees server seats and cleanly reverts to Trial mode.
 
+### 🐛 Fixed
+- **Fatal UI Startup Crash**: Fixed an unhandled `ArgumentException` on application initialization caused by an unrecognized `KeyGesture` backtick character in the Terminal menu; resolved to standard Avalonia `Ctrl+Shift+OemTilde`.
+
 ---
 
 ## 🚀 [1.3.1] - 2026-10-14
