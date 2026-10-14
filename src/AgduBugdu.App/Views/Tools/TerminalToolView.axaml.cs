@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -12,18 +14,25 @@ public partial class TerminalToolView : UserControl
     {
         InitializeComponent();
 
-        var inputBox = this.FindControl<TextBox>("InputBox");
-        if (inputBox != null)
+        void BindEnter(string name, Func<TerminalToolViewModel, Task> action)
         {
-            inputBox.KeyDown += (s, e) =>
+            var box = this.FindControl<TextBox>(name);
+            if (box != null)
             {
-                if (e.Key == Key.Enter && DataContext is TerminalToolViewModel vm)
+                box.KeyDown += (s, e) =>
                 {
-                    _ = vm.SendCommandAsync();
-                    e.Handled = true;
-                }
-            };
+                    if (e.Key == Key.Enter && DataContext is TerminalToolViewModel vm)
+                    {
+                        _ = action(vm);
+                        e.Handled = true;
+                    }
+                };
+            }
         }
+
+        BindEnter("InputBox", vm => vm.SendCommandAsync());
+        BindEnter("SplitInputBox1", vm => vm.SendCommandAsync());
+        BindEnter("SplitInputBox2", vm => vm.SplitSession != null ? vm.SplitSession.SendCommandAsync() : Task.CompletedTask);
 
         ThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme(ThemeManager.CurrentTheme);
@@ -38,7 +47,10 @@ public partial class TerminalToolView : UserControl
     {
         var bg = new SolidColorBrush(theme.TerminalBackground);
         var fg = new SolidColorBrush(theme.TerminalForeground);
-        OutputBox.Background = bg;
-        OutputBox.Foreground = fg;
+        if (OutputBox != null)
+        {
+            OutputBox.Background = bg;
+            OutputBox.Foreground = fg;
+        }
     }
 }

@@ -199,44 +199,28 @@ public partial class OutputToolViewModel : Tool
 
 public partial class TerminalToolViewModel : Tool
 {
-    private readonly ITerminalSession _session;
-
     public event EventHandler? ResetSizeRequested;
     public event EventHandler? MinimizeRequested;
 
-    [ObservableProperty]
-    private string _terminalOutput = string.Empty;
+    public ObservableCollection<TerminalSessionItem> Sessions { get; } = new();
 
     [ObservableProperty]
-    private string _commandInput = string.Empty;
+    private TerminalSessionItem? _selectedSession;
 
-    public override bool OnClose()
-    {
-        _session?.Stop();
-        return base.OnClose();
-    }
+    [ObservableProperty]
+    private TerminalSessionItem? _splitSession;
 
-    public TerminalToolViewModel()
-    {
-        Id = "Terminal";
-        Title = "Terminal";
-        _session = new LocalTerminalSession();
-        _session.OutputReceived += (s, text) =>
-        {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                TerminalOutput += text;
-            });
-        };
-        _session.Exited += (s, exitCode) =>
-        {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                TerminalOutput += $"{Environment.NewLine}[Process exited with code {exitCode}. Type another command or use 'Restart' to relaunch.]{Environment.NewLine}";
-            });
-        };
-        _session.Start();
-    }
+    [ObservableProperty]
+    private bool _isSplitView;
+
+    [ObservableProperty]
+    private bool _isSearchVisible;
+
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    [ObservableProperty]
+    private int _searchMatchCount;
 
     [ObservableProperty]
     private string? _shellProgram;
@@ -244,59 +228,224 @@ public partial class TerminalToolViewModel : Tool
     [ObservableProperty]
     private string? _shellArguments;
 
+    public string TerminalOutput
+    {
+        get => SelectedSession?.TerminalOutput ?? string.Empty;
+        set
+        {
+            if (SelectedSession != null)
+                SelectedSession.TerminalOutput = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CommandInput
+    {
+        get => SelectedSession?.CommandInput ?? string.Empty;
+        set
+        {
+            if (SelectedSession != null)
+                SelectedSession.CommandInput = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public TerminalToolViewModel()
+    {
+        Id = "Terminal";
+        Title = "Terminal";
+
+        var defaultSession = new TerminalSessionItem("PowerShell 1", ShellType.PowerShell);
+        defaultSession.IsSelected = true;
+        Sessions.Add(defaultSession);
+        SelectedSession = defaultSession;
+    }
+
+    partial void OnSelectedSessionChanged(TerminalSessionItem? oldValue, TerminalSessionItem? newValue)
+    {
+        if (oldValue != null) oldValue.IsSelected = false;
+        if (newValue != null) newValue.IsSelected = true;
+        OnPropertyChanged(nameof(TerminalOutput));
+        OnPropertyChanged(nameof(CommandInput));
+    }
+
+    public void AddSession(ShellType shellType = ShellType.PowerShell, string? customProgram = null, string? workingDir = null)
+    {
+        int count = Sessions.Count(s => s.ShellType == shellType) + 1;
+        string name = shellType switch
+        {
+            ShellType.PowerShell => "PowerShell",
+            ShellType.CommandPrompt => "CMD",
+            ShellType.GitBash => "Git Bash",
+            ShellType.Wsl => "WSL",
+            _ => "Terminal"
+        };
+        string title = $"{name} {count}";
+        var session = new TerminalSessionItem(title, shellType, customProgram, null, workingDir);
+        Sessions.Add(session);
+        SelectedSession = session;
+    }
+
+    [RelayCommand]
+    public void AddPowerShell() => AddSession(ShellType.PowerShell);
+
+    [RelayCommand]
+    public void AddCommandPrompt() => AddSession(ShellType.CommandPrompt);
+
+    [RelayCommand]
+    public void AddGitBash() => AddSession(ShellType.GitBash);
+
+    [RelayCommand]
+    public void AddWsl() => AddSession(ShellType.Wsl);
+
+    [RelayCommand]
+    public void SelectSession(TerminalSessionItem? session)
+    {
+        if (session != null)
+        {
+            SelectedSession = session;
+            OnPropertyChanged(nameof(TerminalOutput));
+            OnPropertyChanged(nameof(CommandInput));
+        }
+    }
+
+    [RelayCommand]
+    public void CloseSession(TerminalSessionItem? session)
+    {
+        var target = session ?? SelectedSession;
+        if (target == null) return;
+
+        target.Dispose();
+        Sessions.Remove(target);
+
+        if (SplitSession == target)
+        {
+            SplitSession = null;
+            IsSplitView = false;
+        }
+
+        if (SelectedSession == target)
+        {
+            SelectedSession = Sessions.LastOrDefault();
+        }
+
+        if (Sessions.Count == 0)
+        {
+            AddSession();
+        }
+
+        OnPropertyChanged(nameof(TerminalOutput));
+        OnPropertyChanged(nameof(CommandInput));
+    }
+
+    [RelayCommand]
+    public void ToggleSplitView()
+    {
+        if (IsSplitView)
+        {
+            IsSplitView = false;
+            SplitSession = null;
+        }
+        else
+        {
+            if (Sessions.Count > 1)
+            {
+                SplitSession = Sessions.FirstOrDefault(s => s != SelectedSession) ?? Sessions.Last();
+                IsSplitView = true;
+            }
+            else
+            {
+                AddSession(SelectedSession?.ShellType ?? ShellType.PowerShell);
+                SplitSession = SelectedSession;
+                SelectedSession = Sessions.First();
+                IsSplitView = true;
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleSearch()
+    {
+        IsSearchVisible = !IsSearchVisible;
+        if (!IsSearchVisible)
+        {
+            SearchText = string.Empty;
+            SearchMatchCount = 0;
+        }
+        else
+        {
+            UpdateSearchMatches();
+        }
+    }
+
+    partial void OnSearchTextChanged(string value)
+    {
+        UpdateSearchMatches();
+    }
+
+    public void UpdateSearchMatches()
+    {
+        if (string.IsNullOrEmpty(SearchText) || SelectedSession == null || string.IsNullOrEmpty(SelectedSession.TerminalOutput))
+        {
+            SearchMatchCount = 0;
+            return;
+        }
+
+        int count = 0;
+        int idx = 0;
+        while ((idx = SelectedSession.TerminalOutput.IndexOf(SearchText, idx, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            count++;
+            idx += SearchText.Length;
+        }
+        SearchMatchCount = count;
+    }
+
     public void Restart(string? workingDirectory = null, string? shellProgram = null, string? arguments = null)
     {
-        if (shellProgram != null) ShellProgram = shellProgram;
-        if (arguments != null) ShellArguments = arguments;
-
-        _session.Stop();
-        TerminalOutput = string.Empty;
-        _session.Start(workingDirectory, ShellProgram, ShellArguments);
+        if (SelectedSession != null)
+        {
+            SelectedSession.Restart(workingDirectory);
+        }
+        else
+        {
+            AddSession(ShellType.PowerShell, shellProgram, workingDirectory);
+        }
+        OnPropertyChanged(nameof(TerminalOutput));
     }
 
     [RelayCommand]
-    public void ResetSize()
-    {
-        ResetSizeRequested?.Invoke(this, EventArgs.Empty);
-    }
+    public void ResetSize() => ResetSizeRequested?.Invoke(this, EventArgs.Empty);
 
     [RelayCommand]
-    public void Minimize()
-    {
-        MinimizeRequested?.Invoke(this, EventArgs.Empty);
-    }
+    public void Minimize() => MinimizeRequested?.Invoke(this, EventArgs.Empty);
 
     [RelayCommand]
     public async Task SendCommandAsync()
     {
-        if (string.IsNullOrWhiteSpace(CommandInput))
-            return;
-
-        var cmd = CommandInput.Trim();
-        CommandInput = string.Empty;
-        TerminalOutput += $"> {cmd}{Environment.NewLine}";
-
-        // Handle clean 'exit' command
-        if (string.Equals(cmd, "exit", StringComparison.OrdinalIgnoreCase))
+        if (SelectedSession != null)
         {
-            _session.Stop();
-            TerminalOutput += $"[Terminal session ended cleanly.]{Environment.NewLine}";
-            return;
+            await SelectedSession.SendCommandAsync();
+            OnPropertyChanged(nameof(TerminalOutput));
+            OnPropertyChanged(nameof(CommandInput));
         }
-
-        // If session was exited/stopped, relaunch it transparently
-        if (!_session.IsRunning)
-        {
-            _session.Start();
-        }
-
-        await _session.WriteInputAsync(cmd);
     }
 
     [RelayCommand]
     public void ClearTerminal()
     {
-        TerminalOutput = string.Empty;
+        SelectedSession?.Clear();
+        OnPropertyChanged(nameof(TerminalOutput));
+    }
+
+    public override bool OnClose()
+    {
+        foreach (var s in Sessions)
+        {
+            s.Dispose();
+        }
+        Sessions.Clear();
+        return base.OnClose();
     }
 }
 

@@ -17,8 +17,60 @@ using System.Collections.Generic;
 using System.Linq;
 using AgduBugdu.Core.Snippets;
 using AgduBugdu.Core.Text;
+using AvaloniaEdit.Document;
 
 namespace AgduBugdu.App.Views.Documents;
+
+public class MultiCaretRenderer : IBackgroundRenderer
+{
+    private readonly MultiCaretManager _multiCaret;
+    private readonly TextEditor _editor;
+
+    public KnownLayer Layer => KnownLayer.Selection;
+
+    public MultiCaretRenderer(MultiCaretManager multiCaret, TextEditor editor)
+    {
+        _multiCaret = multiCaret;
+        _editor = editor;
+    }
+
+    public void Draw(TextView textView, DrawingContext drawingContext)
+    {
+        if (!_multiCaret.HasSecondaryCarets || _editor.Document == null)
+            return;
+
+        var caretBrush = new SolidColorBrush(Color.FromArgb(240, 56, 189, 248)); // Bright Cyan caret
+        var selectionBrush = new SolidColorBrush(Color.FromArgb(90, 56, 189, 248)); // Cyan selection highlight
+        var caretPen = new Pen(caretBrush, 2.0);
+
+        foreach (var c in _multiCaret.SecondaryCarets)
+        {
+            if (c.Offset < 0 || c.Offset > _editor.Document.TextLength) continue;
+
+            if (c.HasSelection && c.SelectionStart >= 0 && c.SelectionStart + c.SelectionLength <= _editor.Document.TextLength)
+            {
+                var segment = new TextSegment { StartOffset = c.SelectionStart, Length = c.SelectionLength };
+                foreach (var rc in BackgroundGeometryBuilder.GetRectsForSegment(textView, segment))
+                {
+                    drawingContext.FillRectangle(selectionBrush, rc);
+                }
+            }
+
+            try
+            {
+                var loc = _editor.Document.GetLocation(c.Offset);
+                var pos = new TextViewPosition(loc);
+                var top = textView.GetVisualPosition(pos, VisualYPosition.LineTop);
+                var bottom = textView.GetVisualPosition(pos, VisualYPosition.LineBottom);
+                drawingContext.DrawLine(caretPen, top, bottom);
+            }
+            catch
+            {
+                // Ignore coordinates for out-of-view lines
+            }
+        }
+    }
+}
 
 public class DebugMarkerRenderer : IBackgroundRenderer
 {
@@ -71,6 +123,7 @@ public partial class EditorDocumentView : UserControl
     private RegistryOptions? _registryOptions;
     private bool _rendererAttached;
     private FoldingManager? _foldingManager;
+    private readonly MultiCaretManager _multiCaretManager = new();
 
     public EditorDocumentView()
     {
@@ -89,6 +142,7 @@ public partial class EditorDocumentView : UserControl
         Editor.TextChanged += OnTextChanged;
         Editor.KeyDown += OnEditorKeyDown;
         Editor.TextArea.TextEntering += OnTextAreaTextEntering;
+        Editor.TextArea.PointerPressed += OnEditorPointerPressed;
 
         Editor.TextArea.TextView.ScrollOffsetChanged += (s, e) => UpdateMinimap();
         MinimapCanvas.SizeChanged += (s, e) => UpdateMinimap();
@@ -264,6 +318,62 @@ public partial class EditorDocumentView : UserControl
     private void OnEditorKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not EditorDocumentViewModel doc) return;
+
+        // Escape clears multi-carets
+        if (e.Key == Key.Escape && _multiCaretManager.HasSecondaryCarets)
+        {
+            _multiCaretManager.Clear();
+            Editor.TextArea.TextView.InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl + D -> Select Next Occurrence
+        if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.D)
+        {
+            HandleSelectNextOccurrence();
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl + Alt + Up / Down -> Column Carets
+        if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Alt))
+        {
+            if (e.Key == Key.Up)
+            {
+                HandleAddColumnCaret(moveUp: true);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Down)
+            {
+                HandleAddColumnCaret(moveUp: false);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        // Backspace with multi-carets
+        if (e.Key == Key.Back && _multiCaretManager.HasSecondaryCarets && Editor.Document != null)
+        {
+            var (newText, newPrimary, _) = _multiCaretManager.ApplyBackspace(Editor.Document.Text, Editor.CaretOffset, Editor.SelectionStart, Editor.SelectionLength);
+            Editor.Document.Text = newText;
+            Editor.CaretOffset = Math.Clamp(newPrimary, 0, Editor.Document.TextLength);
+            Editor.TextArea.TextView.InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
+        // Delete with multi-carets
+        if (e.Key == Key.Delete && _multiCaretManager.HasSecondaryCarets && Editor.Document != null)
+        {
+            var (newText, newPrimary, _) = _multiCaretManager.ApplyDelete(Editor.Document.Text, Editor.CaretOffset, Editor.SelectionStart, Editor.SelectionLength);
+            Editor.Document.Text = newText;
+            Editor.CaretOffset = Math.Clamp(newPrimary, 0, Editor.Document.TextLength);
+            Editor.TextArea.TextView.InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
 
         if (e.Key == Key.F9)
         {
@@ -516,6 +626,7 @@ public partial class EditorDocumentView : UserControl
                     () => (DataContext as EditorDocumentViewModel)?.FilePath,
                     () => GetDebugService()
                 ));
+                Editor.TextArea.TextView.BackgroundRenderers.Add(new MultiCaretRenderer(_multiCaretManager, Editor));
                 _rendererAttached = true;
             }
 
@@ -601,7 +712,21 @@ public partial class EditorDocumentView : UserControl
 
     private void OnTextAreaTextEntering(object? sender, TextInputEventArgs e)
     {
-        if (string.IsNullOrEmpty(e.Text) || e.Text.Length != 1)
+        if (string.IsNullOrEmpty(e.Text))
+            return;
+
+        // Replicate insertion across all multi-carets simultaneously
+        if (_multiCaretManager.HasSecondaryCarets && Editor.Document != null)
+        {
+            var (newText, newPrimary, _) = _multiCaretManager.ApplyInsertion(Editor.Document.Text, e.Text, Editor.CaretOffset, Editor.SelectionStart, Editor.SelectionLength);
+            Editor.Document.Text = newText;
+            Editor.CaretOffset = Math.Clamp(newPrimary, 0, Editor.Document.TextLength);
+            Editor.TextArea.TextView.InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Text.Length != 1)
             return;
 
         char typed = e.Text[0];
@@ -907,6 +1032,86 @@ public partial class EditorDocumentView : UserControl
             Canvas.SetLeft(viewRect, 0);
             Canvas.SetTop(viewRect, viewTop);
             MinimapCanvas.Children.Add(viewRect);
+        }
+    }
+
+    private void OnEditorPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            var point = e.GetPosition(Editor.TextArea.TextView);
+            var pos = Editor.GetPositionFromPoint(point);
+            if (pos.HasValue && Editor.Document != null)
+            {
+                int offset = Editor.Document.GetOffset(pos.Value.Location);
+                _multiCaretManager.ToggleCaret(offset);
+                Editor.TextArea.TextView.InvalidateVisual();
+                e.Handled = true;
+            }
+        }
+        else if (!e.KeyModifiers.HasFlag(KeyModifiers.Shift) && !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            if (_multiCaretManager.HasSecondaryCarets)
+            {
+                _multiCaretManager.Clear();
+                Editor.TextArea.TextView.InvalidateVisual();
+            }
+        }
+    }
+
+    private void HandleSelectNextOccurrence()
+    {
+        if (Editor.Document == null) return;
+
+        string targetText = Editor.SelectedText;
+        if (string.IsNullOrEmpty(targetText))
+        {
+            int offset = Editor.CaretOffset;
+            var line = Editor.Document.GetLineByOffset(offset);
+            string lineText = Editor.Document.GetText(line.Offset, line.Length);
+            int col = offset - line.Offset;
+
+            int start = col;
+            while (start > 0 && (char.IsLetterOrDigit(lineText[start - 1]) || lineText[start - 1] == '_'))
+                start--;
+
+            int end = col;
+            while (end < lineText.Length && (char.IsLetterOrDigit(lineText[end]) || lineText[end] == '_'))
+                end++;
+
+            if (end > start)
+            {
+                Editor.Select(line.Offset + start, end - start);
+                Editor.CaretOffset = line.Offset + end;
+                return;
+            }
+        }
+        else
+        {
+            if (_multiCaretManager.SelectNextOccurrence(Editor.Document.Text, targetText, Editor.SelectionStart, Editor.SelectionLength, out _))
+            {
+                Editor.TextArea.TextView.InvalidateVisual();
+            }
+        }
+    }
+
+    private void HandleAddColumnCaret(bool moveUp)
+    {
+        if (Editor.Document == null) return;
+        var lines = Editor.Document.Text.Replace("\r\n", "\n").Split('\n');
+        int currentLine = Editor.TextArea.Caret.Line;
+        int currentCol = Editor.TextArea.Caret.Column;
+
+        if (_multiCaretManager.AddColumnCaret(lines, currentLine, currentCol, moveUp, out _))
+        {
+            int nextLine = moveUp ? currentLine - 1 : currentLine + 1;
+            if (nextLine >= 1 && nextLine <= Editor.Document.LineCount)
+            {
+                var lineSeg = Editor.Document.GetLineByNumber(nextLine);
+                int newOffset = lineSeg.Offset + Math.Min(currentCol - 1, lineSeg.Length);
+                Editor.CaretOffset = newOffset;
+            }
+            Editor.TextArea.TextView.InvalidateVisual();
         }
     }
 }
