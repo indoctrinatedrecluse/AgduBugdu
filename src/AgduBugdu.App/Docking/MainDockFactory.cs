@@ -32,6 +32,7 @@ public class MainDockFactory : Factory
     private DebuggerToolViewModel? _debuggerTool;
     private NetworkSuiteToolViewModel? _networkSuiteTool;
     private DockerToolViewModel? _dockerTool;
+    private RegexToolViewModel? _regexTool;
     private bool _isBottomPaneMinimized;
 
     public IDocumentDock? DocumentDock => _documentDock;
@@ -50,6 +51,7 @@ public class MainDockFactory : Factory
     public DebuggerToolViewModel? DebuggerTool => _debuggerTool;
     public NetworkSuiteToolViewModel? NetworkSuiteTool => _networkSuiteTool;
     public DockerToolViewModel? DockerTool => _dockerTool;
+    public RegexToolViewModel? RegexTool => _regexTool;
     public bool IsBottomPaneMinimized => _isBottomPaneMinimized;
     public IDockable? CurrentActiveDockable { get; private set; }
     public IDockable? ActiveDockable => CurrentActiveDockable ?? _secondaryDocumentDock?.ActiveDockable ?? _documentDock?.ActiveDockable;
@@ -72,6 +74,7 @@ public class MainDockFactory : Factory
         _debuggerTool ??= new DebuggerToolViewModel();
         _networkSuiteTool ??= new NetworkSuiteToolViewModel();
         _dockerTool ??= new DockerToolViewModel();
+        _regexTool ??= new RegexToolViewModel();
 
         var welcomeDoc = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output, TODO Tasks, Run & Debug, Outline) are draggable and re-arrangeable.\n");
         welcomeDoc.UndoStack.MarkAsOriginalFile();
@@ -99,7 +102,7 @@ public class MainDockFactory : Factory
             Id = "BottomPane",
             Title = "Panel",
             Proportion = 0.28,
-            VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool, _networkSuiteTool, _dockerTool),
+            VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool, _networkSuiteTool, _dockerTool, _regexTool),
             ActiveDockable = _terminalTool
         };
         _bottomDock = bottomDock;
@@ -340,7 +343,10 @@ public class MainDockFactory : Factory
             _outputTool ??= new OutputToolViewModel();
             _todoTool ??= new TodoToolViewModel();
             _debuggerTool ??= new DebuggerToolViewModel();
-            _bottomDock.VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool);
+            _networkSuiteTool ??= new NetworkSuiteToolViewModel();
+            _dockerTool ??= new DockerToolViewModel();
+            _regexTool ??= new RegexToolViewModel();
+            _bottomDock.VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool, _networkSuiteTool, _dockerTool, _regexTool);
         }
         else if (activeTool != null && !_bottomDock.VisibleDockables.Contains(activeTool))
         {
@@ -436,7 +442,8 @@ public class MainDockFactory : Factory
             ["TodoExplorer"] = () => _todoTool,
             ["Debugger"] = () => _debuggerTool,
             ["NetworkSuite"] = () => _networkSuiteTool,
-            ["DockerWorkbench"] = () => _dockerTool
+            ["DockerWorkbench"] = () => _dockerTool,
+            ["RegexTool"] = () => _regexTool
         };
         DockableLocator = new Dictionary<string, System.Func<IDockable?>>
         {
@@ -453,7 +460,8 @@ public class MainDockFactory : Factory
             ["TodoExplorer"] = () => _todoTool,
             ["Debugger"] = () => _debuggerTool,
             ["NetworkSuite"] = () => _networkSuiteTool,
-            ["DockerWorkbench"] = () => _dockerTool
+            ["DockerWorkbench"] = () => _dockerTool,
+            ["RegexTool"] = () => _regexTool
         };
         HostWindowLocator = new Dictionary<string, System.Func<IHostWindow?>>
         {

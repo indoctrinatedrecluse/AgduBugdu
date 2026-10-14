@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:util="using:AgduBugdu.Core.Utilities"
+             x:Class="AgduBugdu.App.Views.Tools.RegexToolView"
+             x:DataType="vm:RegexToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <TextBlock Text="🔣" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="REGEX &amp; TEXT UTILITY LABORATORY"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Mode Selectors -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <RadioButton Content="RegEx Playground"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"
+                                 GroupName="RegexTabs"
+                                 FontSize="11"
+                                 Padding="8,3" />
+                    <RadioButton Content="Text Utilities &amp; Decoders"
+                                 IsChecked="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}"
+                                 GroupName="RegexTabs"
+                                 FontSize="11"
+                                 Padding="8,3" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="2" Text="{Binding MatchStatus}" FontSize="11" Foreground="#10B981" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Main Body -->
+        <Grid Grid.Row="1">
+            <!-- 1. RegEx Playground Tab -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}">
+                <!-- Pattern & Flags Strip -->
+                <Border Grid.Row="0" Background="#181818" BorderBrush="#2D2D30" BorderThickness="0,0,0,1" Padding="8,6">
+                    <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                        <!-- Pattern Row -->
+                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto">
+                            <TextBlock Grid.Column="0" Text="Pattern:" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Grid.Column="1" Text="{Binding Pattern, Mode=TwoWay}" Watermark="Enter regular expression pattern..." FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Height="28" VerticalContentAlignment="Center" Background="#252526" Foreground="#F3E8FF" BorderBrush="#3E3E42" Margin="0,0,8,0" />
+                            <!-- Quick Presets Dropdown -->
+                            <ComboBox Grid.Column="2" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" PlaceholderText="Library Presets..." Width="150" Height="28" Margin="0,0,6,0">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate DataType="util:RegexPreset">
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="3" Content="Clear" Command="{Binding ClearRegexCommand}" Background="#333333" Foreground="#CCCCCC" FontSize="11" Height="28" Padding="8,4" CornerRadius="3" />
+                        </Grid>
+
+                        <!-- Flags Row -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="Flags:" FontSize="10" Foreground="#888888" VerticalAlignment="Center" />
+                            <CheckBox Content="Ignore Case (i)" IsChecked="{Binding FlagIgnoreCase, Mode=TwoWay}" FontSize="11" Foreground="#CCCCCC" />
+                            <CheckBox Content="Multiline (m)" IsChecked="{Binding FlagMultiline, Mode=TwoWay}" FontSize="11" Foreground="#CCCCCC" />
+                            <CheckBox Content="Singleline (s)" IsChecked="{Binding FlagSingleline, Mode=TwoWay}" FontSize="11" Foreground="#CCCCCC" />
+                            <CheckBox Content="Ignore Whitespace (x)" IsChecked="{Binding FlagIgnoreWhitespace, Mode=TwoWay}" FontSize="11" Foreground="#CCCCCC" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Input, Replacement, and Matches Split -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,4,*">
+                    <!-- Left: Test Input & Replace -->
+                    <Grid Grid.Column="0" RowDefinitions="*,4,Auto" Margin="6">
+                        <!-- Test Input -->
+                        <Grid Grid.Row="0" RowDefinitions="Auto,*">
+                            <TextBlock Grid.Row="0" Text="TEST STRING" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+                            <TextBox Grid.Row="1" Text="{Binding TestInput, Mode=TwoWay}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Background="#121212" Foreground="#EEEEEE" BorderBrush="#333333" AcceptsReturn="True" TextWrapping="Wrap" />
+                        </Grid>
+
+                        <GridSplitter Grid.Row="1" Height="4" Background="#222222" />
+
+                        <!-- Substitution / Replace -->
+                        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto" Height="150" RowSpacing="4">
+                            <TextBlock Grid.Row="0" Text="SUBSTITUTION / REPLACE PATTERN" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,2,0,0" />
+                            <TextBox Grid.Row="1" Text="{Binding ReplacementPattern, Mode=TwoWay}" Watermark="Replacement pattern (e.g. [$1] or ***)..." FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Height="26" VerticalContentAlignment="Center" Background="#252526" Foreground="#FDE047" BorderBrush="#333333" />
+                            <TextBox Grid.Row="2" Text="{Binding ReplacementOutput}" IsReadOnly="True" Watermark="Replacement preview..." FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" Height="80" Background="#0C0C0C" Foreground="#A7F3D0" BorderBrush="#333333" AcceptsReturn="True" TextWrapping="Wrap" />
+                        </Grid>
+                    </Grid>
+
+                    <GridSplitter Grid.Column="1" Width="4" Background="#333333" />
+
+                    <!-- Right: Match Breakdown & Groups -->
+                    <Grid Grid.Column="2" RowDefinitions="Auto,*" Margin="6">
+                        <TextBlock Grid.Row="0" Text="MATCHES &amp; CAPTURE GROUPS" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+                        <ListBox Grid.Row="1" ItemsSource="{Binding Matches}" Background="#121212" BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="util:RegexMatchItem">
+                                    <Border BorderBrush="#252526" BorderThickness="0,0,0,1" Padding="6,4">
+                                        <StackPanel Spacing="3">
+                                            <!-- Match header -->
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <Border Grid.Column="0" Background="#1D4ED8" CornerRadius="3" Padding="4,1" Margin="0,0,6,0">
+                                                    <TextBlock Text="{Binding Value}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                                                </Border>
+                                                <TextBlock Grid.Column="2" Text="{Binding Index, StringFormat='Pos: {0}'}" FontSize="10" Foreground="#888888" />
+                                            </Grid>
+                                            <!-- Groups chips -->
+                                            <ItemsControl ItemsSource="{Binding Groups}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="util:RegexGroupItem">
+                                                        <Border Background="#2A2A2D" CornerRadius="3" Padding="4,1" Margin="2">
+                                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                <TextBlock Text="{Binding Name, StringFormat='${0}:'}" FontSize="9" FontWeight="Bold" Foreground="#38BDF8" />
+                                                                <TextBlock Text="{Binding Value}" FontSize="10" Foreground="#DDDDDD" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <!-- 2. Text Utilities Tab -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=1}">
+                <!-- Utility Action Buttons Toolbar -->
+                <Border Grid.Row="0" Background="#181818" BorderBrush="#2D2D30" BorderThickness="0,0,0,1" Padding="8,6">
+                    <WrapPanel Orientation="Horizontal">
+                        <Button Content="Base64 Encode" Command="{Binding Base64EncodeCommand}" Background="#333333" Foreground="#93C5FD" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                        <Button Content="Base64 Decode" Command="{Binding Base64DecodeCommand}" Background="#333333" Foreground="#93C5FD" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                        <Button Content="URL Encode" Command="{Binding UrlEncodeCommand}" Background="#333333" Foreground="#86EFAC" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                        <Button Content="URL Decode" Command="{Binding UrlDecodeCommand}" Background="#333333" Foreground="#86EFAC" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                        <Button Content="JWT Decode" Command="{Binding DecodeJwtCommand}" Background="#333333" Foreground="#F472B6" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                        <Button Content="Hashes (MD5/SHA)" Command="{Binding ComputeHashesCommand}" Background="#333333" Foreground="#FDE047" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                        <Button Content="JSON Prettify" Command="{Binding FormatJsonCommand}" Background="#333333" Foreground="#C084FC" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                        <Button Content="JSON Minify" Command="{Binding MinifyJsonCommand}" Background="#333333" Foreground="#C084FC" FontSize="11" Padding="8,4" CornerRadius="3" Margin="2" />
+                    </WrapPanel>
+                </Border>
+
+                <!-- Input & Output Split -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,4,*" Margin="6">
+                    <!-- Left: Utility Input -->
+                    <Grid Grid.Column="0" RowDefinitions="Auto,*">
+                        <TextBlock Grid.Row="0" Text="SOURCE / INPUT TEXT" FontSize="10" FontWeight="Bold" Foreground="#888888" Margin="2,0,0,4" />
+                        <TextBox Grid.Row="1" Text="{Binding UtilityInput, Mode=TwoWay}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Background="#141414" Foreground="#EEEEEE" BorderBrush="#333333" AcceptsReturn="True" TextWrapping="Wrap" />
+                    </Grid>
+
+                    <GridSplitter Grid.Column="1" Width="4" Background="#333333" />
+
+                    <!-- Right: Utility Output -->
+                    <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                        <TextBlock Grid.Row="0" Text="{Binding ActiveUtilityTitle}" FontSize="10" FontWeight="Bold" Foreground="#10B981" Margin="2,0,0,4" />
+                        <TextBox Grid.Row="1" Text="{Binding UtilityOutput}" IsReadOnly="True" FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Background="#0C0C0C" Foreground="#D1D5DB" BorderBrush="#333333" AcceptsReturn="True" TextWrapping="Wrap" />
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -32,7 +32,8 @@
         <KeyBinding Gesture="Alt+Down" Command="{Binding MoveLineDownCommand}" />
         <KeyBinding Gesture="Shift+Alt+Up" Command="{Binding DuplicateLineUpCommand}" />
         <KeyBinding Gesture="Shift+Alt+Down" Command="{Binding DuplicateLineDownCommand}" />
-        <KeyBinding Gesture="Ctrl+Shift+K" Command="{Binding DeleteLineCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+L" Command="{Binding DeleteLineCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+K" Command="{Binding FocusDockerCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+J" Command="{Binding JoinLinesCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+U" Command="{Binding TransformUppercaseCommand}" />
         <KeyBinding Gesture="Ctrl+U" Command="{Binding TransformLowercaseCommand}" />
@@ -177,6 +178,7 @@
                     <MenuItem Header="_Run &amp; Debug" InputGesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />
                     <MenuItem Header="_Network &amp; Sockets Workbench" Command="{Binding FocusNetworkSuiteCommand}" />
                     <MenuItem Header="_Docker &amp; Containers" InputGesture="Ctrl+Shift+K" Command="{Binding FocusDockerCommand}" />
+                    <MenuItem Header="Reg_Ex &amp; Text Laboratory" Command="{Binding FocusRegexToolCommand}" />
                     <Separator />
                     <MenuItem Header="_Reset Panel to Default Sizes" Command="{Binding ResetPaneLayoutCommand}" />
                     <MenuItem Header="_Extensions..." Command="{Binding ShowExtensionsModalCommand}" />

@@ -934,6 +934,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.toggleDebugger", "View: Focus Run & Debug", () => FocusDockable(_dockFactory.DebuggerTool));
         CommandPalette.RegisterCommand("view.toggleNetworkSuite", "View: Focus Network & Sockets Workbench", () => FocusDockable(_dockFactory.NetworkSuiteTool));
         CommandPalette.RegisterCommand("view.toggleDocker", "View: Focus Docker & Container Workbench", () => FocusDockable(_dockFactory.DockerTool), "Ctrl+Shift+K");
+        CommandPalette.RegisterCommand("view.toggleRegex", "View: Focus RegEx & Text Utility Laboratory", () => FocusDockable(_dockFactory.RegexTool));
         CommandPalette.RegisterCommand("view.toggleSearch", "View: Focus Search in Files", () => FocusSearch(), "Ctrl+Shift+F");
         CommandPalette.RegisterCommand("view.toggleGit", "View: Focus Source Control", () => FocusGit(), "Ctrl+Shift+G");
         CommandPalette.RegisterCommand("git.refresh", "Git: Refresh Status", () => { _ = _dockFactory.GitTool?.RefreshAsync(); });
@@ -1250,6 +1251,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void FocusDocker() => FocusDockable(_dockFactory.DockerTool);
 
     [RelayCommand]
+    public void FocusRegexTool() => FocusDockable(_dockFactory.RegexTool);
+
+    [RelayCommand]
     public void ShowExtensionsModal()
     {
         ExtensionsModal.Show();
@@ -1366,7 +1370,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 _dockFactory.RestoreLeftPane(dockable);
             }
             if (dockable == _dockFactory.TerminalTool || dockable == _dockFactory.OutputTool ||
-                dockable == _dockFactory.TodoTool || dockable == _dockFactory.DebuggerTool)
+                dockable == _dockFactory.TodoTool || dockable == _dockFactory.DebuggerTool ||
+                dockable == _dockFactory.NetworkSuiteTool || dockable == _dockFactory.DockerTool ||
+                dockable == _dockFactory.RegexTool)
             {
                 _dockFactory.RestoreBottomPane(dockable);
             }
