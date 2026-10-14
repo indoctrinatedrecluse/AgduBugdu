@@ -33,6 +33,9 @@ using AgduBugdu.Plugin.RestClient;
 using AgduBugdu.Plugin.HexViewer;
 using AgduBugdu.Plugin.SqliteExplorer;
 using AgduBugdu.Plugin.ColorPicker;
+using AgduBugdu.Core.Settings;
+using AgduBugdu.Core.Keymap;
+using AgduBugdu.Infrastructure.Settings;
 using AgduBugdu.Plugin.TodoExplorer;
 using AgduBugdu.PluginContracts;
 using Avalonia.Controls;
@@ -187,6 +190,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ILanguageService LanguageService => _extensionContext.Languages;
     public IRecentItemsManager RecentItemsManager => _recentItemsManager;
     public ISessionService SessionService => _sessionService;
+    public ISettingsService SettingsService => _settingsService;
 
     public ObservableCollection<RecentEntryViewModel> RecentMenuItems { get; } = new();
 
@@ -209,6 +213,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private LicenseModalViewModel _licenseModal;
+
+    private readonly ISettingsService _settingsService;
+
+    [ObservableProperty]
+    private SettingsModalViewModel _settingsModal;
+
+    public event EventHandler? KeymapSynchronized;
 
     public string LicenseBadgeText => $"{_licenseService.CurrentLicense.BadgeIcon} {_licenseService.CurrentLicense.DisplayTitle}";
 
@@ -318,6 +329,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _recentItemsManager = new RecentItemsManager();
         _sessionService = new SessionService();
+        _settingsService = new SettingsService();
+        _settingsModal = new SettingsModalViewModel(_settingsService);
+        _settingsModal.SettingsApplied += (s, e) => ApplySettingsToEnvironment();
+        _settingsModal.KeymapChanged += (s, e) => KeymapSynchronized?.Invoke(this, EventArgs.Empty);
 
         // Register default productivity snippets across all supported languages
         foreach (var snip in BuiltInSnippets.GetDefaultSnippets())
@@ -326,6 +341,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
 
         ThemeManager.ThemeChanged += OnThemeChanged;
+        ApplySettingsToEnvironment();
 
         HookActiveDocument();
         HookExplorer();
@@ -931,7 +947,64 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.moveDocumentToOtherPane", "View: Move Tab to Other Pane", () => MoveDocumentToOtherPane(), "Ctrl+Alt+Right");
         CommandPalette.RegisterCommand("view.outline", "View: Focus Symbol Outline", () => FocusOutline(), "Ctrl+Shift+O");
         CommandPalette.RegisterCommand("view.toggleMinimap", "View: Toggle Code Minimap", () => ToggleMinimap(), "Alt+M");
+        CommandPalette.RegisterCommand("view.settings", "Preferences: Open Settings (Ctrl+,)", () => OpenSettings(), "Ctrl+,");
+        CommandPalette.RegisterCommand("view.keymap", "Preferences: Keyboard Shortcuts", () => OpenKeymapSettings());
         CommandPalette.RegisterCommand("app.about", "Help: About AgduBugdu", () => ShowAboutModal());
+    }
+
+    [RelayCommand]
+    public void OpenSettings(string? category = null)
+    {
+        SettingsModal.Open(category);
+    }
+
+    [RelayCommand]
+    public void OpenKeymapSettings()
+    {
+        SettingsModal.Open("Keymap");
+    }
+
+    public IEnumerable<EditorDocumentViewModel> GetAllEditorDocuments()
+    {
+        if (_dockFactory.DocumentDock?.VisibleDockables != null)
+        {
+            foreach (var doc in _dockFactory.DocumentDock.VisibleDockables.OfType<EditorDocumentViewModel>())
+                yield return doc;
+        }
+
+        if (_dockFactory.SecondaryDocumentDock?.VisibleDockables != null)
+        {
+            foreach (var doc in _dockFactory.SecondaryDocumentDock.VisibleDockables.OfType<EditorDocumentViewModel>())
+                yield return doc;
+        }
+    }
+
+    public void ApplySettingsToEnvironment()
+    {
+        var settings = _settingsService?.CurrentSettings;
+        if (settings == null) return;
+
+        // Apply theme
+        if (settings.Theme.ThemeMode == "SolarizedContrast")
+        {
+            SetSolarizedContrastTheme();
+        }
+        else
+        {
+            SetLonelyDarkTheme();
+        }
+
+        // Apply custom accent color if valid
+        if (!string.IsNullOrWhiteSpace(settings.Theme.AccentColorHex) && Avalonia.Media.Color.TryParse(settings.Theme.AccentColorHex, out var customAccent))
+        {
+            AccentBrush = new Avalonia.Media.SolidColorBrush(customAccent);
+        }
+
+        // Apply editor settings to all open documents
+        foreach (var doc in GetAllEditorDocuments())
+        {
+            doc.ApplySettings(settings.Editor);
+        }
     }
 
     [RelayCommand]
@@ -1229,7 +1302,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void RestartTerminal()
     {
-        _dockFactory.TerminalTool?.Restart(_workspaceService.CurrentDirectory);
+        var terminalSettings = _settingsService?.CurrentSettings.Terminal;
+        var dir = !string.IsNullOrWhiteSpace(terminalSettings?.StartDirectory) && Directory.Exists(terminalSettings.StartDirectory)
+            ? terminalSettings.StartDirectory
+            : _workspaceService.CurrentDirectory;
+
+        _dockFactory.TerminalTool?.Restart(dir, terminalSettings?.ShellProgram, terminalSettings?.CustomArguments);
         StatusMessage = "Terminal restarted";
     }
 
@@ -1308,6 +1386,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Title = fileName,
                 TextDocument = new AvaloniaEdit.Document.TextDocument(initialContent ?? string.Empty)
             };
+            if (_settingsService?.CurrentSettings != null)
+            {
+                newDoc.ApplySettings(_settingsService.CurrentSettings.Editor);
+            }
             AttachDocumentEvents(newDoc);
             _dockFactory.AddDockable(_dockFactory.DocumentDock, newDoc);
             _dockFactory.SetActiveDockable(newDoc);
@@ -1678,6 +1760,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (targetDock != null)
         {
             var doc = EditorDocumentViewModel.FromFile(filePath);
+            if (_settingsService?.CurrentSettings != null)
+            {
+                doc.ApplySettings(_settingsService.CurrentSettings.Editor);
+            }
             AttachDocumentEvents(doc);
             doc.NavigateTo(line, column);
             _dockFactory.AddDockable(targetDock, doc);

@@ -10,7 +10,7 @@ public interface ITerminalSession : IDisposable
     event EventHandler<string>? OutputReceived;
     event EventHandler<int>? Exited;
     bool IsRunning { get; }
-    void Start(string? workingDirectory = null);
+    void Start(string? workingDirectory = null, string? shellProgram = null, string? arguments = null);
     Task WriteInputAsync(string input);
     void Stop();
 }
@@ -25,18 +25,19 @@ public class LocalTerminalSession : ITerminalSession
 
     public bool IsRunning => _process != null && !_process.HasExited;
 
-    public void Start(string? workingDirectory = null)
+    public void Start(string? workingDirectory = null, string? shellProgram = null, string? arguments = null)
     {
         if (IsRunning)
             return;
 
         var isWindows = OperatingSystem.IsWindows();
-        var shell = isWindows ? "powershell.exe" : "bash";
+        var shell = !string.IsNullOrWhiteSpace(shellProgram) ? shellProgram : (isWindows ? "powershell.exe" : "bash");
+        var args = arguments ?? (isWindows && shell.Contains("powershell", StringComparison.OrdinalIgnoreCase) ? "-NoLogo" : "");
 
         var startInfo = new ProcessStartInfo
         {
             FileName = shell,
-            Arguments = isWindows ? "-NoLogo" : "",
+            Arguments = args,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

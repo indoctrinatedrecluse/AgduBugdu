@@ -54,6 +54,7 @@
         <KeyBinding Gesture="Ctrl+Shift+F" Command="{Binding FocusSearchCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+G" Command="{Binding FocusGitCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+D" Command="{Binding FocusDebuggerCommand}" />
+        <KeyBinding Gesture="Ctrl+OemComma" Command="{Binding OpenSettingsCommand}" />
     </Window.KeyBindings>
 
     <!-- Global Tab & Dock Control Styling for Visible Document & Tool Tabs -->
@@ -146,6 +147,9 @@
                     <MenuItem Header="_Restart Terminal in Workspace" InputGesture="Ctrl+Shift+OemTilde" Command="{Binding RestartTerminalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Preferences">
+                    <MenuItem Header="_Settings..." InputGesture="Ctrl+," Command="{Binding OpenSettingsCommand}" />
+                    <MenuItem Header="_Keyboard Shortcuts" Command="{Binding OpenKeymapSettingsCommand}" />
+                    <Separator />
                     <MenuItem Header="Color Theme">
                         <MenuItem Header="Lonely Dark" Command="{Binding SetLonelyDarkThemeCommand}" />
                         <MenuItem Header="Solarized Contrast" Command="{Binding SetSolarizedContrastThemeCommand}" />
@@ -222,8 +226,17 @@
                         </Grid>
                     </Button>
 
-                    <!-- Right Controls: Extensions & Theme Toggle -->
+                    <!-- Right Controls: Settings, Extensions & Theme Toggle -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button Content="⚙️ Settings"
+                                Command="{Binding OpenSettingsCommand}"
+                                Background="Transparent"
+                                BorderThickness="1"
+                                BorderBrush="{Binding BorderBrush}"
+                                Foreground="#CCCCCC"
+                                Padding="8,4"
+                                FontSize="12"
+                                CornerRadius="4" />
                         <Button Content="🧩 Extensions"
                                 Command="{Binding ShowExtensionsModalCommand}"
                                 Background="Transparent"
@@ -377,5 +390,8 @@
         <!-- Extensions Manager Modal Overlay -->
         <views:ExtensionsModalView DataContext="{Binding ExtensionsModal}" />
         <views:AboutModalView DataContext="{Binding AboutModal}" />
+
+        <!-- Settings & Preferences Modal Overlay -->
+        <views:SettingsModalView DataContext="{Binding SettingsModal}" />
     </Grid>
 </Window>

@@ -238,11 +238,20 @@ public partial class TerminalToolViewModel : Tool
         _session.Start();
     }
 
-    public void Restart(string? workingDirectory = null)
+    [ObservableProperty]
+    private string? _shellProgram;
+
+    [ObservableProperty]
+    private string? _shellArguments;
+
+    public void Restart(string? workingDirectory = null, string? shellProgram = null, string? arguments = null)
     {
+        if (shellProgram != null) ShellProgram = shellProgram;
+        if (arguments != null) ShellArguments = arguments;
+
         _session.Stop();
         TerminalOutput = string.Empty;
-        _session.Start(workingDirectory);
+        _session.Start(workingDirectory, ShellProgram, ShellArguments);
     }
 
     [RelayCommand]

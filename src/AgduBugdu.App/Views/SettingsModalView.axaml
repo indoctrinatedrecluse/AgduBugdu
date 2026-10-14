@@ -1,0 +1,399 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels"
+             xmlns:km="using:AgduBugdu.Core.Keymap"
+             x:Class="AgduBugdu.App.Views.SettingsModalView"
+             x:DataType="vm:SettingsModalViewModel"
+             IsVisible="{Binding IsVisible}">
+
+    <Grid Background="#99000000"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+
+        <!-- Modal Dialog Card -->
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="840"
+                Height="600"
+                CornerRadius="10"
+                Background="#18181B"
+                BorderBrush="#8B5CF6"
+                BorderThickness="1"
+                BoxShadow="0 16 48 0 #88000000"
+                Padding="0">
+
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Header -->
+                <Border Grid.Row="0"
+                        Background="#1F1F24"
+                        BorderBrush="#27272A"
+                        BorderThickness="0,0,0,1"
+                        CornerRadius="10,10,0,0"
+                        Padding="20,14">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <TextBlock Text="⚙️" FontSize="20" VerticalAlignment="Center" />
+                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="AgduBugdu Preferences &amp; Settings"
+                                           FontSize="15"
+                                           FontWeight="Bold"
+                                           Foreground="#F4F4F5" />
+                                <TextBlock Text="Customise editor ergonomics, terminal runtime, git integration, theme, and keybindings."
+                                           FontSize="11"
+                                           Foreground="#A1A1AA" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Grid.Column="2"
+                                Content="✕"
+                                FontSize="13"
+                                Padding="8,4"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Foreground="#A1A1AA"
+                                Command="{Binding CloseCommand}" />
+                    </Grid>
+                </Border>
+
+                <!-- Body (Sidebar Navigation + Category Panels) -->
+                <Grid Grid.Row="1" ColumnDefinitions="190,1,*">
+                    <!-- Left Sidebar Category Selector -->
+                    <Border Grid.Column="0"
+                            Background="#141417"
+                            Padding="10,14">
+                        <StackPanel Spacing="4">
+                            <Button Content="⚙️  Editor"
+                                    Command="{Binding SelectCategoryCommand}"
+                                    CommandParameter="Editor"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="10,8"
+                                    FontSize="12"
+                                    Foreground="#E4E4E7"
+                                    CornerRadius="5" />
+                            <Button Content="💻  Terminal"
+                                    Command="{Binding SelectCategoryCommand}"
+                                    CommandParameter="Terminal"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="10,8"
+                                    FontSize="12"
+                                    Foreground="#E4E4E7"
+                                    CornerRadius="5" />
+                            <Button Content="🌿  Git Suite"
+                                    Command="{Binding SelectCategoryCommand}"
+                                    CommandParameter="Git"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="10,8"
+                                    FontSize="12"
+                                    Foreground="#E4E4E7"
+                                    CornerRadius="5" />
+                            <Button Content="🎨  Theme &amp; Colors"
+                                    Command="{Binding SelectCategoryCommand}"
+                                    CommandParameter="Theme"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="10,8"
+                                    FontSize="12"
+                                    Foreground="#E4E4E7"
+                                    CornerRadius="5" />
+                            <Button Content="⌨️  Keyboard Shortcuts"
+                                    Command="{Binding SelectCategoryCommand}"
+                                    CommandParameter="Keymap"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="10,8"
+                                    FontSize="12"
+                                    Foreground="#E4E4E7"
+                                    CornerRadius="5" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Divider -->
+                    <Rectangle Grid.Column="1" Fill="#27272A" />
+
+                    <!-- Main Category Content Panels -->
+                    <Grid Grid.Column="2" Margin="20,16">
+
+                        <!-- 1. EDITOR SETTINGS PANEL -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      IsVisible="{Binding ActiveCategory, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <StackPanel Spacing="16">
+                                <!-- Category Header -->
+                                <TextBlock Text="{Binding ActiveCategory}"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="#8B5CF6" />
+
+                                <!-- EDITOR PANEL CONTENT -->
+                                <StackPanel Spacing="14" IsVisible="{Binding $parent[Grid].((vm:SettingsModalViewModel)DataContext).ActiveCategory, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Editor'}">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Font Family" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <TextBox Text="{Binding FontFamily, Mode=TwoWay}"
+                                                 FontSize="12"
+                                                 Background="#27272A"
+                                                 BorderBrush="#3F3F46"
+                                                 Padding="8,5" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="Font Size" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                            <TextBlock Grid.Column="1" Text="{Binding FontSize, StringFormat='{}{0:0} pt'}" FontSize="12" Foreground="#8B5CF6" FontWeight="Bold" />
+                                        </Grid>
+                                        <Slider Minimum="8" Maximum="36" Value="{Binding FontSize, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Indentation &amp; Tab Size" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Content="2 Spaces" Command="{Binding SetTabSizeCommand}" CommandParameter="2" Padding="10,4" FontSize="11" CornerRadius="4" />
+                                            <Button Content="4 Spaces" Command="{Binding SetTabSizeCommand}" CommandParameter="4" Padding="10,4" FontSize="11" CornerRadius="4" />
+                                            <Button Content="8 Spaces" Command="{Binding SetTabSizeCommand}" CommandParameter="8" Padding="10,4" FontSize="11" CornerRadius="4" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <CheckBox IsChecked="{Binding InsertSpaces, Mode=TwoWay}" Content="Insert Spaces instead of Tabs" Foreground="#D4D4D8" FontSize="12" />
+                                    <CheckBox IsChecked="{Binding WordWrap, Mode=TwoWay}" Content="Enable Word Wrap by default" Foreground="#D4D4D8" FontSize="12" />
+                                    <CheckBox IsChecked="{Binding ShowMinimap, Mode=TwoWay}" Content="Display Code Minimap overview" Foreground="#D4D4D8" FontSize="12" />
+                                    <CheckBox IsChecked="{Binding ShowLineNumbers, Mode=TwoWay}" Content="Display Line Numbers in gutter" Foreground="#D4D4D8" FontSize="12" />
+                                </StackPanel>
+
+                                <!-- TERMINAL PANEL CONTENT -->
+                                <StackPanel Spacing="14" IsVisible="{Binding $parent[Grid].((vm:SettingsModalViewModel)DataContext).ActiveCategory, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Terminal'}">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Shell Executable / Program" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <TextBox Text="{Binding ShellProgram, Mode=TwoWay}"
+                                                 Watermark="e.g. powershell.exe, cmd.exe, bash"
+                                                 FontSize="12"
+                                                 Background="#27272A"
+                                                 BorderBrush="#3F3F46"
+                                                 Padding="8,5" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Arguments" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <TextBox Text="{Binding CustomArguments, Mode=TwoWay}"
+                                                 Watermark="e.g. -NoLogo"
+                                                 FontSize="12"
+                                                 Background="#27272A"
+                                                 BorderBrush="#3F3F46"
+                                                 Padding="8,5" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Custom Start Directory (leave blank for workspace root)" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <TextBox Text="{Binding StartDirectory, Mode=TwoWay}"
+                                                 Watermark="Optional startup path..."
+                                                 FontSize="12"
+                                                 Background="#27272A"
+                                                 BorderBrush="#3F3F46"
+                                                 Padding="8,5" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- GIT PANEL CONTENT -->
+                                <StackPanel Spacing="14" IsVisible="{Binding $parent[Grid].((vm:SettingsModalViewModel)DataContext).ActiveCategory, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Git'}">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Default Branch Name" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <TextBox Text="{Binding DefaultBranchName, Mode=TwoWay}"
+                                                 FontSize="12"
+                                                 Background="#27272A"
+                                                 BorderBrush="#3F3F46"
+                                                 Padding="8,5" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Auto-Fetch Interval (Minutes, 0 = Disabled)" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <NumericUpDown Value="{Binding AutoFetchIntervalMinutes, Mode=TwoWay}"
+                                                       Minimum="0" Maximum="1440" Increment="5"
+                                                       Background="#27272A" BorderBrush="#3F3F46" FontSize="12" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Diff Viewer Style" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <RadioButton Content="Unified Diff" IsChecked="True" Foreground="#D4D4D8" />
+                                            <RadioButton Content="Side-by-Side" Foreground="#D4D4D8" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- THEME PANEL CONTENT -->
+                                <StackPanel Spacing="14" IsVisible="{Binding $parent[Grid].((vm:SettingsModalViewModel)DataContext).ActiveCategory, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Theme'}">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Base Theme Mode" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <Button Content="Lonely Dark" Command="{Binding SetThemeModeCommand}" CommandParameter="LonelyDark"
+                                                    Background="#1F1F24" BorderBrush="#8B5CF6" BorderThickness="1" Foreground="#F4F4F5" Padding="12,6" CornerRadius="4" />
+                                            <Button Content="Solarized Contrast" Command="{Binding SetThemeModeCommand}" CommandParameter="SolarizedContrast"
+                                                    Background="#002B36" BorderBrush="#2AA198" BorderThickness="1" Foreground="#93A1A1" Padding="12,6" CornerRadius="4" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Accent Color Palette" FontSize="12" FontWeight="SemiBold" Foreground="#D4D4D8" />
+                                        <WrapPanel Margin="0,4,0,0">
+                                            <Button Background="#8B5CF6" Width="36" Height="36" CornerRadius="18" Margin="0,0,10,10" Command="{Binding SetAccentColorCommand}" CommandParameter="#8B5CF6" ToolTip.Tip="Neon Violet" />
+                                            <Button Background="#2AA198" Width="36" Height="36" CornerRadius="18" Margin="0,0,10,10" Command="{Binding SetAccentColorCommand}" CommandParameter="#2AA198" ToolTip.Tip="Solarized Cyan" />
+                                            <Button Background="#10B981" Width="36" Height="36" CornerRadius="18" Margin="0,0,10,10" Command="{Binding SetAccentColorCommand}" CommandParameter="#10B981" ToolTip.Tip="Emerald Green" />
+                                            <Button Background="#F59E0B" Width="36" Height="36" CornerRadius="18" Margin="0,0,10,10" Command="{Binding SetAccentColorCommand}" CommandParameter="#F59E0B" ToolTip.Tip="Amber Gold" />
+                                            <Button Background="#EF4444" Width="36" Height="36" CornerRadius="18" Margin="0,0,10,10" Command="{Binding SetAccentColorCommand}" CommandParameter="#EF4444" ToolTip.Tip="Crimson Red" />
+                                            <Button Background="#38BDF8" Width="36" Height="36" CornerRadius="18" Margin="0,0,10,10" Command="{Binding SetAccentColorCommand}" CommandParameter="#38BDF8" ToolTip.Tip="Sky Blue" />
+                                        </WrapPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Selected Accent:" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding AccentColorHex}" FontSize="12" FontWeight="Bold" Foreground="{Binding AccentColorHex}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- KEYMAP PANEL CONTENT -->
+                                <StackPanel Spacing="10" IsVisible="{Binding $parent[Grid].((vm:SettingsModalViewModel)DataContext).ActiveCategory, Converter={x:Static ObjectConverters.Equal}, ConverterParameter='Keymap'}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding SearchFilter, Mode=TwoWay}"
+                                                 Watermark="🔍 Filter shortcuts by command name or key..."
+                                                 FontSize="12"
+                                                 Background="#27272A"
+                                                 BorderBrush="#3F3F46"
+                                                 Padding="8,5" />
+                                        <Button Grid.Column="1"
+                                                Content="Reset All to Defaults"
+                                                Command="{Binding ResetAllKeymapsCommand}"
+                                                Margin="8,0,0,0"
+                                                Padding="8,4"
+                                                FontSize="11"
+                                                Background="#27272A"
+                                                Foreground="#F4F4F5" />
+                                    </Grid>
+
+                                    <!-- Shortcut Editing Card (when editing) -->
+                                    <Border IsVisible="{Binding IsEditingShortcut}"
+                                            Background="#27272A"
+                                            BorderBrush="#8B5CF6"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="12,10"
+                                            Margin="0,4">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="{Binding SelectedCommand.Title, StringFormat='Assign Shortcut for: {0}'}"
+                                                       FontWeight="Bold" FontSize="12" Foreground="#F4F4F5" />
+                                            <TextBox Text="{Binding EditingGestureText, Mode=TwoWay}"
+                                                     Watermark="Type gesture (e.g. Ctrl+Shift+P, Alt+Z, F5)..."
+                                                     FontSize="12" Background="#18181B" Padding="8,4" />
+                                            <TextBlock Text="{Binding EditingConflictWarning}"
+                                                       FontSize="11"
+                                                       Foreground="{Binding HasEditingConflict, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=True}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                                <Button Content="Cancel" Command="{Binding CancelEditShortcutCommand}" Padding="8,3" FontSize="11" Background="Transparent" Foreground="#A1A1AA" />
+                                                <Button Content="Save Shortcut" Command="{Binding SaveShortcutCommand}" Padding="10,3" FontSize="11" Background="#8B5CF6" Foreground="#FFFFFF" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Table / List of Commands -->
+                                    <Border Background="#141417" BorderBrush="#27272A" BorderThickness="1" CornerRadius="6" Height="260">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding FilteredCommands}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="km:CommandDefinition">
+                                                        <Border BorderBrush="#1F1F24" BorderThickness="0,0,0,1" Padding="8,6">
+                                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                                                <!-- Category Badge -->
+                                                                <Border Grid.Column="0" Background="#27272A" CornerRadius="3" Padding="6,2" Margin="0,0,8,0">
+                                                                    <TextBlock Text="{Binding Category}" FontSize="10" Foreground="#A1A1AA" />
+                                                                </Border>
+
+                                                                <!-- Command Title -->
+                                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="12" Foreground="#E4E4E7" VerticalAlignment="Center" />
+
+                                                                <!-- Gesture Badge -->
+                                                                <Border Grid.Column="2" Background="#1E1B4B" CornerRadius="3" Padding="6,2" Margin="0,0,8,0" IsVisible="{Binding CurrentGesture, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                                    <TextBlock Text="{Binding CurrentGesture}" FontSize="11" FontWeight="SemiBold" Foreground="#A78BFA" />
+                                                                </Border>
+
+                                                                <!-- Conflict Badge -->
+                                                                <Border Grid.Column="2" Background="#7F1D1D" CornerRadius="3" Padding="6,2" Margin="0,0,8,0" IsVisible="{Binding HasConflict}">
+                                                                    <TextBlock Text="⚠️ Conflict" FontSize="10" Foreground="#FECACA" ToolTip.Tip="{Binding ConflictCommandName}" />
+                                                                </Border>
+
+                                                                <!-- Actions -->
+                                                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4">
+                                                                    <Button Content="Edit" Command="{Binding $parent[UserControl].((vm:SettingsModalViewModel)DataContext).StartEditShortcutCommand}" CommandParameter="{Binding}" Padding="6,2" FontSize="10" CornerRadius="3" Background="#27272A" Foreground="#E4E4E7" />
+                                                                    <Button Content="Reset" Command="{Binding $parent[UserControl].((vm:SettingsModalViewModel)DataContext).ResetShortcutCommand}" CommandParameter="{Binding}" Padding="6,2" FontSize="10" CornerRadius="3" Background="Transparent" Foreground="#71717A" />
+                                                                    <Button Content="✕" Command="{Binding $parent[UserControl].((vm:SettingsModalViewModel)DataContext).ClearShortcutCommand}" CommandParameter="{Binding}" Padding="5,2" FontSize="10" CornerRadius="3" Background="Transparent" Foreground="#EF4444" ToolTip.Tip="Clear shortcut" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+
+                <!-- Footer (Feedback status & action buttons) -->
+                <Border Grid.Row="2"
+                        Background="#1F1F24"
+                        BorderBrush="#27272A"
+                        BorderThickness="0,1,0,0"
+                        CornerRadius="0,0,10,10"
+                        Padding="16,10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding StatusFeedback}"
+                                   FontSize="11"
+                                   Foreground="#38BDF8"
+                                   VerticalAlignment="Center" />
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button Content="Reset Category Defaults"
+                                    Command="{Binding ResetCategoryDefaultsCommand}"
+                                    Padding="10,5"
+                                    FontSize="11"
+                                    Background="Transparent"
+                                    Foreground="#A1A1AA"
+                                    BorderBrush="#3F3F46"
+                                    BorderThickness="1"
+                                    CornerRadius="4" />
+
+                            <Button Content="Cancel"
+                                    Command="{Binding CloseCommand}"
+                                    Padding="12,5"
+                                    FontSize="11"
+                                    Background="Transparent"
+                                    Foreground="#A1A1AA"
+                                    BorderThickness="0"
+                                    CornerRadius="4" />
+
+                            <Button Content="Save &amp; Apply"
+                                    Command="{Binding SaveAndApplyCommand}"
+                                    Padding="14,6"
+                                    FontSize="11"
+                                    FontWeight="SemiBold"
+                                    Background="#8B5CF6"
+                                    Foreground="#FFFFFF"
+                                    CornerRadius="4" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

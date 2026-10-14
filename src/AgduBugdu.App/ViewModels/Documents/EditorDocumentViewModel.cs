@@ -60,7 +60,28 @@ public partial class EditorDocumentViewModel : Document
     private bool _isReadOnly;
 
     [ObservableProperty]
+    private string _fontFamily = "Cascadia Code, Consolas, Courier New, monospace";
+
+    [ObservableProperty]
+    private double _fontSize = 14.0;
+
+    [ObservableProperty]
+    private bool _showLineNumbers = true;
+
+    [ObservableProperty]
     private bool _isMinimapVisible = true;
+
+    public void ApplySettings(AgduBugdu.Core.Settings.EditorSettings settings)
+    {
+        if (settings == null) return;
+        FontFamily = settings.FontFamily;
+        FontSize = settings.FontSize;
+        WordWrap = settings.WordWrap;
+        TabSize = settings.TabSize;
+        UseSpacesForTabs = settings.InsertSpaces;
+        IsMinimapVisible = settings.ShowMinimap;
+        ShowLineNumbers = settings.ShowLineNumbers;
+    }
 
     [RelayCommand]
     public void ToggleMinimap()

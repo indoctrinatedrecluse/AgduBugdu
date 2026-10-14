@@ -10,9 +10,9 @@
         <Grid Grid.Column="0">
             <ae:TextEditor x:Name="Editor"
                        Document="{Binding TextDocument}"
-                       ShowLineNumbers="True"
-                       FontFamily="Cascadia Code, Consolas, Courier New, monospace"
-                       FontSize="14"
+                       ShowLineNumbers="{Binding ShowLineNumbers}"
+                       FontFamily="{Binding FontFamily}"
+                       FontSize="{Binding FontSize}"
                        WordWrap="{Binding WordWrap}"
                        HorizontalScrollBarVisibility="Auto"
                        VerticalScrollBarVisibility="Visible"
