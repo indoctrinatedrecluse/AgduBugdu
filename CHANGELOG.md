@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.4.0] - 2026-10-14
+
+### ✨ Added
+- **🪟 Advanced Multi-Pane Split Editor (`Ctrl+\`)**:
+  - Full dual-group layout engine supporting horizontal and vertical editor splits.
+  - Independent tab bars, separate document collections, and real-time active group synchronization.
+  - Focus navigation between panes (`Ctrl+1` for Primary, `Ctrl+2` for Secondary).
+  - Move active document between groups (`Ctrl+Alt+Right` / `Ctrl+Alt+Left`) or via tab context menu.
+- **💾 Workspace Session Auto-Persistence & Seamless Restore**:
+  - Automatically captures open document paths, active document indices, split orientation, cursor offsets, and scroll positions to `%APPDATA%/AgduBugdu/session.json`.
+  - Seamlessly rehydrates workspace state on launch without blocking UI initialization.
+- **🗺️ Code Minimap Overview**:
+  - High-density anti-aliased visual buffer overview scrollbar integrated beside AvalonEdit with live viewport highlighting and drag-to-scroll navigation.
+- **🌲 Code Symbol Outline Sidebar (`Ctrl+Shift+O`)**:
+  - Real-time syntax and AST parser supporting C#, Python, Rust, C/C++, Go, Java, and JavaScript/TypeScript.
+  - Interactive hierarchical tree view displaying classes, interfaces, structs, methods, properties, and functions with 1-click jump-to-definition.
+- **⚡ Snippet Template Engine**:
+  - Built-in snippet catalog expanding common templates (`fn`, `ctor`, `for`, `class`, `prop`, `try`, etc.) with tab-stop expansions upon pressing `Tab`.
+- **🌐 Interactive REST / HTTP Client Extension (`AgduBugdu.Plugin.RestClient`)**:
+  - Dedicated API workbench and runner for `.http` and `.rest` files (`Ctrl+Alt+R`).
+  - Full HTTP verb support (GET, POST, PUT, DELETE, PATCH, HEAD), query parameters grid, request headers table, and body editor (JSON, text, form-data).
+  - Response inspection with high-precision millisecond timing, HTTP status badges, formatted JSON tree/syntax highlighting, and 1-click header copying.
+- **🔍 Hex & Binary Inspector Extension (`AgduBugdu.Plugin.HexViewer`)**:
+  - Native binary inspector for `.bin`, `.hex`, `.dat`, `.wasm`, `.class`, `.exe`, `.dll`, `.iso` files.
+  - Triple-column view rendering byte address offsets, 16-byte hex values with alternating block shading, and ASCII decoded character columns with search capability.
+- **🗄️ SQLite Database Explorer Extension (`AgduBugdu.Plugin.SqliteExplorer`)**:
+  - Comprehensive SQLite database explorer for `.db`, `.sqlite`, `.sqlite3` files.
+  - Schema tree view showing tables, column definitions, data types, and primary key indicators.
+  - Interactive SQL scratchpad executing custom queries with results rendered in a responsive, sortable data grid.
+- **🎨 Interactive Color Palette & Visual Picker Extension (`AgduBugdu.Plugin.ColorPicker`)**:
+  - Hue/Saturation canvas with HEX, RGB, HSL, and RGBA sliders.
+  - Swatch palette history, eyedropper, and quick-insert code formatters for CSS, XAML, and Hex.
+- **🌿 Dedicated Visual Git Suite & Source Control Center (`Ctrl+Shift+G`)**:
+  - **Changes & Staging Workbench**: Visual staging controls (`+`/`-`), bulk Stage All / Unstage All, working tree discard (`↩`), commit message box with `Ctrl+Enter` dispatch, and commit amendment checkbox (`Amend`).
+  - **Interactive Commit Graph & History**: Visual DAG branch lanes, commit hashes, author badges, commit messages, and relative timestamps. Clicking any commit displays an inspect pane listing all altered files with 1-click diff inspection.
+  - **Branch & Tag Manager**: Visual tree of local and remote branches with fast checkout, branch creation modal, branch deletion, merge into current branch, and lightweight/annotated tag management.
+  - **Stash Workbench**: Stash working directory with optional message, view stash list, Apply stash, Pop stash, and Drop stash.
+  - **Side-by-Side & Unified Diff Viewer**: Color-coded line-by-line additions (green) and deletions (red) with word-level difference highlighting; switchable between unified and side-by-side mode.
+  - **In-Editor Gutter Diff Indicators & Inline Blame**: Real-time margin diff bars in AvalonEdit (green for added lines, blue for modified lines, red marker for deleted lines) and live status bar blame for line under cursor (`Author • Date • Commit: Message`).
+- **⚙️ Modern Settings GUI & Visual Keymap Customizer (`Ctrl+,`)**:
+  - Tabbed preferences modal for Editor, Terminal, Git, and Appearance with real-time live preview (no restart required) and persistence to `%APPDATA%/AgduBugdu/settings.json`.
+  - Searchable keyboard shortcuts customizer with interactive shortcut recording, conflict/collision warning detection, Reset to Defaults, and Export/Import keymaps as JSON.
+- **🛡️ Tamper-Resistant Anti-Clock-Rollback Offline Licensing Hardening**:
+  - **Hardware-Bound Machine Key Derivation**: 256-bit machine key derived via PBKDF2 (50,000 iterations) from HWID, Windows `MachineGuid`, host name, CPU architecture, and OS description.
+  - **Authenticated AES-256-GCM Offline Lease**: Offline lease payload encrypted and authenticated using AES-256-GCM. Replay attacks or copying leases across machines fail decryption.
+  - **Monotonic Anti-Rollback Clock Protection**: Monotonic high-water mark ticks stored across Registry and encrypted fallback. System clock manipulation ($> 5$ minutes backward skew or time preceding lease issuance) immediately revokes offline grace.
+  - **Strict 7-Day Hard Limit**: Offline access capped at a strict 7-day ceiling; requires network reconnection to refresh.
+  - **Silent 24-Hour Heartbeat**: Silent background validation keeps active licenses topped up automatically while online.
+  - **HMAC-SHA256 Registry Integrity Check**: Constant-time HMAC verification across all license attributes detects and neutralizes manual tampering in the Windows Registry or fallback files.
+
+---
+
 ## 🚀 [1.3.2] - 2026-10-14
 
 ### ✨ Added

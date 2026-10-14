@@ -210,6 +210,7 @@ public class Phase5SecurityHardeningTests : IDisposable
         var result = await service.ValidateCurrentLicenseAsync();
 
         Assert.True(result.Success, "Validation failed with message: " + result.Message);
+        Assert.NotNull(result.License);
         Assert.Equal(LicenseStatus.Active, result.License.Status);
         Assert.Contains("Validated offline", result.Message);
         Assert.Contains("days remaining in secure 7-day offline grace", result.Message);
@@ -262,6 +263,7 @@ public class Phase5SecurityHardeningTests : IDisposable
         var result = await service.ValidateCurrentLicenseAsync();
 
         Assert.False(result.Success);
+        Assert.NotNull(result.License);
         Assert.Equal(LicenseStatus.Expired, result.License.Status);
         Assert.Contains("Offline grace period expired", result.Message);
     }
@@ -282,6 +284,7 @@ public class Phase5SecurityHardeningTests : IDisposable
         var result = await service.ValidateCurrentLicenseAsync();
 
         Assert.False(result.Success);
+        Assert.NotNull(result.License);
         Assert.Equal(LicenseStatus.Invalid, result.License.Status);
         Assert.Contains("Clock manipulation detected", result.Message);
     }

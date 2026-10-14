@@ -73,7 +73,7 @@ Content-Type: application/json
 {
   ""name"": ""AgduBugdu"",
   ""type"": ""Developer IDE"",
-  ""version"": ""1.3.2""
+  ""version"": ""1.4.0""
 }
 ";
                 _context.EditorService.NewDocument("requests.http", template);
