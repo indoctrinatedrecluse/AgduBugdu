@@ -839,16 +839,405 @@ public partial class GitToolViewModel : Tool
         }
     }
 
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
+    [ObservableProperty]
+    private bool _isAmendCommit;
+
+    [ObservableProperty]
+    private string _newBranchName = string.Empty;
+
+    [ObservableProperty]
+    private string _newTagName = string.Empty;
+
+    [ObservableProperty]
+    private string _newStashMessage = string.Empty;
+
+    [ObservableProperty]
+    private GitLogEntry? _selectedCommit;
+
+    [ObservableProperty]
+    private GitCommitDetail? _commitDetail;
+
+    [ObservableProperty]
+    private GitFileItem? _selectedFile;
+
+    [ObservableProperty]
+    private DiffFileModel? _currentParsedDiff;
+
+    [ObservableProperty]
+    private string _currentDiffTitle = "Diff Inspector";
+
+    [ObservableProperty]
+    private bool _isSideBySideDiff;
+
+    public ObservableCollection<GitLogEntry> CommitHistory { get; } = new();
+    public ObservableCollection<GitBranch> Branches { get; } = new();
+    public ObservableCollection<GitTag> Tags { get; } = new();
+    public ObservableCollection<GitStash> Stashes { get; } = new();
+    public ObservableCollection<DiffLine> DiffLines { get; } = new();
+
+    [RelayCommand]
+    public async Task RefreshAllAsync()
+    {
+        await RefreshAsync();
+        await LoadHistoryAsync();
+        await LoadBranchesAsync();
+        await LoadTagsAsync();
+        await LoadStashesAsync();
+    }
+
+    [RelayCommand]
+    public async Task LoadHistoryAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        try
+        {
+            var commits = await _gitService.GetRecentCommitsAsync(_currentWorkspacePath, 30);
+            CommitHistory.Clear();
+            foreach (var c in commits)
+            {
+                CommitHistory.Add(c);
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public async Task SelectCommitAsync(GitLogEntry? commit)
+    {
+        if (commit == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        SelectedCommit = commit;
+        try
+        {
+            CommitDetail = await _gitService.GetCommitDetailAsync(_currentWorkspacePath, commit.Hash);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public async Task LoadBranchesAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        try
+        {
+            var branches = await _gitService.GetBranchesAsync(_currentWorkspacePath);
+            Branches.Clear();
+            foreach (var b in branches)
+            {
+                Branches.Add(b);
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public async Task CreateBranchAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || string.IsNullOrWhiteSpace(NewBranchName)) return;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.CreateBranchAsync(_currentWorkspacePath, NewBranchName.Trim());
+            if (ok)
+            {
+                StatusText = $"Created and switched to branch '{NewBranchName.Trim()}'";
+                NewBranchName = string.Empty;
+                await RefreshAllAsync();
+            }
+            else
+            {
+                StatusText = "Failed to create branch.";
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task CheckoutBranchAsync(GitBranch? branch)
+    {
+        if (branch == null || string.IsNullOrEmpty(_currentWorkspacePath) || branch.IsCurrent) return;
+        IsBusy = true;
+        try
+        {
+            string name = branch.IsRemote && branch.Name.StartsWith("remotes/origin/")
+                ? branch.Name["remotes/origin/".Length..]
+                : branch.Name;
+
+            bool ok = await _gitService.CheckoutBranchAsync(_currentWorkspacePath, name);
+            if (ok)
+            {
+                StatusText = $"Switched to branch '{name}'";
+                await RefreshAllAsync();
+            }
+            else
+            {
+                StatusText = $"Failed to checkout '{name}'";
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task DeleteBranchAsync(GitBranch? branch)
+    {
+        if (branch == null || string.IsNullOrEmpty(_currentWorkspacePath) || branch.IsCurrent) return;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.DeleteBranchAsync(_currentWorkspacePath, branch.Name);
+            if (ok)
+            {
+                StatusText = $"Deleted branch '{branch.Name}'";
+                await LoadBranchesAsync();
+            }
+            else
+            {
+                StatusText = $"Could not delete '{branch.Name}'";
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task MergeBranchAsync(GitBranch? branch)
+    {
+        if (branch == null || string.IsNullOrEmpty(_currentWorkspacePath) || branch.IsCurrent) return;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.MergeBranchAsync(_currentWorkspacePath, branch.Name);
+            StatusText = ok ? $"Merged '{branch.Name}' into '{CurrentBranch}'" : "Merge conflict or error occurred.";
+            await RefreshAllAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task LoadTagsAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        try
+        {
+            var tags = await _gitService.GetTagsAsync(_currentWorkspacePath);
+            Tags.Clear();
+            foreach (var t in tags)
+            {
+                Tags.Add(t);
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public async Task CreateTagAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || string.IsNullOrWhiteSpace(NewTagName)) return;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.CreateTagAsync(_currentWorkspacePath, NewTagName.Trim());
+            if (ok)
+            {
+                StatusText = $"Created tag '{NewTagName.Trim()}'";
+                NewTagName = string.Empty;
+                await LoadTagsAsync();
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task DeleteTagAsync(GitTag? tag)
+    {
+        if (tag == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.DeleteTagAsync(_currentWorkspacePath, tag.Name);
+            if (ok)
+            {
+                StatusText = $"Deleted tag '{tag.Name}'";
+                await LoadTagsAsync();
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task LoadStashesAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        try
+        {
+            var stashes = await _gitService.GetStashesAsync(_currentWorkspacePath);
+            Stashes.Clear();
+            foreach (var s in stashes)
+            {
+                Stashes.Add(s);
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public async Task CreateStashAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.StashSaveAsync(_currentWorkspacePath, string.IsNullOrWhiteSpace(NewStashMessage) ? null : NewStashMessage.Trim());
+            if (ok)
+            {
+                StatusText = "Stashed changes.";
+                NewStashMessage = string.Empty;
+                await RefreshAllAsync();
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task PopStashAsync(GitStash? stash)
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        int idx = stash?.Index ?? 0;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.StashPopAsync(_currentWorkspacePath, idx);
+            StatusText = ok ? $"Popped stash@{{{idx}}}" : "Stash pop failed.";
+            await RefreshAllAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ApplyStashAsync(GitStash? stash)
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        int idx = stash?.Index ?? 0;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.StashApplyAsync(_currentWorkspacePath, idx);
+            StatusText = ok ? $"Applied stash@{{{idx}}}" : "Stash apply failed.";
+            await RefreshAllAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task DropStashAsync(GitStash? stash)
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        int idx = stash?.Index ?? 0;
+        IsBusy = true;
+        try
+        {
+            bool ok = await _gitService.StashDropAsync(_currentWorkspacePath, idx);
+            StatusText = ok ? $"Dropped stash@{{{idx}}}" : "Stash drop failed.";
+            await LoadStashesAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task FetchAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        IsBusy = true;
+        StatusText = "Fetching remotes...";
+        try
+        {
+            var (ok, msg) = await _gitService.FetchAsync(_currentWorkspacePath);
+            StatusText = ok ? "Fetch completed successfully." : $"Fetch error: {msg}";
+            await RefreshAllAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task PullAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        IsBusy = true;
+        StatusText = "Pulling from origin...";
+        try
+        {
+            var (ok, msg) = await _gitService.PullAsync(_currentWorkspacePath);
+            StatusText = ok ? "Pull completed." : $"Pull error: {msg}";
+            await RefreshAllAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task PushAsync()
+    {
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || !HasRepository) return;
+        IsBusy = true;
+        StatusText = "Pushing to origin...";
+        try
+        {
+            var (ok, msg) = await _gitService.PushAsync(_currentWorkspacePath);
+            StatusText = ok ? "Push completed." : $"Push error: {msg}";
+            await RefreshAllAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     [RelayCommand]
     public async Task CommitAsync()
     {
-        if (string.IsNullOrEmpty(_currentWorkspacePath) || string.IsNullOrWhiteSpace(CommitMessage))
+        if (string.IsNullOrEmpty(_currentWorkspacePath) || (string.IsNullOrWhiteSpace(CommitMessage) && !IsAmendCommit))
         {
             StatusText = "Please enter a commit message.";
             return;
         }
 
-        if (StagedChanges.Count == 0)
+        if (StagedChanges.Count == 0 && !IsAmendCommit)
         {
             if (Changes.Count > 0)
             {
@@ -864,13 +1253,15 @@ public partial class GitToolViewModel : Tool
         IsBusy = true;
         try
         {
-            var res = await _gitService.CommitAsync(_currentWorkspacePath, CommitMessage.Trim());
+            var res = await _gitService.CommitAsync(_currentWorkspacePath, CommitMessage.Trim(), IsAmendCommit);
             if (res.Success)
             {
                 CommitMessage = string.Empty;
                 DiffOutput = string.Empty;
+                DiffLines.Clear();
+                IsAmendCommit = false;
                 StatusText = $"Committed: {res.CommitHash ?? "OK"}";
-                await RefreshAsync();
+                await RefreshAllAsync();
             }
             else
             {
@@ -887,8 +1278,43 @@ public partial class GitToolViewModel : Tool
     public async Task ShowDiffAsync(GitFileItem? item)
     {
         if (item == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
-        DiffOutput = await _gitService.GetDiffAsync(_currentWorkspacePath, item.RelativePath, item.IsStaged);
+        SelectedFile = item;
+        CurrentDiffTitle = $"Diff: {item.DisplayName}";
+        string rawDiff = await _gitService.GetDiffAsync(_currentWorkspacePath, item.RelativePath, item.IsStaged);
+        DiffOutput = rawDiff;
+
+        CurrentParsedDiff = _gitService.ParseDiff(rawDiff);
+        DiffLines.Clear();
+        foreach (var hunk in CurrentParsedDiff.Hunks)
+        {
+            DiffLines.Add(new DiffLine { Kind = DiffLineKind.HunkHeader, Text = hunk.Header });
+            foreach (var line in hunk.Lines)
+            {
+                DiffLines.Add(line);
+            }
+        }
+
         FileSelected?.Invoke(this, item.FilePath);
+    }
+
+    [RelayCommand]
+    public async Task ShowCommitFileDiffAsync(GitCommitFileChange? fileChange)
+    {
+        if (fileChange == null || SelectedCommit == null || string.IsNullOrEmpty(_currentWorkspacePath)) return;
+        CurrentDiffTitle = $"Diff: {fileChange.Path} ({SelectedCommit.ShortHash})";
+        string diff = await _gitService.GetDiffAsync(_currentWorkspacePath, fileChange.Path);
+        DiffOutput = diff;
+
+        CurrentParsedDiff = _gitService.ParseDiff(diff);
+        DiffLines.Clear();
+        foreach (var hunk in CurrentParsedDiff.Hunks)
+        {
+            DiffLines.Add(new DiffLine { Kind = DiffLineKind.HunkHeader, Text = hunk.Header });
+            foreach (var l in hunk.Lines)
+            {
+                DiffLines.Add(l);
+            }
+        }
     }
 }
 

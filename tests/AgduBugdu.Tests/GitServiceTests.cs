@@ -89,4 +89,85 @@ public class GitServiceTests
         Assert.Equal("U", untracked.StatusBadge);
         Assert.Equal("!", conflict.StatusBadge);
     }
+
+    [Fact]
+    public void ParseDiff_ParsesHunksAdditionsDeletionsAndLineNumbers()
+    {
+        string rawDiff = @"
+diff --git a/src/App.cs b/src/App.cs
+index 1234567..89abcdef 100644
+--- a/src/App.cs
++++ b/src/App.cs
+@@ -10,4 +10,5 @@
+ context line 1
+-removed line
++added line 1
++added line 2
+ context line 2
+";
+        var service = new GitService();
+        var diff = service.ParseDiff(rawDiff);
+
+        Assert.Equal("src/App.cs", diff.OldPath);
+        Assert.Equal("src/App.cs", diff.NewPath);
+        Assert.Equal(2, diff.Additions);
+        Assert.Equal(1, diff.Deletions);
+        Assert.Single(diff.Hunks);
+
+        var hunk = diff.Hunks[0];
+        Assert.Equal(10, hunk.OldStart);
+        Assert.Equal(10, hunk.NewStart);
+        Assert.Equal(5, hunk.Lines.Count);
+
+        // Line 0: context
+        Assert.Equal(DiffLineKind.Context, hunk.Lines[0].Kind);
+        Assert.Equal(10, hunk.Lines[0].OldLineNumber);
+        Assert.Equal(10, hunk.Lines[0].NewLineNumber);
+
+        // Line 1: deletion
+        Assert.Equal(DiffLineKind.Deletion, hunk.Lines[1].Kind);
+        Assert.Equal(11, hunk.Lines[1].OldLineNumber);
+        Assert.Null(hunk.Lines[1].NewLineNumber);
+
+        // Line 2: addition
+        Assert.Equal(DiffLineKind.Addition, hunk.Lines[2].Kind);
+        Assert.Null(hunk.Lines[2].OldLineNumber);
+        Assert.Equal(11, hunk.Lines[2].NewLineNumber);
+
+        // Line 3: addition
+        Assert.Equal(DiffLineKind.Addition, hunk.Lines[3].Kind);
+        Assert.Null(hunk.Lines[3].OldLineNumber);
+        Assert.Equal(12, hunk.Lines[3].NewLineNumber);
+
+        // Line 4: context
+        Assert.Equal(DiffLineKind.Context, hunk.Lines[4].Kind);
+        Assert.Equal(12, hunk.Lines[4].OldLineNumber);
+        Assert.Equal(13, hunk.Lines[4].NewLineNumber);
+    }
+
+    [Fact]
+    public void GitSuite_Models_InstantiateProperly()
+    {
+        var branch = new GitBranch("feature/auth", true, false, "origin/feature/auth", "abcdef1", "Implement auth");
+        Assert.Equal("feature/auth", branch.Name);
+        Assert.True(branch.IsCurrent);
+        Assert.False(branch.IsRemote);
+
+        var tag = new GitTag("v1.3.2", "abcdef1", "Release v1.3.2");
+        Assert.Equal("v1.3.2", tag.Name);
+
+        var stash = new GitStash(0, "stash@{0}", "WIP: editor changes", "2026-10-14");
+        Assert.Equal(0, stash.Index);
+
+        var fileChange = new GitCommitFileChange("src/Main.cs", GitFileStatusType.Modified, 15, 3);
+        Assert.Equal(15, fileChange.Additions);
+        Assert.Equal(3, fileChange.Deletions);
+
+        var detail = new GitCommitDetail(
+            "1234567890abcdef", "1234567", "John Doe", "john@example.com", "2026-10-14",
+            "Commit Subject", "Commit Body", new[] { "parent1" }, new[] { fileChange }
+        );
+        Assert.Equal("1234567", detail.ShortHash);
+        Assert.Single(detail.Files);
+    }
 }
