@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace AgduBugdu.Core.Licensing;
 
-public interface ILicenseService
+public interface ILicenseService : IDisposable
 {
     LicenseInfo CurrentLicense { get; }
     event EventHandler<LicenseInfo>? LicenseChanged;

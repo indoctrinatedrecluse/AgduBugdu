@@ -44,6 +44,15 @@ public class LicenseServiceTests
         {
             _trialStart = dt;
         }
+
+        private long _clockTicks;
+
+        public long GetLastKnownClockTicks() => _clockTicks;
+
+        public void UpdateLastKnownClockTicks(long ticks)
+        {
+            if (ticks > _clockTicks) _clockTicks = ticks;
+        }
     }
 
     private class MockHttpMessageHandler : HttpMessageHandler

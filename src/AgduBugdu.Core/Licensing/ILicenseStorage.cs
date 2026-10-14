@@ -8,4 +8,6 @@ public interface ILicenseStorage
     void SaveLicenseRecord(LicenseRecord record);
     void ClearLicenseRecord();
     DateTime GetOrCreateTrialStartDate();
+    long GetLastKnownClockTicks();
+    void UpdateLastKnownClockTicks(long ticks);
 }

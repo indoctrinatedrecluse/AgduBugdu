@@ -10,201 +10,358 @@ public class RegistryLicenseStorage : ILicenseStorage
 {
     private const string RegistryKeyPath = @"Software\AgduBugdu\License";
     private readonly string _fallbackFilePath;
+    private readonly object _lock = new();
 
-    public RegistryLicenseStorage()
+    private readonly bool _useRegistry;
+
+    public RegistryLicenseStorage(string? customFallbackPath = null, bool? useRegistry = null)
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var dir = Path.Combine(appData, ".agdubugdu");
-        Directory.CreateDirectory(dir);
-        _fallbackFilePath = Path.Combine(dir, "license.json");
+        _useRegistry = useRegistry ?? string.IsNullOrEmpty(customFallbackPath);
+        if (!string.IsNullOrEmpty(customFallbackPath))
+        {
+            _fallbackFilePath = customFallbackPath;
+        }
+        else
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var dir = Path.Combine(appData, ".agdubugdu");
+            Directory.CreateDirectory(dir);
+            _fallbackFilePath = Path.Combine(dir, "license.json");
+        }
     }
 
     public LicenseRecord? LoadLicenseRecord()
     {
-        if (OperatingSystem.IsWindows())
+        lock (_lock)
         {
-            try
+            LicenseRecord? record = null;
+
+            if (_useRegistry && OperatingSystem.IsWindows())
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath);
-                if (key == null) return null;
-
-                var licenseKey = key.GetValue("LicenseKey")?.ToString();
-                if (string.IsNullOrWhiteSpace(licenseKey)) return null;
-
-                var username = key.GetValue("Username")?.ToString() ?? string.Empty;
-                var typeStr = key.GetValue("LicenseType")?.ToString() ?? "Trial";
-                var statusStr = key.GetValue("Status")?.ToString() ?? "Active";
-                var expiresAtStr = key.GetValue("ExpiresAt")?.ToString();
-                var trialStartStr = key.GetValue("TrialStartDate")?.ToString();
-                var lastValidatedStr = key.GetValue("LastValidatedAt")?.ToString();
-                var hwid = key.GetValue("HWID")?.ToString() ?? string.Empty;
-
-                Enum.TryParse<LicenseType>(typeStr, true, out var type);
-                Enum.TryParse<LicenseStatus>(statusStr, true, out var status);
-
-                DateTime? expiresAt = DateTime.TryParse(expiresAtStr, out var exp) ? exp : null;
-                DateTime? trialStart = DateTime.TryParse(trialStartStr, out var tStart) ? tStart : null;
-                DateTime? lastValidated = DateTime.TryParse(lastValidatedStr, out var lVal) ? lVal : null;
-
-                return new LicenseRecord
+                try
                 {
-                    LicenseKey = licenseKey,
-                    Username = username,
-                    Type = type,
-                    Status = status,
-                    ExpiresAt = expiresAt,
-                    TrialStartDate = trialStart,
-                    LastValidatedAt = lastValidated,
-                    HWID = hwid
-                };
-            }
-            catch
-            {
-                // Fall back to disk storage on permission issues
-            }
-        }
+                    using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath);
+                    if (key != null)
+                    {
+                        var licenseKey = key.GetValue("LicenseKey")?.ToString();
+                        if (!string.IsNullOrWhiteSpace(licenseKey))
+                        {
+                            var username = key.GetValue("Username")?.ToString() ?? string.Empty;
+                            var typeStr = key.GetValue("LicenseType")?.ToString() ?? "Trial";
+                            var statusStr = key.GetValue("Status")?.ToString() ?? "Active";
+                            var expiresAtStr = key.GetValue("ExpiresAt")?.ToString();
+                            var trialStartStr = key.GetValue("TrialStartDate")?.ToString();
+                            var lastValidatedStr = key.GetValue("LastValidatedAt")?.ToString();
+                            var hwid = key.GetValue("HWID")?.ToString() ?? string.Empty;
+                            var encLease = key.GetValue("EncryptedLease")?.ToString();
+                            var hmac = key.GetValue("IntegrityHmac")?.ToString();
+                            var clockTicksStr = key.GetValue("LastKnownClockTicks")?.ToString();
 
-        // Cross-platform / fallback disk storage
-        if (File.Exists(_fallbackFilePath))
-        {
-            try
-            {
-                var json = File.ReadAllText(_fallbackFilePath);
-                return JsonSerializer.Deserialize<LicenseRecord>(json);
-            }
-            catch { }
-        }
+                            Enum.TryParse<LicenseType>(typeStr, true, out var type);
+                            Enum.TryParse<LicenseStatus>(statusStr, true, out var status);
 
-        return null;
+                            DateTime? expiresAt = DateTime.TryParse(expiresAtStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var exp) ? exp : null;
+                            DateTime? trialStart = DateTime.TryParse(trialStartStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var tStart) ? tStart : null;
+                            DateTime? lastValidated = DateTime.TryParse(lastValidatedStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var lVal) ? lVal : null;
+                            long.TryParse(clockTicksStr, out var clockTicks);
+
+                            record = new LicenseRecord
+                            {
+                                LicenseKey = licenseKey,
+                                Username = username,
+                                Type = type,
+                                Status = status,
+                                ExpiresAt = expiresAt,
+                                TrialStartDate = trialStart,
+                                LastValidatedAt = lastValidated,
+                                HWID = hwid,
+                                EncryptedLease = encLease,
+                                IntegrityHmac = hmac,
+                                LastKnownClockTicks = clockTicks
+                            };
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fall back to file
+                }
+            }
+
+            // Cross-platform / fallback disk storage if registry didn't return record
+            if (record == null && File.Exists(_fallbackFilePath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(_fallbackFilePath);
+                    record = JsonSerializer.Deserialize<LicenseRecord>(json);
+                }
+                catch { }
+            }
+
+            if (record == null || string.IsNullOrWhiteSpace(record.LicenseKey) || record.Type == LicenseType.Trial)
+            {
+                return record;
+            }
+
+            // Verify HMAC integrity for paid license record
+            var machineKey = LicenseSecurity.DeriveMachineKey(record.HWID);
+            if (!LicenseSecurity.VerifyIntegrityHmac(record, machineKey))
+            {
+                // Tampering detected: Corrupted or manually modified registry keys
+                return null;
+            }
+
+            return record;
+        }
     }
 
     public void SaveLicenseRecord(LicenseRecord record)
     {
-        if (OperatingSystem.IsWindows())
+        ArgumentNullException.ThrowIfNull(record);
+
+        lock (_lock)
         {
-            try
+            // Ensure monotonic clock high-water mark
+            long currentHighWater = GetLastKnownClockTicks();
+            record.LastKnownClockTicks = Math.Max(record.LastKnownClockTicks, currentHighWater);
+            record.LastKnownClockTicks = Math.Max(record.LastKnownClockTicks, DateTime.UtcNow.Ticks);
+
+            // Compute HMAC integrity signature
+            var machineKey = LicenseSecurity.DeriveMachineKey(record.HWID);
+            record.IntegrityHmac = LicenseSecurity.ComputeIntegrityHmac(record, machineKey);
+
+            if (_useRegistry && OperatingSystem.IsWindows())
             {
-                using var key = Registry.CurrentUser.CreateSubKey(RegistryKeyPath);
-                if (key != null)
+                try
                 {
-                    key.SetValue("LicenseKey", record.LicenseKey);
-                    key.SetValue("Username", record.Username);
-                    key.SetValue("LicenseType", record.Type.ToString());
-                    key.SetValue("Status", record.Status.ToString());
-                    key.SetValue("HWID", record.HWID);
+                    using var key = Registry.CurrentUser.CreateSubKey(RegistryKeyPath);
+                    if (key != null)
+                    {
+                        key.SetValue("LicenseKey", record.LicenseKey);
+                        key.SetValue("Username", record.Username);
+                        key.SetValue("LicenseType", record.Type.ToString());
+                        key.SetValue("Status", record.Status.ToString());
+                        key.SetValue("HWID", record.HWID);
+                        key.SetValue("LastKnownClockTicks", record.LastKnownClockTicks.ToString());
 
-                    if (record.ExpiresAt.HasValue)
-                        key.SetValue("ExpiresAt", record.ExpiresAt.Value.ToString("O"));
-                    else
-                        key.DeleteValue("ExpiresAt", false);
+                        if (!string.IsNullOrEmpty(record.EncryptedLease))
+                            key.SetValue("EncryptedLease", record.EncryptedLease);
+                        else
+                            key.DeleteValue("EncryptedLease", false);
 
-                    if (record.TrialStartDate.HasValue)
-                        key.SetValue("TrialStartDate", record.TrialStartDate.Value.ToString("O"));
+                        if (!string.IsNullOrEmpty(record.IntegrityHmac))
+                            key.SetValue("IntegrityHmac", record.IntegrityHmac);
+                        else
+                            key.DeleteValue("IntegrityHmac", false);
 
-                    if (record.LastValidatedAt.HasValue)
-                        key.SetValue("LastValidatedAt", record.LastValidatedAt.Value.ToString("O"));
+                        if (record.ExpiresAt.HasValue)
+                            key.SetValue("ExpiresAt", record.ExpiresAt.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"));
+                        else
+                            key.DeleteValue("ExpiresAt", false);
 
-                    return;
+                        if (record.TrialStartDate.HasValue)
+                            key.SetValue("TrialStartDate", record.TrialStartDate.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"));
+
+                        if (record.LastValidatedAt.HasValue)
+                            key.SetValue("LastValidatedAt", record.LastValidatedAt.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"));
+
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Fall back to file
                 }
             }
-            catch
-            {
-                // Fall back to file
-            }
-        }
 
-        // Fallback file storage
-        try
-        {
-            var json = JsonSerializer.Serialize(record, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(_fallbackFilePath, json);
+            // Fallback file storage
+            try
+            {
+                var dir = Path.GetDirectoryName(_fallbackFilePath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                var json = JsonSerializer.Serialize(record, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_fallbackFilePath, json);
+            }
+            catch { }
         }
-        catch { }
     }
 
     public void ClearLicenseRecord()
     {
-        if (OperatingSystem.IsWindows())
+        lock (_lock)
         {
-            try
+            if (_useRegistry && OperatingSystem.IsWindows())
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
-                if (key != null)
+                try
                 {
-                    // Clear paid license values while preserving TrialStartDate
-                    key.DeleteValue("LicenseKey", false);
-                    key.DeleteValue("Username", false);
-                    key.SetValue("LicenseType", LicenseType.Trial.ToString());
-                    key.SetValue("Status", LicenseStatus.TrialActive.ToString());
-                    key.DeleteValue("ExpiresAt", false);
-                    key.DeleteValue("LastValidatedAt", false);
+                    using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
+                    if (key != null)
+                    {
+                        key.DeleteValue("LicenseKey", false);
+                        key.DeleteValue("Username", false);
+                        key.SetValue("LicenseType", LicenseType.Trial.ToString());
+                        key.SetValue("Status", LicenseStatus.TrialActive.ToString());
+                        key.DeleteValue("ExpiresAt", false);
+                        key.DeleteValue("LastValidatedAt", false);
+                        key.DeleteValue("EncryptedLease", false);
+                        key.DeleteValue("IntegrityHmac", false);
+                    }
                 }
+                catch { }
             }
-            catch { }
-        }
 
-        if (File.Exists(_fallbackFilePath))
-        {
-            try
+            if (File.Exists(_fallbackFilePath))
             {
-                var trialStart = GetOrCreateTrialStartDate();
-                var fallback = new LicenseRecord
+                try
                 {
-                    LicenseKey = string.Empty,
-                    Type = LicenseType.Trial,
-                    Status = LicenseStatus.TrialActive,
-                    TrialStartDate = trialStart
-                };
-                File.WriteAllText(_fallbackFilePath, JsonSerializer.Serialize(fallback));
+                    var trialStart = GetOrCreateTrialStartDate();
+                    var fallback = new LicenseRecord
+                    {
+                        LicenseKey = string.Empty,
+                        Type = LicenseType.Trial,
+                        Status = LicenseStatus.TrialActive,
+                        TrialStartDate = trialStart,
+                        LastKnownClockTicks = GetLastKnownClockTicks()
+                    };
+                    File.WriteAllText(_fallbackFilePath, JsonSerializer.Serialize(fallback));
+                }
+                catch { }
             }
-            catch { }
         }
     }
 
     public DateTime GetOrCreateTrialStartDate()
     {
-        if (OperatingSystem.IsWindows())
+        lock (_lock)
         {
+            if (_useRegistry && OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    using var key = Registry.CurrentUser.CreateSubKey(RegistryKeyPath);
+                    if (key != null)
+                    {
+                        var existing = key.GetValue("TrialStartDate")?.ToString();
+                        if (!string.IsNullOrWhiteSpace(existing) && DateTime.TryParse(existing, out var dt))
+                        {
+                            return dt;
+                        }
+
+                        var now = DateTime.UtcNow;
+                        key.SetValue("TrialStartDate", now.ToString("O"));
+                        return now;
+                    }
+                }
+                catch { }
+            }
+
+            // Fallback file
             try
             {
-                using var key = Registry.CurrentUser.CreateSubKey(RegistryKeyPath);
-                if (key != null)
+                if (File.Exists(_fallbackFilePath))
                 {
-                    var existing = key.GetValue("TrialStartDate")?.ToString();
-                    if (!string.IsNullOrWhiteSpace(existing) && DateTime.TryParse(existing, out var dt))
+                    var json = File.ReadAllText(_fallbackFilePath);
+                    var rec = JsonSerializer.Deserialize<LicenseRecord>(json);
+                    if (rec?.TrialStartDate.HasValue == true)
                     {
-                        return dt;
+                        return rec.TrialStartDate.Value;
                     }
 
                     var now = DateTime.UtcNow;
-                    key.SetValue("TrialStartDate", now.ToString("O"));
+                    rec ??= new LicenseRecord();
+                    rec.TrialStartDate = now;
+                    rec.LastKnownClockTicks = Math.Max(rec.LastKnownClockTicks, now.Ticks);
+                    File.WriteAllText(_fallbackFilePath, JsonSerializer.Serialize(rec, new JsonSerializerOptions { WriteIndented = true }));
                     return now;
+                }
+
+                var nowNew = DateTime.UtcNow;
+                long curTicks = Math.Max(GetLastKnownClockTicks(), nowNew.Ticks);
+                var newRec = new LicenseRecord { TrialStartDate = nowNew, LastKnownClockTicks = curTicks };
+                File.WriteAllText(_fallbackFilePath, JsonSerializer.Serialize(newRec, new JsonSerializerOptions { WriteIndented = true }));
+                return nowNew;
+            }
+            catch
+            {
+                return DateTime.UtcNow;
+            }
+        }
+    }
+
+    public long GetLastKnownClockTicks()
+    {
+        lock (_lock)
+        {
+            if (_useRegistry && OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath);
+                    if (key != null)
+                    {
+                        var val = key.GetValue("LastKnownClockTicks")?.ToString();
+                        if (long.TryParse(val, out var ticks))
+                        {
+                            return ticks;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            try
+            {
+                if (File.Exists(_fallbackFilePath))
+                {
+                    var json = File.ReadAllText(_fallbackFilePath);
+                    var rec = JsonSerializer.Deserialize<LicenseRecord>(json);
+                    if (rec != null && rec.LastKnownClockTicks > 0)
+                    {
+                        return rec.LastKnownClockTicks;
+                    }
                 }
             }
             catch { }
-        }
 
-        // Fallback file
-        try
+            return 0;
+        }
+    }
+
+    public void UpdateLastKnownClockTicks(long ticks)
+    {
+        lock (_lock)
         {
-            if (File.Exists(_fallbackFilePath))
+            long current = GetLastKnownClockTicks();
+            if (ticks <= current)
+                return;
+
+            if (_useRegistry && OperatingSystem.IsWindows())
             {
-                var json = File.ReadAllText(_fallbackFilePath);
-                var rec = JsonSerializer.Deserialize<LicenseRecord>(json);
-                if (rec?.TrialStartDate.HasValue == true)
+                try
                 {
-                    return rec.TrialStartDate.Value;
+                    using var key = Registry.CurrentUser.CreateSubKey(RegistryKeyPath);
+                    key?.SetValue("LastKnownClockTicks", ticks.ToString());
                 }
+                catch { }
             }
 
-            var now = DateTime.UtcNow;
-            var newRec = new LicenseRecord { TrialStartDate = now };
-            File.WriteAllText(_fallbackFilePath, JsonSerializer.Serialize(newRec));
-            return now;
-        }
-        catch
-        {
-            return DateTime.UtcNow;
+            try
+            {
+                var dir = Path.GetDirectoryName(_fallbackFilePath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                var rec = File.Exists(_fallbackFilePath)
+                    ? JsonSerializer.Deserialize<LicenseRecord>(File.ReadAllText(_fallbackFilePath)) ?? new LicenseRecord()
+                    : new LicenseRecord();
+
+                rec.LastKnownClockTicks = ticks;
+                File.WriteAllText(_fallbackFilePath, JsonSerializer.Serialize(rec));
+            }
+            catch { }
         }
     }
 }

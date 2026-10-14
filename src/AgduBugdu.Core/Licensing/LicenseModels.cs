@@ -32,6 +32,22 @@ public class LicenseRecord
     public DateTime? TrialStartDate { get; set; }
     public DateTime? LastValidatedAt { get; set; }
     public string HWID { get; set; } = string.Empty;
+    public string? EncryptedLease { get; set; }
+    public string? IntegrityHmac { get; set; }
+    public long LastKnownClockTicks { get; set; }
+}
+
+public class OfflineLeasePayload
+{
+    public string LicenseKey { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public LicenseType Type { get; set; } = LicenseType.Trial;
+    public string HWID { get; set; } = string.Empty;
+    public DateTime LeaseIssuedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime OfflineGraceHardLimitUtc { get; set; } = DateTime.UtcNow.AddDays(7);
+    public DateTime? ExpiresAtUtc { get; set; }
+    public long MonotonicSequence { get; set; }
+    public string Nonce { get; set; } = string.Empty;
 }
 
 public class LicenseInfo

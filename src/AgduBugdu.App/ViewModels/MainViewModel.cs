@@ -168,6 +168,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         SaveCurrentSession();
         _dockFactory?.TerminalTool?.OnClose();
+        _licenseService?.Dispose();
     }
 
     private readonly MainDockFactory _dockFactory;
