@@ -29,6 +29,10 @@ using AgduBugdu.Plugin.MarkdownLive;
 using AgduBugdu.Plugin.PdfLive;
 using AgduBugdu.Plugin.Python;
 using AgduBugdu.Plugin.Rust;
+using AgduBugdu.Plugin.RestClient;
+using AgduBugdu.Plugin.HexViewer;
+using AgduBugdu.Plugin.SqliteExplorer;
+using AgduBugdu.Plugin.ColorPicker;
 using AgduBugdu.Plugin.TodoExplorer;
 using AgduBugdu.PluginContracts;
 using Avalonia.Controls;
@@ -566,6 +570,58 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Version = csharpExtension.Version,
                 Status = extStatus,
                 Description = "Syntax highlighting, language definitions, and C# / .NET code snippets."
+            });
+
+            // 12. REST Client & API Runner
+            var restExtension = new RestClientExtension();
+            restExtension.Initialize(_extensionContext);
+            if (isPaid) await restExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = restExtension.Id,
+                Name = restExtension.Name,
+                Version = restExtension.Version,
+                Status = extStatus,
+                Description = "Interactive HTTP/.rest request runner, formatted JSON responses, and API workbench."
+            });
+
+            // 13. Binary & Hex Inspector
+            var hexExtension = new HexViewerExtension();
+            hexExtension.Initialize(_extensionContext);
+            if (isPaid) await hexExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = hexExtension.Id,
+                Name = hexExtension.Name,
+                Version = hexExtension.Version,
+                Status = extStatus,
+                Description = "High-performance hex viewer, Shannon entropy analysis, byte pattern search, and dump export."
+            });
+
+            // 14. SQLite Database Explorer
+            var sqliteExtension = new SqliteExplorerExtension();
+            sqliteExtension.Initialize(_extensionContext);
+            if (isPaid) await sqliteExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = sqliteExtension.Id,
+                Name = sqliteExtension.Name,
+                Version = sqliteExtension.Version,
+                Status = extStatus,
+                Description = "SQLite database browser, table schema inspector, SQL runner, and Markdown table exporter."
+            });
+
+            // 15. Color Palette & Picker
+            var colorExtension = new ColorPickerExtension();
+            colorExtension.Initialize(_extensionContext);
+            if (isPaid) await colorExtension.ActivateAsync();
+            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            {
+                Id = colorExtension.Id,
+                Name = colorExtension.Name,
+                Version = colorExtension.Version,
+                Status = extStatus,
+                Description = "Interactive color picker, RGB/Hex/HSL converter, design swatches, and editor code insertion."
             });
 
             // Sync all registered plugin commands into the Command Palette

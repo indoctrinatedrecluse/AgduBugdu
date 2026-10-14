@@ -43,6 +43,10 @@
     <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.Java\AgduBugdu.Plugin.Java.csproj" />
     <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.Python\AgduBugdu.Plugin.Python.csproj" />
     <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.Rust\AgduBugdu.Plugin.Rust.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.RestClient\AgduBugdu.Plugin.RestClient.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.HexViewer\AgduBugdu.Plugin.HexViewer.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.SqliteExplorer\AgduBugdu.Plugin.SqliteExplorer.csproj" />
+    <ProjectReference Include="..\..\plugins\AgduBugdu.Plugin.ColorPicker\AgduBugdu.Plugin.ColorPicker.csproj" />
   </ItemGroup>
 
 </Project>
