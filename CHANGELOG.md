@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.3.1] - 2026-10-14
+
+### ✨ Added
+- **⚡ In-App Seamless Auto-Updater**:
+  - Comprehensive end-to-end in-app automatic updater with streaming download progress, cryptographic integrity verification, and 1-click install & clean restart.
+  - **Platform & Architecture Resolution**: Automatically queries GitHub Releases API to detect and select the appropriate platform binary (`AgduBugdu-v*-win-x64-setup.exe` on Windows, `.tar.gz` on Linux/macOS, architecture-aware for ARM64 and x64).
+  - **Asynchronous Streaming Download**: Robust 80 KB chunked streaming pipeline saving downloads directly to `%TEMP%/AgduBugdu_Updates/` with real-time throughput metrics (downloaded MB / total MB, progress percentage, transfer speed in MB/s), and graceful cancellation.
+  - **Cryptographic Checksum Verification**: Automatically computes the SHA-256 hash of the downloaded package and verifies it against published `SHA256SUMS.txt` prior to execution, preventing corrupted or modified installations.
+  - **Interactive Auto-Update UI Dialog**: Redesigned modern update modal (`UpdateModalView`) with multi-state transitions:
+    - *Available*: Highlights version upgrade diffs, release notes, and detected package size with a 1-click "Download & Install" action and fallback "View on GitHub".
+    - *Downloading*: Active animated progress bar with live download stats and "Cancel Download" option.
+    - *Ready to Install*: Green verified status banner and high-visibility "Restart & Install" action that launches the Inno Setup installer cleanly and terminates the editor without file lock contention.
+    - *Error Diagnostics*: Graceful error state reporting with network retry and manual release fallback.
+  - **Automated Update Checks**: Background silent update discovery on editor launch and manual trigger via "Help -> Check for Updates...".
+
+---
+
 ## 🚀 [1.3.0] - 2026-10-14
 
 ### ✨ Added
