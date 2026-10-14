@@ -1,0 +1,236 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels"
+             x:Class="AgduBugdu.App.Views.LicenseModalView"
+             x:DataType="vm:LicenseModalViewModel"
+             IsVisible="{Binding IsVisible}">
+
+    <Grid Background="#99000000"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+
+        <!-- Modal Card Dialog -->
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="520"
+                CornerRadius="10"
+                Background="#1E1E22"
+                BorderBrush="#3B82F6"
+                BorderThickness="1"
+                BoxShadow="0 12 36 0 #77000000"
+                Padding="24">
+
+            <StackPanel Spacing="16">
+                <!-- Header with Icon & Title -->
+                <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Grid.Column="0"
+                               Text="🛡️"
+                               FontSize="26"
+                               Margin="0,0,12,0"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="AgduBugdu Licensing"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Foreground="#F3F4F6" />
+                        <TextBlock Text="Manage your software license, seat activations, and entitlements."
+                                   FontSize="11"
+                                   Foreground="#9CA3AF" />
+                    </StackPanel>
+                </Grid>
+
+                <Separator Background="#2D2D35" Height="1" Margin="0,-4,0,-4" />
+
+                <!-- DYNAMIC BADGES SECTION (Order of ascending stylization: Trial, User, Dev, Admin) -->
+                <!-- 1. Admin Badge (Highest stylization: Gold metallic aura & glow) -->
+                <Border IsVisible="{Binding IsAdminBadge}"
+                        CornerRadius="8"
+                        BorderThickness="1.5"
+                        BorderBrush="#FDE047"
+                        BoxShadow="0 0 16 0 #D9770688"
+                        Padding="14,12">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#78350F" Offset="0" />
+                            <GradientStop Color="#B45309" Offset="0.5" />
+                            <GradientStop Color="#D97706" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="👑" FontSize="32" Margin="0,0,14,0" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="ADMINISTRATOR PRIVILEGES" FontSize="14" FontWeight="ExtraBold" Foreground="#FFFBEB" />
+                            <TextBlock Text="{Binding CurrentLicense.FormattedValidity}" FontSize="12" FontWeight="SemiBold" Foreground="#FEF3C7" />
+                            <TextBlock Text="Unlocked: All plugins &amp; extensions unrestricted. Node-locked seat registered." FontSize="10" Foreground="#FDE68A" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 2. Dev Badge (Cyberpunk neon cyan / indigo gradient & glow) -->
+                <Border IsVisible="{Binding IsDevBadge}"
+                        CornerRadius="8"
+                        BorderThickness="1.2"
+                        BorderBrush="#38BDF8"
+                        BoxShadow="0 0 12 0 #0284C766"
+                        Padding="14,12">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#312E81" Offset="0" />
+                            <GradientStop Color="#1E40AF" Offset="0.5" />
+                            <GradientStop Color="#0284C7" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="⚡" FontSize="30" Margin="0,0,14,0" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="DEVELOPER / PARTNER LICENSE" FontSize="13" FontWeight="Bold" Foreground="#F0F9FF" />
+                            <TextBlock Text="{Binding CurrentLicense.FormattedValidity}" FontSize="11" FontWeight="SemiBold" Foreground="#BAE6FD" />
+                            <TextBlock Text="Unlocked: Developer extensions, debug tools, and language tooling." FontSize="10" Foreground="#7DD3FC" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 3. User Badge (Stylish Emerald Green) -->
+                <Border IsVisible="{Binding IsUserBadge}"
+                        CornerRadius="8"
+                        BorderThickness="1"
+                        BorderBrush="#10B981"
+                        Padding="14,12">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#064E3B" Offset="0" />
+                            <GradientStop Color="#047857" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="👤" FontSize="28" Margin="0,0,14,0" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="REGISTERED USER LICENSE" FontSize="13" FontWeight="Bold" Foreground="#ECFDF5" />
+                            <TextBlock Text="{Binding CurrentLicense.FormattedValidity}" FontSize="11" Foreground="#A7F3D0" />
+                            <TextBlock Text="Unlocked: All extensions and editor features active." FontSize="10" Foreground="#6EE7B7" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 4. Trial Badge (Subtle Slate/Amber) -->
+                <Border IsVisible="{Binding IsTrialBadge}"
+                        Background="#18181B"
+                        BorderBrush="#3F3F46"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="14,12">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="⏳" FontSize="26" Margin="0,0,14,0" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="TRIAL EVALUATION MODE" FontSize="13" FontWeight="SemiBold" Foreground="#E4E4E7" />
+                            <TextBlock Text="{Binding CurrentLicense.FormattedValidity}" FontSize="11" Foreground="#F59E0B" FontWeight="Bold" />
+                            <TextBlock Text="🔒 Extensions are locked in Trial mode. Activate a paid license to unlock all extensions." FontSize="10" Foreground="#9CA3AF" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Machine HWID Fingerprint -->
+                <Border Background="#121215" CornerRadius="4" Padding="10,6">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Grid.Column="0" Text="Machine HWID:" FontSize="10" Foreground="#6B7280" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding MachineHwid}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="10" FontWeight="SemiBold" Foreground="#9CA3AF" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="Node Locked" FontSize="9" Foreground="#10B981" FontWeight="Bold" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Input Form -->
+                <StackPanel Spacing="10">
+                    <!-- License Key Field with Reveal Button -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="License Key:" FontSize="11" FontWeight="SemiBold" Foreground="#D1D5DB" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding LicenseKeyInput, Mode=TwoWay}"
+                                     PasswordChar="{Binding LicensePasswordChar}"
+                                     Watermark="ADM-xxxx-xxxx-xxxx, USER-..., or DEV-..."
+                                     FontFamily="Cascadia Code, Consolas, monospace"
+                                     FontSize="12"
+                                     CornerRadius="4,0,0,4" />
+                            <Button Grid.Column="1"
+                                    Content="{Binding RevealButtonText}"
+                                    Command="{Binding ToggleRevealCommand}"
+                                    Padding="12,6"
+                                    Background="#27272A"
+                                    Foreground="#D4D4D8"
+                                    CornerRadius="0,4,4,0" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Credentials section for USER and DEV licenses -->
+                    <StackPanel Spacing="8" IsVisible="{Binding IsCredentialsRequired}">
+                        <Grid ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,6,0">
+                                <TextBlock Text="Username:" FontSize="11" Foreground="#9CA3AF" />
+                                <TextBox Text="{Binding UsernameInput, Mode=TwoWay}"
+                                         Watermark="Registered username"
+                                         FontSize="12"
+                                         CornerRadius="4" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4" Margin="6,0,0,0">
+                                <TextBlock Text="Password:" FontSize="11" Foreground="#9CA3AF" />
+                                <TextBox Text="{Binding PasswordInput, Mode=TwoWay}"
+                                         PasswordChar="●"
+                                         Watermark="Account password"
+                                         FontSize="12"
+                                         CornerRadius="4" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Admin Key Hint -->
+                    <TextBlock Text="👑 Admin license detected — username and password are not required."
+                               FontSize="10"
+                               Foreground="#FBBF24"
+                               IsVisible="{Binding IsAdminKey}" />
+                </StackPanel>
+
+                <!-- Status Feedback Message -->
+                <TextBlock Text="{Binding StatusMessage}"
+                           FontSize="11"
+                           Foreground="{Binding IsErrorMessage, Converter={x:Null}}"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                <!-- Action Buttons -->
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <!-- Remove / Revert to Trial -->
+                    <Button Grid.Column="0"
+                            Content="Remove License"
+                            Command="{Binding RemoveLicenseCommand}"
+                            Background="#450A0A"
+                            Foreground="#FCA5A5"
+                            BorderBrush="#DC2626"
+                            BorderThickness="1"
+                            Padding="12,6"
+                            CornerRadius="4"
+                            IsEnabled="{Binding !IsBusy}"
+                            IsVisible="{Binding CanRemoveLicense}" />
+
+                    <Button Grid.Column="2"
+                            Content="Close"
+                            Command="{Binding CloseCommand}"
+                            Background="#27272A"
+                            Foreground="#D4D4D8"
+                            Padding="14,6"
+                            Margin="0,0,8,0"
+                            CornerRadius="4" />
+
+                    <Button Grid.Column="3"
+                            Content="Activate License"
+                            Command="{Binding ActivateCommand}"
+                            Background="#2563EB"
+                            Foreground="#FFFFFF"
+                            FontWeight="SemiBold"
+                            Padding="16,6"
+                            CornerRadius="4"
+                            IsEnabled="{Binding !IsBusy}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

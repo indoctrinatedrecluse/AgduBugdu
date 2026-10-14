@@ -8,10 +8,12 @@ using AgduBugdu.App.Themes;
 using AgduBugdu.App.ViewModels.Documents;
 using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.Core;
+using AgduBugdu.Core.Licensing;
 using AgduBugdu.Core.Text;
 using AgduBugdu.Extensibility;
 using AgduBugdu.Extensibility.Registries;
 using AgduBugdu.Infrastructure.History;
+using AgduBugdu.Infrastructure.Licensing;
 using AgduBugdu.Infrastructure.Updates;
 using AgduBugdu.Plugin.Cpp;
 using AgduBugdu.Plugin.CSharp;
@@ -191,6 +193,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private AboutModalViewModel _aboutModal = new();
 
+    private readonly ILicenseService _licenseService;
+
+    [ObservableProperty]
+    private LicenseModalViewModel _licenseModal;
+
+    public string LicenseBadgeText => $"{_licenseService.CurrentLicense.BadgeIcon} {_licenseService.CurrentLicense.DisplayTitle}";
+
     [ObservableProperty]
     private string _statusMessage = "Ready";
 
@@ -291,6 +300,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _updateService = new GitHubUpdateService();
         _updateModal = new UpdateModalViewModel(_updateService);
 
+        _licenseService = new LicenseService();
+        _licenseModal = new LicenseModalViewModel(_licenseService);
+        _licenseService.LicenseChanged += OnLicenseChanged;
+
         _recentItemsManager = new RecentItemsManager();
 
         ThemeManager.ThemeChanged += OnThemeChanged;
@@ -333,165 +346,207 @@ public partial class MainViewModel : ObservableObject, IDisposable
         await UpdateModal.CheckForUpdatesSilentlyAsync();
     }
 
+    private void OnLicenseChanged(object? sender, LicenseInfo e)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            OnPropertyChanged(nameof(LicenseBadgeText));
+            await RefreshExtensionsForLicenseAsync(e.IsPaid);
+        });
+    }
+
+    private async Task RefreshExtensionsForLicenseAsync(bool isPaid)
+    {
+        string newStatus = isPaid ? "Active" : "🔒 Locked (Trial)";
+        foreach (var ext in ExtensionsModal.Extensions)
+        {
+            ext.Status = newStatus;
+        }
+
+        if (isPaid)
+        {
+            StatusMessage = $"All extensions unlocked with {_licenseService.CurrentLicense.DisplayTitle}!";
+            await InitializeExtensionsAsync();
+        }
+        else
+        {
+            StatusMessage = "Extensions locked in Trial mode. Activate a paid license to unlock.";
+        }
+    }
+
+    [RelayCommand]
+    public void OpenLicenseModal()
+    {
+        LicenseModal.Show();
+    }
+
     private async Task InitializeExtensionsAsync()
     {
         try
         {
             ExtensionsModal.Extensions.Clear();
+            bool isPaid = _licenseService.CurrentLicense.IsPaid;
+            string extStatus = isPaid ? "Active" : "🔒 Locked (Trial)";
 
             // 1. Markdown Live extension
             var mdExtension = new MarkdownLiveExtension();
             mdExtension.Initialize(_extensionContext);
-            await mdExtension.ActivateAsync();
+            if (isPaid) await mdExtension.ActivateAsync();
             _markdownExtension = mdExtension;
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = mdExtension.Id,
                 Name = mdExtension.Name,
                 Version = mdExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Provides real-time Markdown side-by-side rendering and preview."
             });
 
             // 2. CSV / TSV Data Table extension
             var csvExtension = new DataGridLiveExtension();
             csvExtension.Initialize(_extensionContext);
-            await csvExtension.ActivateAsync();
+            if (isPaid) await csvExtension.ActivateAsync();
             _csvExtension = csvExtension;
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = csvExtension.Id,
                 Name = csvExtension.Name,
                 Version = csvExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Interactive tabular viewer and search for CSV and TSV datasets."
             });
 
             // 3. Live PDF Viewer & Editor extension
             var pdfExtension = new PdfLiveExtension();
             pdfExtension.Initialize(_extensionContext);
-            await pdfExtension.ActivateAsync();
+            if (isPaid) await pdfExtension.ActivateAsync();
             _pdfExtension = pdfExtension;
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = pdfExtension.Id,
                 Name = pdfExtension.Name,
                 Version = pdfExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "High-performance PDF reader, page layout inspector, page editor, and document merger."
             });
 
             // 4. Workspace TODO & Task Explorer extension
             var todoExtension = new TodoExplorerExtension();
             todoExtension.Initialize(_extensionContext);
-            await todoExtension.ActivateAsync();
-            if (_toolRegistry.GetRegisteredTools().TryGetValue("todo.explorer.tool", out var todoToolDesc) &&
-                todoToolDesc.ViewModelFactory() is TodoExplorerViewModel todoVm)
+            if (isPaid)
             {
-                _dockFactory.TodoTool?.AttachModel(todoVm);
+                await todoExtension.ActivateAsync();
+                if (_toolRegistry.GetRegisteredTools().TryGetValue("todo.explorer.tool", out var todoToolDesc) &&
+                    todoToolDesc.ViewModelFactory() is TodoExplorerViewModel todoVm)
+                {
+                    _dockFactory.TodoTool?.AttachModel(todoVm);
+                }
             }
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = todoExtension.Id,
                 Name = todoExtension.Name,
                 Version = todoExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Scans workspace for TODO, FIXME, BUG, and NOTE comment markers."
             });
 
-            // 4. Run & Debug Workbench extension
+            // 5. Run & Debug Workbench extension
             var debugExtension = new DebuggerExtension();
             debugExtension.Initialize(_extensionContext);
-            await debugExtension.ActivateAsync();
-            if (_toolRegistry.GetRegisteredTools().TryGetValue("debug.workbench.tool", out var debugToolDesc) &&
-                debugToolDesc.ViewModelFactory() is DebuggerViewModel debugVm)
+            if (isPaid)
             {
-                _dockFactory.DebuggerTool?.AttachModel(debugVm);
+                await debugExtension.ActivateAsync();
+                if (_toolRegistry.GetRegisteredTools().TryGetValue("debug.workbench.tool", out var debugToolDesc) &&
+                    debugToolDesc.ViewModelFactory() is DebuggerViewModel debugVm)
+                {
+                    _dockFactory.DebuggerTool?.AttachModel(debugVm);
+                }
             }
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = debugExtension.Id,
                 Name = debugExtension.Name,
                 Version = debugExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Interactive Run & Debugging workbench with breakpoints, variables, call stack, and console."
             });
 
-            // 5. C/C++ Language Support
+            // 6. C/C++ Language Support
             var cppExtension = new CppLanguageExtension();
             cppExtension.Initialize(_extensionContext);
-            await cppExtension.ActivateAsync();
+            if (isPaid) await cppExtension.ActivateAsync();
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = cppExtension.Id,
                 Name = cppExtension.Name,
                 Version = cppExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Syntax highlighting, language definitions, and C/C++ code snippets."
             });
 
-            // 6. Java Language Support
+            // 7. Java Language Support
             var javaExtension = new JavaLanguageExtension();
             javaExtension.Initialize(_extensionContext);
-            await javaExtension.ActivateAsync();
+            if (isPaid) await javaExtension.ActivateAsync();
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = javaExtension.Id,
                 Name = javaExtension.Name,
                 Version = javaExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Syntax highlighting, language definitions, and Java code snippets."
             });
 
-            // 7. Go Language Support
+            // 8. Go Language Support
             var goExtension = new GoLanguageExtension();
             goExtension.Initialize(_extensionContext);
-            await goExtension.ActivateAsync();
+            if (isPaid) await goExtension.ActivateAsync();
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = goExtension.Id,
                 Name = goExtension.Name,
                 Version = goExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Syntax highlighting, language definitions, and Go code snippets."
             });
 
-            // 8. Rust Language Support
+            // 9. Rust Language Support
             var rustExtension = new RustLanguageExtension();
             rustExtension.Initialize(_extensionContext);
-            await rustExtension.ActivateAsync();
+            if (isPaid) await rustExtension.ActivateAsync();
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = rustExtension.Id,
                 Name = rustExtension.Name,
                 Version = rustExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Syntax highlighting, language definitions, and Rust code snippets."
             });
 
-            // 9. Python Language Support
+            // 10. Python Language Support
             var pythonExtension = new PythonLanguageExtension();
             pythonExtension.Initialize(_extensionContext);
-            await pythonExtension.ActivateAsync();
+            if (isPaid) await pythonExtension.ActivateAsync();
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = pythonExtension.Id,
                 Name = pythonExtension.Name,
                 Version = pythonExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Syntax highlighting, language definitions, and Python code snippets."
             });
 
-            // 10. C# / .NET Language Support
+            // 11. C# / .NET Language Support
             var csharpExtension = new CSharpLanguageExtension();
             csharpExtension.Initialize(_extensionContext);
-            await csharpExtension.ActivateAsync();
+            if (isPaid) await csharpExtension.ActivateAsync();
             ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
             {
                 Id = csharpExtension.Id,
                 Name = csharpExtension.Name,
                 Version = csharpExtension.Version,
-                Status = "Active",
+                Status = extStatus,
                 Description = "Syntax highlighting, language definitions, and C# / .NET code snippets."
             });
 
@@ -755,6 +810,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("theme.lonelyDark", "Preferences: Color Theme - Lonely Dark", () => SetLonelyDarkTheme());
         CommandPalette.RegisterCommand("theme.solarizedContrast", "Preferences: Color Theme - Solarized Contrast", () => SetSolarizedContrastTheme());
         CommandPalette.RegisterCommand("app.checkForUpdates", "Help: Check for Updates...", () => { _ = CheckForUpdatesExplicitAsync(); });
+        CommandPalette.RegisterCommand("app.license", "Help: Software License & Entitlements...", () => OpenLicenseModal());
         CommandPalette.RegisterCommand("view.commandpalette", "View: Open Command Palette", () => CommandPalette.Open(), "Ctrl+P");
         CommandPalette.RegisterCommand("view.toggleExplorer", "View: Focus Explorer", () => FocusDockable(_dockFactory.ExplorerTool));
         CommandPalette.RegisterCommand("view.toggleTerminal", "View: Focus Terminal", () => FocusDockable(_dockFactory.TerminalTool));
@@ -1289,6 +1345,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void OpenMarkdownPreview(string filePath)
     {
         if (!File.Exists(filePath)) return;
+        if (!_licenseService.CurrentLicense.IsPaid)
+        {
+            StatusMessage = "🔒 Markdown Live Preview is locked in Trial mode. Activate an Admin, Dev, or User license to unlock.";
+            LicenseModal.Show();
+            return;
+        }
+
         var previewHtml = _markdownExtension?.GetPreviewDocument(filePath);
         var previewTitle = $"Preview: {Path.GetFileName(filePath)}";
         var existing = _dockFactory.DocumentDock?.VisibleDockables?
@@ -1319,6 +1382,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void OpenCsvPreview(string filePath)
     {
         if (!File.Exists(filePath)) return;
+        if (!_licenseService.CurrentLicense.IsPaid)
+        {
+            StatusMessage = "🔒 Live Data Table is locked in Trial mode. Activate an Admin, Dev, or User license to unlock.";
+            LicenseModal.Show();
+            return;
+        }
+
         var tableVm = new CsvTableViewModel();
         tableVm.LoadFile(filePath);
         var formatted = tableVm.ToFormattedText();
@@ -1350,6 +1420,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void OpenPdfPreview(string filePath)
     {
         if (!File.Exists(filePath)) return;
+        if (!_licenseService.CurrentLicense.IsPaid)
+        {
+            StatusMessage = "🔒 Live PDF Viewer & Editor is locked in Trial mode. Activate an Admin, Dev, or User license to unlock.";
+            LicenseModal.Show();
+            return;
+        }
+
         var previewTitle = $"PDF: {Path.GetFileName(filePath)}";
         var existing = _dockFactory.DocumentDock?.VisibleDockables?
             .OfType<EditorDocumentViewModel>()

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.3.2] - 2026-10-14
+
+### ✨ Added
+- **🛡️ Cloud Licensing & Entitlement System**:
+  - Centralized software licensing and activation engine integrated with the high-performance **Licensor** backend API (`https://licensor-h5zdysrkqa-uc.a.run.app`).
+  - **Tiered License Levels**:
+    - **👑 Admin (`ADM-xxxx-xxxx-xxxx`)**: Highest privilege tier. Bypasses username and password checks; binds machine HWID on first use and enforces seat limits.
+    - **⚡ Dev (`DEV-xxxx-xxxx-xxxx`)**: Internal developer/partner tier. Validates username, password hash, HWID node-lock, and duration limits.
+    - **👤 User (`USER-xxxx-xxxx-xxxx`)**: Retail and subscriber tier. Validates username, password hash, HWID node-lock, and subscription expiry.
+    - **⏳ Trial**: Automatic 60-day local evaluation license provided out of the box when no paid key is active.
+  - **Ascending Stylized License Badges**:
+    - *Admin*: Luxurious gold and amber metallic aura (`#FDE047` border with glowing golden halo).
+    - *Dev*: Vibrant neon cyan and deep indigo gradient (`#38BDF8` border with cyan glow).
+    - *User*: Polished emerald green badge with verified identity tag.
+    - *Trial*: Understated dark slate badge displaying real-time days remaining.
+  - **🔒 License-Locked Extensions in Trial Mode**:
+    - In local Trial mode, extensions (Live PDF Viewer & Editor, Live Data Grid, Run & Debug Workbench, Workspace TODO Explorer, language tools) are safely locked.
+    - Activating any valid paid license (`User`, `Dev`, or `Admin`) instantly unlocks and activates all extensions across the editor in real-time.
+  - **Persisted Registry Storage**:
+    - Stores license state, HWID, and trial baseline in the Windows Registry (`HKCU\Software\AgduBugdu\License`).
+    - State persists seamlessly across uninstalls, re-installs, and version updates to prevent trial tampering and accidental license loss.
+  - **Interactive License Modal & Status Bar**:
+    - Accessible via `Help -> Software License...`, the Status Bar badge pill, or the Command Palette (`Ctrl+P` -> `Help: Software License & Entitlements...`).
+    - Features masked key entry with a 1-click **Reveal/Hide** toggle, dynamic credential inputs, live HWID fingerprint display, and a 1-click **Remove License** button that frees server seats and cleanly reverts to Trial mode.
+
+---
+
 ## 🚀 [1.3.1] - 2026-10-14
 
 ### ✨ Added

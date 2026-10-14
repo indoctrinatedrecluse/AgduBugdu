@@ -158,6 +158,7 @@
                     <MenuItem Header="_Extensions..." Command="{Binding ShowExtensionsModalCommand}" />
                 </MenuItem>
                 <MenuItem Header="_Help">
+                    <MenuItem Header="Software _License..." Command="{Binding OpenLicenseModalCommand}" />
                     <MenuItem Header="Check for _Updates..." Command="{Binding CheckForUpdatesExplicitCommand}" />
                     <MenuItem Header="_About AgduBugdu" Command="{Binding ShowAboutModalCommand}" />
                 </MenuItem>
@@ -262,6 +263,16 @@
 
                     <!-- Right details -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <!-- Clickable License Badge -->
+                        <Button Command="{Binding OpenLicenseModalCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="Software License &amp; Entitlements">
+                            <TextBlock Text="{Binding LicenseBadgeText}" FontSize="11" Foreground="{Binding StatusBarForeground}" FontWeight="SemiBold" />
+                        </Button>
+
                         <Button Command="{Binding ToggleWordWrapCommand}"
                                 Background="Transparent"
                                 BorderThickness="0"
@@ -341,6 +352,9 @@
 
         <!-- Auto-Updater Modal Overlay -->
         <views:UpdateModalView DataContext="{Binding UpdateModal}" />
+
+        <!-- License Modal Overlay -->
+        <views:LicenseModalView DataContext="{Binding LicenseModal}" />
 
         <!-- Extensions Manager Modal Overlay -->
         <views:ExtensionsModalView DataContext="{Binding ExtensionsModal}" />
