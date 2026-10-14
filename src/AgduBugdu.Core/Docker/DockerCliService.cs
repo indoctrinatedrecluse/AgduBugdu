@@ -15,7 +15,7 @@ public class DockerCliService
     private readonly List<DockerContainerItem> _mockContainers = new();
     private readonly List<DockerImageItem> _mockImages = new();
 
-    public bool IsDemoMode { get; private set; }
+    public bool IsDemoMode { get; set; }
 
     public DockerCliService()
     {
@@ -95,12 +95,18 @@ public class DockerCliService
 
     public async Task<bool> CheckDockerAvailableAsync()
     {
+        if (IsDemoMode)
+        {
+            _isDockerAvailable = false;
+            return false;
+        }
+
         if (_isDockerAvailable.HasValue)
             return _isDockerAvailable.Value;
 
         try
         {
-            var res = await RunProcessAsync("docker", "version", 3000);
+            var res = await RunProcessAsync("docker", "info", 3000);
             _isDockerAvailable = res.ExitCode == 0;
             IsDemoMode = !_isDockerAvailable.Value;
         }

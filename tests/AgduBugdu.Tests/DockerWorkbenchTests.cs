@@ -87,7 +87,7 @@ public class DockerWorkbenchTests
     [Fact]
     public async Task DockerCliService_DemoMode_LifecycleOperationsWorkWithoutDaemon()
     {
-        var service = new DockerCliService();
+        var service = new DockerCliService { IsDemoMode = true };
         var containers = await service.GetContainersAsync();
 
         Assert.NotEmpty(containers);

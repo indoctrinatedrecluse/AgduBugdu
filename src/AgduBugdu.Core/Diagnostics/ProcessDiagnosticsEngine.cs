@@ -78,6 +78,26 @@ public class ProcessDiagnosticsEngine
             uptime = TimeSpan.FromMinutes(1);
         }
 
+        int threadCount = 1;
+        try
+        {
+            threadCount = _process.Threads.Count;
+        }
+        catch
+        {
+            threadCount = 1;
+        }
+
+        int handleCount = 0;
+        try
+        {
+            handleCount = _process.HandleCount;
+        }
+        catch
+        {
+            handleCount = 0;
+        }
+
         var snapshot = new ProcessMetricSnapshot
         {
             Timestamp = DateTime.Now,
@@ -85,8 +105,8 @@ public class ProcessDiagnosticsEngine
             PrivateMemoryMb = Math.Round(_process.PrivateMemorySize64 / (1024.0 * 1024.0), 2),
             ManagedMemoryMb = Math.Round(GC.GetTotalMemory(false) / (1024.0 * 1024.0), 2),
             CpuPercent = cpuPercent,
-            ThreadCount = _process.Threads.Count,
-            HandleCount = _process.HandleCount,
+            ThreadCount = threadCount,
+            HandleCount = handleCount,
             Gen0Count = GC.CollectionCount(0),
             Gen1Count = GC.CollectionCount(1),
             Gen2Count = GC.CollectionCount(2),
