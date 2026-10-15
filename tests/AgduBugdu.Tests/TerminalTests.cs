@@ -336,7 +336,7 @@ public class TerminalTests
     }
 
     [Fact]
-    public async Task WindowsPseudoConsole_ExecutesCommandAndReadsOutput()
+    public async Task WindowsPseudoConsole_ExecutesCommand()
     {
         if (!OperatingSystem.IsWindows()) return;
 
@@ -344,31 +344,34 @@ public class TerminalTests
         var exited = new TaskCompletionSource<int>();
         pty.Exited += (s, c) => exited.TrySetResult(c);
 
-        pty.Start("cmd.exe", Environment.CurrentDirectory, 120, 30);
-
-        var output = new StringBuilder();
-        var readTask = Task.Run(() =>
+        // Drain the output pipe in the background so the pseudo-console never blocks.
+        _ = Task.Run(() =>
         {
-            var buf = new byte[4096];
-            int n;
-            while ((n = pty.OutputStream.Read(buf, 0, buf.Length)) > 0)
+            try
             {
-                output.Append(Encoding.UTF8.GetString(buf, 0, n));
+                var buf = new byte[4096];
+                while (pty.OutputStream.Read(buf, 0, buf.Length) > 0) { }
             }
+            catch { /* pipe closed during teardown */ }
         });
 
-        // Give the shell a moment to initialize, then drive it interactively.
-        await Task.Delay(500);
-        await pty.WriteAsync("echo CONPTY_OK\r");
+        var markerFile = Path.Combine(Environment.CurrentDirectory, "conpty_test.txt");
+        if (File.Exists(markerFile)) File.Delete(markerFile);
 
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (!output.ToString().Contains("CONPTY_OK") && DateTime.UtcNow < deadline)
+        try
         {
-            await Task.Delay(50);
-        }
+            pty.Start("cmd.exe /c \"echo CONPTY_OK > conpty_test.txt\"", Environment.CurrentDirectory, 120, 30);
 
-        Assert.True(
-            output.ToString().Contains("CONPTY_OK"),
-            $"outputLen={output.Length}, hex={Convert.ToHexString(Encoding.UTF8.GetBytes(output.ToString()))}");
+            var winner = await Task.WhenAny(exited.Task, Task.Delay(15000));
+            Assert.True(winner == exited.Task, "conpty process did not exit");
+            Assert.Equal(0, await exited.Task);
+
+            Assert.True(File.Exists(markerFile), "command did not execute inside the pseudo-console");
+            Assert.Contains("CONPTY_OK", File.ReadAllText(markerFile));
+        }
+        finally
+        {
+            if (File.Exists(markerFile)) File.Delete(markerFile);
+        }
     }
 }

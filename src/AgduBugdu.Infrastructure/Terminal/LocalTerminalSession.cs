@@ -23,14 +23,15 @@ public class LocalTerminalSession : ITerminalSession
     private Process? _process;
     private StreamWriter? _inputWriter;
     private WindowsPseudoConsole? _conPty;
+    private UnixPseudoTerminal? _unixPty;
 
     public event EventHandler<string>? OutputReceived;
     public event EventHandler<int>? Exited;
 
     public bool IsRunning =>
-        _conPty?.IsRunning == true || (_process != null && !_process.HasExited);
+        _conPty?.IsRunning == true || _unixPty?.IsRunning == true || (_process != null && !_process.HasExited);
 
-    public bool EchoesInput => _conPty != null;
+    public bool EchoesInput => _conPty != null || _unixPty != null;
 
     public void Start(string? workingDirectory = null, string? shellProgram = null, string? arguments = null)
     {
@@ -61,6 +62,28 @@ public class LocalTerminalSession : ITerminalSession
             {
                 _conPty?.Dispose();
                 _conPty = null;
+                // Fall through to the pipe-based implementation.
+            }
+        }
+
+        // On Unix run the shell inside a real PTY (via `script`) so interactive/TUI
+        // child processes receive raw input; fall back to redirected pipes if unavailable.
+        if (!isWindows)
+        {
+            try
+            {
+                var unixPty = new UnixPseudoTerminal();
+                unixPty.Exited += (s, code) => Exited?.Invoke(this, code);
+                unixPty.Start(shell, args, workDir, 200, 60);
+                _unixPty = unixPty;
+                _ = Task.Run(() => ReadStreamBlocking(_unixPty.OutputStream));
+                OutputReceived?.Invoke(this, $"[Terminal Started: {shell} in {workDir}]{Environment.NewLine}");
+                return;
+            }
+            catch
+            {
+                _unixPty?.Dispose();
+                _unixPty = null;
                 // Fall through to the pipe-based implementation.
             }
         }
@@ -151,6 +174,10 @@ public class LocalTerminalSession : ITerminalSession
         {
             await _conPty.WriteAsync(input + "\r");
         }
+        else if (_unixPty != null)
+        {
+            await _unixPty.WriteAsync(input + "\r");
+        }
         else if (_inputWriter != null && IsRunning)
         {
             await _inputWriter.WriteLineAsync(input);
@@ -163,6 +190,10 @@ public class LocalTerminalSession : ITerminalSession
         if (_conPty != null)
         {
             await _conPty.WriteAsync(raw);
+        }
+        else if (_unixPty != null)
+        {
+            await _unixPty.WriteAsync(raw);
         }
         else if (_inputWriter != null && IsRunning)
         {
@@ -181,7 +212,15 @@ public class LocalTerminalSession : ITerminalSession
                 _conPty.Dispose();
                 _conPty = null;
             }
-            else if (IsRunning && _process != null)
+
+            if (_unixPty != null)
+            {
+                _unixPty.Kill();
+                _unixPty.Dispose();
+                _unixPty = null;
+            }
+
+            if (IsRunning && _process != null)
             {
                 _process.Kill(entireProcessTree: true);
                 _process.Dispose();

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **⌨️ Direct TUI Key Routing**: All keystrokes (WASD navigation, C/Q interrupts, arrows, Escape, Ctrl chords) now route directly to the shell in TUI mode, with auto-focus of the terminal output surface and the command bar hidden while a TUI is active.
 - **🧪 Testable Key Mapping**: Added `TerminalKeyMapper` plus unit tests for cursor positioning, erasing, in-place redraws, and key-to-sequence translation.
 - **🖥️ Windows ConPTY Pseudo-Terminal**: Replaced redirected pipes with a real Windows ConPTY pseudo-terminal so interactive TUI programs (`ir pmon`, `ir nettop`, `nano`, `vim`, `htop`) receive raw keyboard input and can query terminal size — fixes TUI control-pad buttons and keyboard input not reaching child processes.
+- **🐧 Unix Pseudo-Terminal (Linux/macOS)**: Interactive terminal sessions on Linux and macOS now run the shell inside a real PTY (via the `script` utility) so TUI programs receive raw input and proper terminal semantics, with graceful fallback to redirected pipes.
 
 ---
 
