@@ -27,11 +27,11 @@ public partial class AboutModalViewModel : ViewModelBase
     public string Version => AppVersionInfo.CurrentVersion;
     public string AuthorName => "indoctrinatedrecluse aka Abhishek Mitra";
     public string PortfolioUrl => "https://portfolio-flutter-78bcf.web.app/";
-    public string LicenseType => "MIT License";
+    public string LicenseType => "Proprietary (License-Activated)";
 
     public string EntitlementTitle => _licenseService?.CurrentLicense.DisplayTitle ?? "Community Edition";
     public string EntitlementBadge => $"{_licenseService?.CurrentLicense.BadgeIcon ?? "⏳"} {EntitlementTitle}";
-    public string FormattedValidity => _licenseService?.CurrentLicense.FormattedValidity ?? "Active (Open Source)";
+    public string FormattedValidity => _licenseService?.CurrentLicense.FormattedValidity ?? "Active (Evaluation)";
 
     public string LicenseBadgeBackground => (_licenseService?.CurrentLicense.Type) switch
     {
@@ -58,27 +58,27 @@ public partial class AboutModalViewModel : ViewModelBase
     };
 
     public const string FullLicenseText =
-@"MIT License
+@"AgduBugdu Software License Agreement
 
-Copyright (c) 2026 indoctrinatedrecluse
+Copyright (c) 2026 indoctrinatedrecluse (Abhishek Mitra). All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the ""Software""), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software (""AgduBugdu"") and all accompanying documentation, source code, binaries, configuration files, and digital assets are the proprietary and intellectual property of Abhishek Mitra (indoctrinatedrecluse).
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. LICENSE GRANT & ACTIVATION:
+AgduBugdu is a proprietary, license-activated product. You may install and use this software only in accordance with a valid license activation key provided directly by the author. Unactivated or trial installations are subject to evaluation restrictions.
 
-THE SOFTWARE IS PROVIDED ""AS IS"", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.";
+2. RESTRICTIONS ON REDISTRIBUTION & MODIFICATION:
+Redistribution, reproduction, sublicensing, modification, decompilation, reverse engineering, creating derivative works, public mirror hosting, or repackaging of this software, in whole or in part, in source or binary form, is strictly prohibited without prior explicit written permission from Abhishek Mitra (indoctrinatedrecluse).
+
+3. COMMERCIAL USE, PERMISSION & INQUIRIES:
+To request permission for redistribution, custom licensing, volume deployment, or to purchase activation licenses, contact the author directly at:
+
+    Author: Abhishek Mitra (indoctrinatedrecluse)
+    Email:  abmitra1999@gmail.com
+    Portfolio: https://portfolio-flutter-78bcf.web.app/
+
+4. DISCLAIMER OF WARRANTY:
+THIS SOFTWARE IS PROVIDED ""AS IS"", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 
     public string LicenseNotice => FullLicenseText;
 

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.5.2] - 2026-10-15
+
+### 🔧 Fixed & Improved
+- **🎮 TUI Control Pad ScrollBar Layout**:
+  - Reconfigured `ScrollViewer` layout template in `TerminalToolView.axaml` with `Grid.RowSpan="1"` on `PART_ContentPresenter` and `AllowAutoHide="False"`.
+  - Positioned the horizontal scrollbar strictly below the TUI buttons with dedicated clearance spacing (`Margin="0,1,0,3"`), completely eliminating button overlap and click interference.
+- **📜 Proprietary License-Activated Agreement**:
+  - Replaced legacy MIT license with proprietary license agreement reflecting AgduBugdu's transition to a license-activated commercial software product.
+  - Redistribution, modification, hosting, and commercial deployment strictly require explicit written permission from Abhishek Mitra (indoctrinatedrecluse) via `abmitra1999@gmail.com`.
+  - Updated Help -> About modal dialog and repository `LICENSE` file with contact details, author portfolio link, and license notices.
+
+---
+
 ## 🚀 [1.5.1] - 2026-10-15
 
 ### 🔧 Fixed & Improved

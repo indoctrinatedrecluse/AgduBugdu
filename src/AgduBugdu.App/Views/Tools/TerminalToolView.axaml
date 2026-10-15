@@ -21,6 +21,16 @@
             <Setter Property="Background" Value="#0C0C0C" />
             <Setter Property="BorderBrush" Value="#007ACC" />
         </Style>
+        <Style Selector="ScrollViewer.tui-scroll">
+            <Setter Property="AllowAutoHide" Value="False" />
+        </Style>
+        <Style Selector="ScrollViewer.tui-scroll /template/ ScrollContentPresenter#PART_ContentPresenter">
+            <Setter Property="Grid.RowSpan" Value="1" />
+        </Style>
+        <Style Selector="ScrollViewer.tui-scroll /template/ ScrollBar#PART_HorizontalScrollBar">
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Margin" Value="0,3,0,1" />
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,Auto,*">
@@ -233,10 +243,10 @@
                         Background="#111827"
                         BorderBrush="#1F2937"
                         BorderThickness="0,1,0,0"
-                        Padding="6,3"
+                        Padding="6,3,6,2"
                         IsVisible="{Binding IsTuiMode}">
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <ScrollViewer Classes="tui-scroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Top" Margin="0,1,0,3">
                             <TextBlock Text="🎮 TUI MODE:"
                                        FontSize="10"
                                        FontWeight="ExtraBold"
@@ -402,10 +412,10 @@
                             Background="#111827"
                             BorderBrush="#1F2937"
                             BorderThickness="0,1,0,0"
-                            Padding="6,3"
+                            Padding="6,3,6,2"
                             IsVisible="{Binding IsTuiMode}">
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <ScrollViewer Classes="tui-scroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Top" Margin="0,1,0,3">
                                 <Button Content="^C 🛑" ToolTip.Tip="Ctrl+C" FontSize="10" Padding="5,2" Background="#DC2626" Foreground="White" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="ctrl+c" />
                                 <Button Content="^X" ToolTip.Tip="Ctrl+X (Exit)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="ctrl+x" />
                                 <Button Content="^O" ToolTip.Tip="Ctrl+O (Save)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="ctrl+o" />
@@ -479,10 +489,10 @@
                             Background="#111827"
                             BorderBrush="#1F2937"
                             BorderThickness="0,1,0,0"
-                            Padding="6,3"
+                            Padding="6,3,6,2"
                             IsVisible="{Binding IsTuiMode}">
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <ScrollViewer Classes="tui-scroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Top" Margin="0,1,0,3">
                                 <Button Content="^C 🛑" ToolTip.Tip="Ctrl+C" FontSize="10" Padding="5,2" Background="#DC2626" Foreground="White" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="ctrl+c" />
                                 <Button Content="^X" ToolTip.Tip="Ctrl+X (Exit)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="ctrl+x" />
                                 <Button Content="^O" ToolTip.Tip="Ctrl+O (Save)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="ctrl+o" />
