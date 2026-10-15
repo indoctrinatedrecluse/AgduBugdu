@@ -250,6 +250,68 @@ public partial class TerminalToolViewModel : Tool
         }
     }
 
+    public bool IsTuiMode
+    {
+        get => SelectedSession?.IsTuiMode ?? false;
+        set
+        {
+            if (SelectedSession != null && SelectedSession.IsTuiMode != value)
+            {
+                SelectedSession.IsTuiMode = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(TuiModeButtonText));
+                OnPropertyChanged(nameof(TuiModeButtonBackground));
+                OnPropertyChanged(nameof(TuiModeButtonBorder));
+            }
+        }
+    }
+
+    public string TuiModeButtonText => IsTuiMode ? "🎮 TUI: ON" : "🎮 TUI: OFF";
+    public string TuiModeButtonBackground => IsTuiMode ? "#065F46" : "#2A2A2D";
+    public string TuiModeButtonBorder => IsTuiMode ? "#10B981" : "#444444";
+
+    [RelayCommand]
+    public void ToggleTuiMode()
+    {
+        IsTuiMode = !IsTuiMode;
+    }
+
+    [RelayCommand]
+    public async Task SendInterruptAsync(string? raw)
+    {
+        if (SelectedSession == null || string.IsNullOrEmpty(raw)) return;
+
+        string seq;
+        if (raw.StartsWith("ctrl+", StringComparison.OrdinalIgnoreCase) && raw.Length == 6)
+        {
+            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey(raw[5]) ?? raw;
+        }
+        else
+        {
+            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.Translate(raw, false) ?? raw;
+        }
+
+        await SelectedSession.SendRawInputAsync(seq);
+    }
+
+    [RelayCommand]
+    public async Task SendSplitInterruptAsync(string? raw)
+    {
+        if (SplitSession == null || string.IsNullOrEmpty(raw)) return;
+
+        string seq;
+        if (raw.StartsWith("ctrl+", StringComparison.OrdinalIgnoreCase) && raw.Length == 6)
+        {
+            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey(raw[5]) ?? raw;
+        }
+        else
+        {
+            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.Translate(raw, false) ?? raw;
+        }
+
+        await SplitSession.SendRawInputAsync(seq);
+    }
+
     public TerminalToolViewModel()
     {
         Id = "Terminal";
@@ -257,16 +319,40 @@ public partial class TerminalToolViewModel : Tool
 
         var defaultSession = new TerminalSessionItem("PowerShell 1", ShellType.PowerShell);
         defaultSession.IsSelected = true;
+        defaultSession.PropertyChanged += OnSessionPropertyChanged;
         Sessions.Add(defaultSession);
         SelectedSession = defaultSession;
     }
 
     partial void OnSelectedSessionChanged(TerminalSessionItem? oldValue, TerminalSessionItem? newValue)
     {
-        if (oldValue != null) oldValue.IsSelected = false;
-        if (newValue != null) newValue.IsSelected = true;
+        if (oldValue != null)
+        {
+            oldValue.IsSelected = false;
+            oldValue.PropertyChanged -= OnSessionPropertyChanged;
+        }
+        if (newValue != null)
+        {
+            newValue.IsSelected = true;
+            newValue.PropertyChanged += OnSessionPropertyChanged;
+        }
         OnPropertyChanged(nameof(TerminalOutput));
         OnPropertyChanged(nameof(CommandInput));
+        OnPropertyChanged(nameof(IsTuiMode));
+        OnPropertyChanged(nameof(TuiModeButtonText));
+        OnPropertyChanged(nameof(TuiModeButtonBackground));
+        OnPropertyChanged(nameof(TuiModeButtonBorder));
+    }
+
+    private void OnSessionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TerminalSessionItem.IsTuiMode))
+        {
+            OnPropertyChanged(nameof(IsTuiMode));
+            OnPropertyChanged(nameof(TuiModeButtonText));
+            OnPropertyChanged(nameof(TuiModeButtonBackground));
+            OnPropertyChanged(nameof(TuiModeButtonBorder));
+        }
     }
 
     public void AddSession(ShellType shellType = ShellType.PowerShell, string? customProgram = null, string? workingDir = null)
@@ -859,7 +945,7 @@ public partial class GitToolViewModel : Tool
     public void SetWorkspace(string? path)
     {
         _currentWorkspacePath = path;
-        _ = RefreshAsync();
+        _ = RefreshAllAsync();
     }
 
     [RelayCommand]
@@ -1000,6 +1086,27 @@ public partial class GitToolViewModel : Tool
     [ObservableProperty]
     private int _selectedTabIndex;
 
+    partial void OnSelectedTabIndexChanged(int value)
+    {
+        if (!HasRepository) return;
+        switch (value)
+        {
+            case 0:
+                _ = RefreshAsync();
+                break;
+            case 1:
+                _ = LoadHistoryAsync();
+                break;
+            case 2:
+                _ = LoadBranchesAsync();
+                _ = LoadTagsAsync();
+                break;
+            case 3:
+                _ = LoadStashesAsync();
+                break;
+        }
+    }
+
     [ObservableProperty]
     private bool _isAmendCommit;
 
@@ -1040,10 +1147,13 @@ public partial class GitToolViewModel : Tool
     public async Task RefreshAllAsync()
     {
         await RefreshAsync();
-        await LoadHistoryAsync();
-        await LoadBranchesAsync();
-        await LoadTagsAsync();
-        await LoadStashesAsync();
+        if (HasRepository)
+        {
+            await LoadHistoryAsync();
+            await LoadBranchesAsync();
+            await LoadTagsAsync();
+            await LoadStashesAsync();
+        }
     }
 
     [RelayCommand]

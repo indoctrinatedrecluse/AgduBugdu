@@ -224,6 +224,32 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public string LicenseBadgeText => $"{_licenseService.CurrentLicense.BadgeIcon} {_licenseService.CurrentLicense.DisplayTitle}";
 
+    public string LicenseBadgeBackground => _licenseService.CurrentLicense.Type switch
+    {
+        LicenseType.Admin => "#78350F",
+        LicenseType.Dev => "#1E3A8A",
+        LicenseType.User => "#065F46",
+        _ => "#334155"
+    };
+
+    public string LicenseBadgeBorder => _licenseService.CurrentLicense.Type switch
+    {
+        LicenseType.Admin => "#F59E0B",
+        LicenseType.Dev => "#38BDF8",
+        LicenseType.User => "#34D399",
+        _ => "#64748B"
+    };
+
+    public string LicenseBadgeForeground => _licenseService.CurrentLicense.Type switch
+    {
+        LicenseType.Admin => "#FEF3C7",
+        LicenseType.Dev => "#E0F2FE",
+        LicenseType.User => "#D1FAE5",
+        _ => "#CBD5E1"
+    };
+
+    public string LicenseBadgeTooltip => $"{_licenseService.CurrentLicense.DisplayTitle} ({_licenseService.CurrentLicense.FormattedValidity})\nClick to manage software license";
+
     [ObservableProperty]
     private string _statusMessage = "Ready";
 
@@ -291,7 +317,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private IBrush _terminalForeground = new SolidColorBrush(ThemeManager.LonelyDark.TerminalForeground);
 
-    public string AppTitle => $"{AppVersionInfo.AppName} v{AppVersionInfo.CurrentVersion}";
+    public string AppTitle => $"{AppVersionInfo.AppName} v{AppVersionInfo.CurrentVersion} • [{LicenseBadgeText}]";
 
     public MainViewModel()
     {
@@ -326,6 +352,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _licenseService = new LicenseService();
         _licenseModal = new LicenseModalViewModel(_licenseService);
+        _aboutModal = new AboutModalViewModel(_licenseService);
         _licenseService.LicenseChanged += OnLicenseChanged;
 
         _recentItemsManager = new RecentItemsManager();
@@ -390,6 +417,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
         {
             OnPropertyChanged(nameof(LicenseBadgeText));
+            OnPropertyChanged(nameof(LicenseBadgeBackground));
+            OnPropertyChanged(nameof(LicenseBadgeBorder));
+            OnPropertyChanged(nameof(LicenseBadgeForeground));
+            OnPropertyChanged(nameof(LicenseBadgeTooltip));
+            OnPropertyChanged(nameof(AppTitle));
             await RefreshExtensionsForLicenseAsync(e.IsPaid);
         });
     }

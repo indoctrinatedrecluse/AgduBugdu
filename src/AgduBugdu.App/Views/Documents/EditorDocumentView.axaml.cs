@@ -122,8 +122,12 @@ public class CodeLensRenderer : IBackgroundRenderer
     private readonly Func<EditorDocumentViewModel?> _getDoc;
     private readonly TextEditor _editor;
     private readonly Typeface _typeface = new("Inter, Segoe UI, sans-serif", FontStyle.Normal, FontWeight.SemiBold);
-    private readonly IBrush _lensBrush = new SolidColorBrush(Color.FromArgb(180, 148, 163, 184)); // Slate 400
-    private readonly IBrush _testBadgeBrush = new SolidColorBrush(Color.FromArgb(220, 56, 189, 248)); // Cyan 400
+    private readonly IBrush _lensBrush = new SolidColorBrush(Color.FromArgb(200, 148, 163, 184)); // Slate 400
+    private readonly IBrush _testBadgeBrush = new SolidColorBrush(Color.FromArgb(230, 56, 189, 248)); // Cyan 400
+    private readonly IBrush _lensBg = new SolidColorBrush(Color.FromArgb(35, 148, 163, 184));
+    private readonly IBrush _testBadgeBg = new SolidColorBrush(Color.FromArgb(35, 56, 189, 248));
+    private readonly Pen _lensBorderPen = new(new SolidColorBrush(Color.FromArgb(50, 148, 163, 184)), 0.8);
+    private readonly Pen _testBorderPen = new(new SolidColorBrush(Color.FromArgb(60, 56, 189, 248)), 0.8);
 
     public KnownLayer Layer => KnownLayer.Selection;
 
@@ -147,8 +151,11 @@ public class CodeLensRenderer : IBackgroundRenderer
 
             try
             {
-                var pos = new TextViewPosition(lineNum, 1);
-                var visualPos = textView.GetVisualPosition(pos, VisualYPosition.LineTop);
+                // Measure the line end so we render the CodeLens inlay hint past the code text,
+                // ensuring it NEVER collides with or overlays code on the current or preceding line!
+                int lineLen = visualLine.LastDocumentLine.Length;
+                var endPos = new TextViewPosition(lineNum, lineLen + 1);
+                var endVisualPos = textView.GetVisualPosition(endPos, VisualYPosition.LineTop);
 
                 var formatted = new FormattedText(
                     match.DisplayText,
@@ -159,8 +166,15 @@ public class CodeLensRenderer : IBackgroundRenderer
                     match.IsTest ? _testBadgeBrush : _lensBrush
                 );
 
-                double x = Math.Max(2, visualPos.X);
-                double y = Math.Max(0, visualPos.Y - 14);
+                double x = endVisualPos.X + 20.0;
+                double y = endVisualPos.Y + (visualLine.Height - formatted.Height) / 2.0;
+
+                // Draw subtle rounded badge pill
+                var pillRect = new Rect(x - 5.0, y - 2.0, formatted.Width + 10.0, formatted.Height + 4.0);
+                var bgBrush = match.IsTest ? _testBadgeBg : _lensBg;
+                var borderPen = match.IsTest ? _testBorderPen : _lensBorderPen;
+
+                drawingContext.DrawRectangle(bgBrush, borderPen, pillRect, 4.0, 4.0);
                 drawingContext.DrawText(formatted, new Point(x, y));
             }
             catch

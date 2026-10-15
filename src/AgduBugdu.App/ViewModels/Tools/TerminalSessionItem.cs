@@ -53,6 +53,9 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private bool _isTuiMode;
+
     public TerminalSessionItem(
         string title,
         ShellType shellType = ShellType.PowerShell,
@@ -130,6 +133,23 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
         }
 
         await _session.WriteInputAsync(cmd);
+    }
+
+    [RelayCommand]
+    public async Task SendRawInputAsync(string? raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return;
+        if (!_session.IsRunning)
+        {
+            Start();
+        }
+        await _session.WriteRawAsync(raw);
+    }
+
+    [RelayCommand]
+    public void ToggleTuiMode()
+    {
+        IsTuiMode = !IsTuiMode;
     }
 
     [RelayCommand]

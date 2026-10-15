@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.5.1] - 2026-10-15
+
+### 🔧 Fixed & Improved
+- **📦 Git Studio History, Branches, Tags & Diff Viewer**:
+  - Fixed empty history, branch, tag, and stash lists upon opening a repository by replacing partial refresh with `RefreshAllAsync()` on workspace load and adding reactive tab change triggers (`OnSelectedTabIndexChanged`).
+  - Switched commit formatting arguments in `GitService` to hex delimiter format (`%x7c`) for reliable parsing across all operating systems.
+  - Filtered out symbolic pointer lines (e.g. `remotes/origin/HEAD -> origin/master`) from branch dropdowns and views.
+  - Replaced faulty Avalonia XAML boolean-to-brush object converters with direct `BackgroundColor` and `TextColor` properties on `DiffLine` and `DisplayColor` / `DisplayFontWeight` on `GitBranch`.
+- **🔍 Non-Intrusive Inlay CodeLens Rendering**:
+  - Re-architected CodeLens rendering in `EditorDocumentView` to render trailing inlay badges past the end of the declaration line (`endVisualPos.X + 20`) with rounded pill backgrounds.
+  - Completely resolved the issue where reference count text collided with or overlaid code text on preceding lines.
+- **✨ Rich Help -> About Modal & Author Portfolio**:
+  - Expanded and redesigned the About dialog with modern card styling, version badge, and software overview.
+  - Added dedicated "About the Author" section highlighting **indoctrinatedrecluse aka Abhishek Mitra** with 1-click external browser launch to their portfolio ([https://portfolio-flutter-78bcf.web.app/](https://portfolio-flutter-78bcf.web.app/)) and copy link button.
+  - Added scrollable, copyable MIT License text box with 1-click "Copy License Text" clipboard command and visual status confirmation.
+  - Embedded the active software license type and entitlement badge.
+- **🏷️ Title Bar License Badge**:
+  - Added a styled, interactive license badge pill directly beside the "AgduBugdu" product brand in the header bar.
+  - Implemented dynamic color schemes based on license tier (Admin: Gold aura, Dev: Neon blue/cyan, User: Emerald green, Trial: Slate) with click-to-manage shortcut opening the Licensing dialog.
+  - Updated window title to include the license badge (`AgduBugdu v1.5.1 • [Icon Tier]`).
+- **🎮 Generalized Terminal TUI Framework & Interrupt System**:
+  - Added unbuffered raw stream transmission (`WriteRawAsync`) to `ITerminalSession` and `LocalTerminalSession` for zero-newline control characters and VT100 sequence delivery.
+  - Built generalized `TuiKeyTranslator` that mathematically maps `Ctrl+A` through `Ctrl+Z` to ASCII control characters (`\x01` through `\x1A`), and navigation keys to standard ANSI/VT100 escape sequences without any application-specific hardcoding.
+  - Added a `🎮 TUI Mode` toggle button in the terminal header with active status indicators.
+  - Integrated an interactive TUI Interrupt Bar featuring quick buttons for `^C Interrupt` (SIGINT), `^X Exit` (nano), `^O Save` (nano), `^Z Suspend`, `^D EOF`, `Esc`, `Tab`, arrow keys (`↑`, `↓`, `←`, `→`), and `↵ Enter`.
+  - Enabled direct terminal keyboard forwarding in TUI mode for full interactive navigation in `nano`, `ir ntop`, `ir edit`, `ir pmon`, `ir help`, `vim`, and other CLI tools.
+  - Added universal `Ctrl+C` interrupt handling in both normal and TUI modes while preserving clipboard copy when text is selected.
+
+---
+
 ## 🚀 [1.5.0] - 2026-10-14
 
 ### ✨ Added

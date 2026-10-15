@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using AgduBugdu.App.Themes;
 using AgduBugdu.App.ViewModels.Tools;
+using AgduBugdu.Infrastructure.Terminal;
 
 namespace AgduBugdu.App.Views.Tools;
 
@@ -14,28 +15,129 @@ public partial class TerminalToolView : UserControl
     {
         InitializeComponent();
 
-        void BindEnter(string name, Func<TerminalToolViewModel, Task> action)
+        void HookInputBox(string name, Func<TerminalToolViewModel, TerminalSessionItem?> getSession, Func<TerminalToolViewModel, Task> onEnter)
         {
             var box = this.FindControl<TextBox>(name);
             if (box != null)
             {
                 box.KeyDown += (s, e) =>
                 {
-                    if (e.Key == Key.Enter && DataContext is TerminalToolViewModel vm)
+                    if (DataContext is not TerminalToolViewModel vm) return;
+
+                    // Handle TUI or Interrupt keys first
+                    if (HandleTuiOrInterruptKey(e, () => getSession(vm), isOutputBox: false, box))
                     {
-                        _ = action(vm);
+                        e.Handled = true;
+                        return;
+                    }
+
+                    if (e.Key == Key.Enter)
+                    {
+                        _ = onEnter(vm);
                         e.Handled = true;
                     }
                 };
             }
         }
 
-        BindEnter("InputBox", vm => vm.SendCommandAsync());
-        BindEnter("SplitInputBox1", vm => vm.SendCommandAsync());
-        BindEnter("SplitInputBox2", vm => vm.SplitSession != null ? vm.SplitSession.SendCommandAsync() : Task.CompletedTask);
+        HookInputBox("InputBox", vm => vm.SelectedSession, vm => vm.SendCommandAsync());
+        HookInputBox("SplitInputBox1", vm => vm.SelectedSession, vm => vm.SendCommandAsync());
+        HookInputBox("SplitInputBox2", vm => vm.SplitSession, vm => vm.SplitSession != null ? vm.SplitSession.SendCommandAsync() : Task.CompletedTask);
+
+        if (OutputBox != null)
+        {
+            OutputBox.KeyDown += (s, e) =>
+            {
+                if (DataContext is TerminalToolViewModel vm)
+                {
+                    if (HandleTuiOrInterruptKey(e, () => vm.SelectedSession, isOutputBox: true, OutputBox))
+                    {
+                        e.Handled = true;
+                    }
+                }
+            };
+
+            OutputBox.TextInput += (s, e) =>
+            {
+                if (DataContext is TerminalToolViewModel vm && vm.IsTuiMode && vm.SelectedSession != null && !string.IsNullOrEmpty(e.Text))
+                {
+                    _ = vm.SelectedSession.SendRawInputAsync(e.Text);
+                    e.Handled = true;
+                }
+            };
+        }
 
         ThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme(ThemeManager.CurrentTheme);
+    }
+
+    private bool HandleTuiOrInterruptKey(KeyEventArgs e, Func<TerminalSessionItem?> getSession, bool isOutputBox, TextBox? textBox)
+    {
+        if (DataContext is not TerminalToolViewModel vm) return false;
+        var session = getSession();
+        if (session == null) return false;
+
+        bool isCtrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+
+        // 1. Interrupt handling: Ctrl+C (Available in both standard and TUI mode)
+        if (isCtrl && e.Key == Key.C)
+        {
+            // If user has highlighted text selected, preserve standard clipboard copy
+            if (textBox != null && !string.IsNullOrEmpty(textBox.SelectedText))
+            {
+                return false;
+            }
+
+            _ = session.SendRawInputAsync("\x03");
+            return true;
+        }
+
+        // If TUI mode is not active, let default text editing/navigation proceed
+        if (!vm.IsTuiMode)
+        {
+            return false;
+        }
+
+        // 2. Generalized TUI control character handling: Ctrl+A through Ctrl+Z
+        if (isCtrl)
+        {
+            if (e.Key >= Key.A && e.Key <= Key.Z)
+            {
+                char c = (char)('A' + (e.Key - Key.A));
+                var controlSeq = TuiKeyTranslator.TranslateControlKey(c);
+                if (controlSeq != null)
+                {
+                    _ = session.SendRawInputAsync(controlSeq);
+                    return true;
+                }
+            }
+        }
+
+        // 3. Generalized TUI navigation and editing sequences (VT100)
+        var specialSeq = e.Key switch
+        {
+            Key.Up => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Up),
+            Key.Down => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Down),
+            Key.Left => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Left),
+            Key.Right => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Right),
+            Key.Home => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Home),
+            Key.End => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.End),
+            Key.PageUp => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.PageUp),
+            Key.PageDown => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.PageDown),
+            Key.Insert => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Insert),
+            Key.Delete => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Delete),
+            Key.Escape => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Escape),
+            Key.Tab => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Tab),
+            _ => null
+        };
+
+        if (specialSeq != null)
+        {
+            _ = session.SendRawInputAsync(specialSeq);
+            return true;
+        }
+
+        return false;
     }
 
     private void OnThemeChanged(object? sender, ThemeDefinition theme)

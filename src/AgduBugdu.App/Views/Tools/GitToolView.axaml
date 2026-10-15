@@ -406,8 +406,8 @@
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Name}"
                                                                FontSize="11"
-                                                               FontWeight="{Binding IsCurrent, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                                               Foreground="{Binding IsCurrent, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                               FontWeight="{Binding DisplayFontWeight}"
+                                                               Foreground="{Binding DisplayColor}" />
                                                     <TextBlock Text="{Binding CommitSubject}"
                                                                FontSize="9"
                                                                Foreground="#777777"
@@ -571,7 +571,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="git:DiffLine">
                                     <Border Padding="6,1"
-                                            Background="{Binding Kind, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                            Background="{Binding BackgroundColor}"
                                             BorderThickness="0">
                                         <Grid ColumnDefinitions="32,32,*">
                                             <TextBlock Grid.Column="0"
@@ -592,7 +592,7 @@
                                                        Text="{Binding Text}"
                                                        FontSize="11"
                                                        FontFamily="Consolas,Cascadia Code,Monospace"
-                                                       Foreground="#F1F5F9" />
+                                                       Foreground="{Binding TextColor}" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

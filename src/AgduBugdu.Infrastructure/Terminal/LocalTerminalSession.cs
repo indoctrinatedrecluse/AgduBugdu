@@ -12,6 +12,7 @@ public interface ITerminalSession : IDisposable
     bool IsRunning { get; }
     void Start(string? workingDirectory = null, string? shellProgram = null, string? arguments = null);
     Task WriteInputAsync(string input);
+    Task WriteRawAsync(string raw);
     void Stop();
 }
 
@@ -85,6 +86,15 @@ public class LocalTerminalSession : ITerminalSession
         if (_inputWriter != null && IsRunning)
         {
             await _inputWriter.WriteLineAsync(input);
+            await _inputWriter.FlushAsync();
+        }
+    }
+
+    public async Task WriteRawAsync(string raw)
+    {
+        if (_inputWriter != null && IsRunning)
+        {
+            await _inputWriter.WriteAsync(raw);
             await _inputWriter.FlushAsync();
         }
     }

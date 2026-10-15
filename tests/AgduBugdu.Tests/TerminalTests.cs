@@ -136,4 +136,44 @@ public class TerminalTests
         vm.ClearTerminal();
         Assert.Empty(vm.TerminalOutput);
     }
+
+    [Fact]
+    public void TuiKeyTranslator_ControlKeys_MapsAllControlCodesCorrectly()
+    {
+        Assert.Equal("\x03", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey('C'));
+        Assert.Equal("\x18", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey('X'));
+        Assert.Equal("\x0F", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey('O'));
+        Assert.Equal("\x1A", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey('Z'));
+        Assert.Equal("\x04", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey('D'));
+        Assert.Equal("\x01", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey('a'));
+    }
+
+    [Fact]
+    public void TuiKeyTranslator_SpecialKeys_MapsVt100Sequences()
+    {
+        Assert.Equal("\x1b[A", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Up));
+        Assert.Equal("\x1b[B", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Down));
+        Assert.Equal("\x1b[D", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Left));
+        Assert.Equal("\x1b[C", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Right));
+        Assert.Equal("\x1b", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Escape));
+        Assert.Equal("\t", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Tab));
+        Assert.Equal("\r", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Enter));
+    }
+
+    [Fact]
+    public void TerminalToolViewModel_TuiModeToggle_UpdatesStateAndVisualProperties()
+    {
+        var vm = new TerminalToolViewModel();
+        Assert.False(vm.IsTuiMode);
+        Assert.Equal("🎮 TUI: OFF", vm.TuiModeButtonText);
+
+        vm.ToggleTuiMode();
+        Assert.True(vm.IsTuiMode);
+        Assert.True(vm.SelectedSession!.IsTuiMode);
+        Assert.Equal("🎮 TUI: ON", vm.TuiModeButtonText);
+
+        vm.ToggleTuiMode();
+        Assert.False(vm.IsTuiMode);
+        Assert.Equal("🎮 TUI: OFF", vm.TuiModeButtonText);
+    }
 }

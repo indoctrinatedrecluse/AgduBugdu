@@ -77,7 +77,11 @@ public record GitBranch(
     string? Upstream = null,
     string? CommitHash = null,
     string? CommitSubject = null
-);
+)
+{
+    public string DisplayColor => IsCurrent ? "#38BDF8" : (IsRemote ? "#94A3B8" : "#E2E8F0");
+    public string DisplayFontWeight => IsCurrent ? "Bold" : "Normal";
+}
 
 public record GitTag(
     string Name,
@@ -125,6 +129,22 @@ public class DiffLine
     public int? OldLineNumber { get; set; }
     public int? NewLineNumber { get; set; }
     public string Text { get; set; } = string.Empty;
+
+    public string BackgroundColor => Kind switch
+    {
+        DiffLineKind.Addition => "#153526",
+        DiffLineKind.Deletion => "#3F1820",
+        DiffLineKind.HunkHeader => "#1E293B",
+        _ => "Transparent"
+    };
+
+    public string TextColor => Kind switch
+    {
+        DiffLineKind.Addition => "#4ADE80",
+        DiffLineKind.Deletion => "#F87171",
+        DiffLineKind.HunkHeader => "#38BDF8",
+        _ => "#E2E8F0"
+    };
 }
 
 public class DiffHunk

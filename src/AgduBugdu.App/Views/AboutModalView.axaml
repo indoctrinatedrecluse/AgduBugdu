@@ -5,30 +5,226 @@
              x:DataType="vm:AboutModalViewModel"
              IsVisible="{Binding IsVisible}">
     
-    <Grid Background="#80000000">
-        <Border Background="#1E1E1E"
-                BorderBrush="#333333"
+    <Grid Background="#B0000000">
+        <Border Background="#18181B"
+                BorderBrush="#27272A"
                 BorderThickness="1"
-                CornerRadius="8"
-                Width="400"
+                CornerRadius="12"
+                Width="540"
+                MaxHeight="680"
                 Padding="24"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-            <StackPanel Spacing="16">
-                <TextBlock Text="About AgduBugdu" FontSize="20" FontWeight="Bold" Foreground="White" />
-                
-                <TextBlock Text="{Binding Version, StringFormat='Version: {0}'}" Foreground="#CCCCCC" />
-                <TextBlock Text="Modern, extensible, cross-platform code and text editor." TextWrapping="Wrap" Foreground="#AAAAAA" />
-                <TextBlock Text="Built with Avalonia UI and AvalonEdit." TextWrapping="Wrap" Foreground="#AAAAAA" />
-                
-                <Button Content="Close"
-                        HorizontalAlignment="Right"
-                        Command="{Binding CloseCommand}"
-                        Padding="16,6"
-                        Background="#2563EB"
-                        Foreground="White"
-                        CornerRadius="4" />
-            </StackPanel>
+                VerticalAlignment="Center"
+                BoxShadow="0 10 30 0 #000000AA">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="16">
+                    <!-- Header Section with Logo, App Name, Version & License Badge -->
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Image Grid.Column="0"
+                               Source="/Assets/agdubugdu-logo.png"
+                               Width="52"
+                               Height="52"
+                               Margin="0,0,16,0"
+                               VerticalAlignment="Center" />
+                        
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding AppName}"
+                                           FontSize="22"
+                                           FontWeight="ExtraBold"
+                                           Foreground="#38BDF8"
+                                           VerticalAlignment="Center" />
+                                <Border Background="#27272A"
+                                        BorderBrush="#3F3F46"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8,2"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Version, StringFormat='v{0}'}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="#E4E4E7" />
+                                </Border>
+                            </StackPanel>
+                            
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Border Background="{Binding LicenseBadgeBackground}"
+                                        BorderBrush="{Binding LicenseBadgeBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="8,2"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding EntitlementBadge}"
+                                               FontSize="10"
+                                               FontWeight="Bold"
+                                               Foreground="{Binding LicenseBadgeForeground}" />
+                                </Border>
+                                <TextBlock Text="{Binding FormattedValidity}"
+                                           FontSize="11"
+                                           Foreground="#A1A1AA"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="A modern, high-performance, extensible code and text editor engineered for seamless developer workflows."
+                               TextWrapping="Wrap"
+                               FontSize="12"
+                               Foreground="#94A3B8" />
+
+                    <Separator Background="#27272A" Height="1" Margin="0,-2" />
+
+                    <!-- Author Section -->
+                    <Border Background="#0F172A"
+                            BorderBrush="#1E293B"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="14,12">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="ABOUT THE AUTHOR"
+                                       FontSize="10"
+                                       FontWeight="ExtraBold"
+                                       Foreground="#64748B"
+                                       LetterSpacing="0.8" />
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="👤"
+                                           FontSize="24"
+                                           Margin="0,0,12,0"
+                                           VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="{Binding AuthorName}"
+                                               FontSize="13"
+                                               FontWeight="Bold"
+                                               Foreground="#F8FAFC" />
+                                    <TextBlock Text="Creator and Lead Developer"
+                                               FontSize="11"
+                                               Foreground="#94A3B8" />
+                                </StackPanel>
+                            </Grid>
+                            
+                            <!-- Portfolio Link & Action Buttons -->
+                            <Border Background="#1E293B"
+                                    BorderBrush="#334155"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,6"
+                                    Margin="0,4,0,0">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Text="🌐"
+                                               FontSize="12"
+                                               Margin="0,0,8,0"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding PortfolioUrl}"
+                                               FontSize="11"
+                                               Foreground="#38BDF8"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <Button Grid.Column="2"
+                                            Content="{Binding CopyPortfolioStatus}"
+                                            Command="{Binding CopyPortfolioUrlCommand}"
+                                            FontSize="10"
+                                            Padding="8,3"
+                                            Margin="8,0,4,0"
+                                            Background="#334155"
+                                            Foreground="#E2E8F0"
+                                            CornerRadius="4" />
+                                    <Button Grid.Column="3"
+                                            Content="Open ↗"
+                                            Command="{Binding OpenPortfolioCommand}"
+                                            FontSize="10"
+                                            FontWeight="Bold"
+                                            Padding="10,3"
+                                            Background="#2563EB"
+                                            Foreground="White"
+                                            CornerRadius="4" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Software License Section -->
+                    <Border Background="#0F172A"
+                            BorderBrush="#1E293B"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="14,12">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="SOFTWARE LICENSE"
+                                               FontSize="10"
+                                               FontWeight="ExtraBold"
+                                               Foreground="#64748B"
+                                               LetterSpacing="0.8" />
+                                    <Border Background="#10B98122"
+                                            BorderBrush="#10B981"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="6,1">
+                                        <TextBlock Text="{Binding LicenseType}"
+                                                   FontSize="9"
+                                                   FontWeight="Bold"
+                                                   Foreground="#34D399" />
+                                    </Border>
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Content="{Binding CopyLicenseStatus}"
+                                        Command="{Binding CopyLicenseCommand}"
+                                        FontSize="10"
+                                        FontWeight="SemiBold"
+                                        Padding="10,3"
+                                        Background="#1E293B"
+                                        BorderBrush="#334155"
+                                        BorderThickness="1"
+                                        Foreground="#38BDF8"
+                                        CornerRadius="4" />
+                            </Grid>
+
+                            <!-- Scrollable Monospace License Text Container -->
+                            <Border Background="#090D16"
+                                    BorderBrush="#1E293B"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Height="110"
+                                    Padding="8">
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                    <TextBox Text="{Binding LicenseNotice}"
+                                             IsReadOnly="True"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                                             FontSize="10"
+                                             Foreground="#94A3B8"
+                                             TextWrapping="Wrap"
+                                             Padding="0"
+                                             AcceptsReturn="True" />
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Footer Controls -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Text="Built with Avalonia UI &amp; AvalonEdit • 2026"
+                                   FontSize="10"
+                                   Foreground="#52525B"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Content="Close"
+                                Command="{Binding CloseCommand}"
+                                Padding="20,6"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                Background="#2563EB"
+                                Foreground="White"
+                                CornerRadius="6" />
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>

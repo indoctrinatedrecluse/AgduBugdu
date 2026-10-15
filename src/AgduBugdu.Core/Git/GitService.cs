@@ -177,7 +177,7 @@ public class GitService : IGitService
 
     public async Task<IReadOnlyList<GitLogEntry>> GetRecentCommitsAsync(string workspaceRoot, int maxCount = 25)
     {
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, $"log -n {maxCount} --format=\"%H|%h|%an|%ad|%s\" --date=short");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, $"log -n {maxCount} --format=format:%H%x7c%h%x7c%an%x7c%ad%x7c%s --date=short");
         if (exitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             return Array.Empty<GitLogEntry>();
 
@@ -215,7 +215,10 @@ public class GitService : IGitService
             string trimmed = line.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
 
-            bool isCurrent = line.StartsWith("*");
+            // Filter out symbolic pointers like remotes/origin/HEAD -> origin/master
+            if (trimmed.Contains("->")) continue;
+
+            bool isCurrent = line.TrimStart().StartsWith("*");
             string branchData = trimmed.TrimStart('*').Trim();
             var tokens = branchData.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (tokens.Length == 0) continue;
@@ -372,7 +375,7 @@ public class GitService : IGitService
 
     public async Task<GitCommitDetail?> GetCommitDetailAsync(string workspaceRoot, string commitHash)
     {
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, $"show --numstat --format=\"%H|%h|%an|%ae|%ad|%s%n%b%n---AGDU_DIVIDER---\" {EscapeArg(commitHash)}");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, $"show --numstat --format=format:%H%x7c%h%x7c%an%x7c%ae%x7c%ad%x7c%s%n%b%n---AGDU_DIVIDER--- {EscapeArg(commitHash)}");
         if (exitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             return null;
 
