@@ -250,6 +250,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public string LicenseBadgeTooltip => $"{_licenseService.CurrentLicense.DisplayTitle} ({_licenseService.CurrentLicense.FormattedValidity})\nClick to manage software license";
 
+    public AgduBugdu.App.ViewModels.Tools.TerminalToolViewModel? TerminalTool => _dockFactory?.TerminalTool;
+
     [ObservableProperty]
     private string _statusMessage = "Ready";
 

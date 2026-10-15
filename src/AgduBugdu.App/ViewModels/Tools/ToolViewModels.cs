@@ -280,17 +280,7 @@ public partial class TerminalToolViewModel : Tool
     public async Task SendInterruptAsync(string? raw)
     {
         if (SelectedSession == null || string.IsNullOrEmpty(raw)) return;
-
-        string seq;
-        if (raw.StartsWith("ctrl+", StringComparison.OrdinalIgnoreCase) && raw.Length == 6)
-        {
-            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey(raw[5]) ?? raw;
-        }
-        else
-        {
-            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.Translate(raw, false) ?? raw;
-        }
-
+        string seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction(raw);
         await SelectedSession.SendRawInputAsync(seq);
     }
 
@@ -298,17 +288,7 @@ public partial class TerminalToolViewModel : Tool
     public async Task SendSplitInterruptAsync(string? raw)
     {
         if (SplitSession == null || string.IsNullOrEmpty(raw)) return;
-
-        string seq;
-        if (raw.StartsWith("ctrl+", StringComparison.OrdinalIgnoreCase) && raw.Length == 6)
-        {
-            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateControlKey(raw[5]) ?? raw;
-        }
-        else
-        {
-            seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.Translate(raw, false) ?? raw;
-        }
-
+        string seq = AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction(raw);
         await SplitSession.SendRawInputAsync(seq);
     }
 

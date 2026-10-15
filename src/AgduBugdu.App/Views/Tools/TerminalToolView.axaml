@@ -237,14 +237,15 @@
                         IsVisible="{Binding IsTuiMode}">
                     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                         <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                            <TextBlock Text="🎮 TUI INTERRUPTS:"
+                            <TextBlock Text="🎮 TUI MODE:"
                                        FontSize="10"
                                        FontWeight="ExtraBold"
                                        Foreground="#10B981"
                                        VerticalAlignment="Center"
                                        Margin="4,0,4,0" />
 
-                            <Button Content="^C Interrupt"
+                            <!-- Interrupts / Actions -->
+                            <Button Content="^C 🛑"
                                     ToolTip.Tip="Send SIGINT (Ctrl+C) - Cancel / Interrupt"
                                     FontSize="10"
                                     FontWeight="SemiBold"
@@ -301,80 +302,48 @@
 
                             <Border Width="1" Background="#374151" Height="14" Margin="2,0" />
 
-                            <Button Content="Esc"
-                                    ToolTip.Tip="Send Escape key"
-                                    FontSize="10"
-                                    Padding="6,2"
-                                    Background="#1F2937"
-                                    Foreground="#9CA3AF"
-                                    CornerRadius="3"
-                                    Command="{Binding SendInterruptCommand}"
-                                    CommandParameter="esc" />
+                            <!-- D-Pad Arrows -->
+                            <Button Content="▲" ToolTip.Tip="Up Arrow" FontSize="11" FontWeight="Bold" Padding="7,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="up" />
+                            <Button Content="▼" ToolTip.Tip="Down Arrow" FontSize="11" FontWeight="Bold" Padding="7,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="down" />
+                            <Button Content="◄" ToolTip.Tip="Left Arrow" FontSize="11" FontWeight="Bold" Padding="7,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="left" />
+                            <Button Content="►" ToolTip.Tip="Right Arrow" FontSize="11" FontWeight="Bold" Padding="7,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="right" />
 
-                            <Button Content="Tab"
-                                    ToolTip.Tip="Send Tab key"
-                                    FontSize="10"
-                                    Padding="6,2"
-                                    Background="#1F2937"
-                                    Foreground="#9CA3AF"
-                                    CornerRadius="3"
-                                    Command="{Binding SendInterruptCommand}"
-                                    CommandParameter="tab" />
+                            <Border Width="1" Background="#374151" Height="14" Margin="2,0" />
 
-                            <Button Content="↑"
-                                    ToolTip.Tip="Send Up Arrow key"
-                                    FontSize="11"
-                                    FontWeight="Bold"
-                                    Padding="8,2"
-                                    Background="#1F2937"
-                                    Foreground="#38BDF8"
-                                    CornerRadius="3"
-                                    Command="{Binding SendInterruptCommand}"
-                                    CommandParameter="up" />
+                            <!-- Nav keys -->
+                            <Button Content="PgUp" ToolTip.Tip="Page Up" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="pgup" />
+                            <Button Content="PgDn" ToolTip.Tip="Page Down" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="pgdn" />
+                            <Button Content="Home" ToolTip.Tip="Home" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="home" />
+                            <Button Content="End" ToolTip.Tip="End" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="end" />
 
-                            <Button Content="↓"
-                                    ToolTip.Tip="Send Down Arrow key"
-                                    FontSize="11"
-                                    FontWeight="Bold"
-                                    Padding="8,2"
-                                    Background="#1F2937"
-                                    Foreground="#38BDF8"
-                                    CornerRadius="3"
-                                    Command="{Binding SendInterruptCommand}"
-                                    CommandParameter="down" />
+                            <Border Width="1" Background="#374151" Height="14" Margin="2,0" />
 
-                            <Button Content="←"
-                                    ToolTip.Tip="Send Left Arrow key"
-                                    FontSize="11"
-                                    FontWeight="Bold"
-                                    Padding="8,2"
-                                    Background="#1F2937"
-                                    Foreground="#38BDF8"
-                                    CornerRadius="3"
-                                    Command="{Binding SendInterruptCommand}"
-                                    CommandParameter="left" />
+                            <!-- WASD Gaming/Nav -->
+                            <Button Content="W" ToolTip.Tip="Send 'W'" FontSize="10" FontWeight="SemiBold" Padding="6,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="w" />
+                            <Button Content="A" ToolTip.Tip="Send 'A'" FontSize="10" FontWeight="SemiBold" Padding="6,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="a" />
+                            <Button Content="S" ToolTip.Tip="Send 'S'" FontSize="10" FontWeight="SemiBold" Padding="6,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="s" />
+                            <Button Content="D" ToolTip.Tip="Send 'D'" FontSize="10" FontWeight="SemiBold" Padding="6,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="d" />
 
-                            <Button Content="→"
-                                    ToolTip.Tip="Send Right Arrow key"
-                                    FontSize="11"
-                                    FontWeight="Bold"
-                                    Padding="8,2"
-                                    Background="#1F2937"
-                                    Foreground="#38BDF8"
-                                    CornerRadius="3"
-                                    Command="{Binding SendInterruptCommand}"
-                                    CommandParameter="right" />
+                            <Border Width="1" Background="#374151" Height="14" Margin="2,0" />
 
-                            <Button Content="↵ Enter"
-                                    ToolTip.Tip="Send Enter key"
-                                    FontSize="10"
-                                    FontWeight="Bold"
-                                    Padding="8,2"
-                                    Background="#1E3A8A"
-                                    Foreground="#93C5FD"
-                                    CornerRadius="3"
-                                    Command="{Binding SendInterruptCommand}"
-                                    CommandParameter="enter" />
+                            <!-- TUI App Controls (ir ntop, ir pmon, htop, top) -->
+                            <Button Content="C (CPU)" ToolTip.Tip="Send 'C' (Sort CPU)" FontSize="10" Padding="5,2" Background="#1E293B" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="c" />
+                            <Button Content="M (Mem)" ToolTip.Tip="Send 'M' (Sort Memory)" FontSize="10" Padding="5,2" Background="#1E293B" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="m" />
+                            <Button Content="N (Name)" ToolTip.Tip="Send 'N' (Sort Name)" FontSize="10" Padding="5,2" Background="#1E293B" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="n" />
+                            <Button Content="P (PID)" ToolTip.Tip="Send 'P' (Sort PID)" FontSize="10" Padding="5,2" Background="#1E293B" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="p" />
+                            <Button Content="K (Kill)" ToolTip.Tip="Send 'K' (Kill Process)" FontSize="10" Padding="5,2" Background="#1E293B" Foreground="#F87171" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="k" />
+                            <Button Content="Y (Yes)" ToolTip.Tip="Send 'Y' (Confirm Yes)" FontSize="10" Padding="5,2" Background="#1E293B" Foreground="#4ADE80" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="y" />
+                            <Button Content="R" ToolTip.Tip="Send 'R' (Refresh / Redraw)" FontSize="10" Padding="6,2" Background="#1E293B" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="r" />
+                            <Button Content="Q (Quit)" ToolTip.Tip="Send 'Q' (Quit TUI application)" FontSize="10" FontWeight="Bold" Padding="6,2" Background="#450A0A" Foreground="#FCA5A5" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="q" />
+
+                            <Border Width="1" Background="#374151" Height="14" Margin="2,0" />
+
+                            <!-- Action Keys -->
+                            <Button Content="Enter ↵" ToolTip.Tip="Send Enter key" FontSize="10" FontWeight="Bold" Padding="8,2" Background="#1E3A8A" Foreground="#93C5FD" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="enter" />
+                            <Button Content="Space ␣" ToolTip.Tip="Send Space key" FontSize="10" Padding="7,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="space" />
+                            <Button Content="Esc" ToolTip.Tip="Send Escape key" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="esc" />
+                            <Button Content="Tab ⇥" ToolTip.Tip="Send Tab key" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="tab" />
+                            <Button Content="Bksp ⌫" ToolTip.Tip="Send Backspace key" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="backspace" />
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
@@ -437,13 +406,20 @@
                             IsVisible="{Binding IsTuiMode}">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                <Button Content="^C" ToolTip.Tip="Ctrl+C" FontSize="10" Padding="5,2" Background="#DC2626" Foreground="White" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="ctrl+c" />
+                                <Button Content="^C 🛑" ToolTip.Tip="Ctrl+C" FontSize="10" Padding="5,2" Background="#DC2626" Foreground="White" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="ctrl+c" />
                                 <Button Content="^X" ToolTip.Tip="Ctrl+X (Exit)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="ctrl+x" />
                                 <Button Content="^O" ToolTip.Tip="Ctrl+O (Save)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="ctrl+o" />
                                 <Button Content="Esc" ToolTip.Tip="Escape" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="esc" />
                                 <Button Content="Tab" ToolTip.Tip="Tab" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="tab" />
-                                <Button Content="↑" ToolTip.Tip="Up" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="up" />
-                                <Button Content="↓" ToolTip.Tip="Down" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="down" />
+                                <Button Content="▲" ToolTip.Tip="Up" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="up" />
+                                <Button Content="▼" ToolTip.Tip="Down" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="down" />
+                                <Button Content="◄" ToolTip.Tip="Left" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="left" />
+                                <Button Content="►" ToolTip.Tip="Right" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="right" />
+                                <Button Content="W" ToolTip.Tip="W" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="w" />
+                                <Button Content="A" ToolTip.Tip="A" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="a" />
+                                <Button Content="S" ToolTip.Tip="S" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="s" />
+                                <Button Content="D" ToolTip.Tip="D" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="d" />
+                                <Button Content="Q (Quit)" ToolTip.Tip="Quit" FontSize="10" Padding="5,2" Background="#450A0A" Foreground="#FCA5A5" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="q" />
                                 <Button Content="↵" ToolTip.Tip="Enter" FontSize="10" Padding="6,2" Background="#1E3A8A" Foreground="#93C5FD" CornerRadius="3" Command="{Binding SendInterruptCommand}" CommandParameter="enter" />
                             </StackPanel>
                         </ScrollViewer>
@@ -507,11 +483,20 @@
                             IsVisible="{Binding IsTuiMode}">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                <Button Content="^C" ToolTip.Tip="Ctrl+C" FontSize="10" Padding="5,2" Background="#DC2626" Foreground="White" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="ctrl+c" />
+                                <Button Content="^C 🛑" ToolTip.Tip="Ctrl+C" FontSize="10" Padding="5,2" Background="#DC2626" Foreground="White" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="ctrl+c" />
                                 <Button Content="^X" ToolTip.Tip="Ctrl+X (Exit)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="ctrl+x" />
+                                <Button Content="^O" ToolTip.Tip="Ctrl+O (Save)" FontSize="10" Padding="5,2" Background="#374151" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="ctrl+o" />
                                 <Button Content="Esc" ToolTip.Tip="Escape" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="esc" />
-                                <Button Content="↑" ToolTip.Tip="Up" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="up" />
-                                <Button Content="↓" ToolTip.Tip="Down" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="down" />
+                                <Button Content="Tab" ToolTip.Tip="Tab" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#9CA3AF" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="tab" />
+                                <Button Content="▲" ToolTip.Tip="Up" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="up" />
+                                <Button Content="▼" ToolTip.Tip="Down" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="down" />
+                                <Button Content="◄" ToolTip.Tip="Left" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="left" />
+                                <Button Content="►" ToolTip.Tip="Right" FontSize="10" Padding="6,2" Background="#1F2937" Foreground="#38BDF8" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="right" />
+                                <Button Content="W" ToolTip.Tip="W" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="w" />
+                                <Button Content="A" ToolTip.Tip="A" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="a" />
+                                <Button Content="S" ToolTip.Tip="S" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="s" />
+                                <Button Content="D" ToolTip.Tip="D" FontSize="10" Padding="5,2" Background="#1F2937" Foreground="#E5E7EB" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="d" />
+                                <Button Content="Q (Quit)" ToolTip.Tip="Quit" FontSize="10" Padding="5,2" Background="#450A0A" Foreground="#FCA5A5" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="q" />
                                 <Button Content="↵" ToolTip.Tip="Enter" FontSize="10" Padding="6,2" Background="#1E3A8A" Foreground="#93C5FD" CornerRadius="3" Command="{Binding SendSplitInterruptCommand}" CommandParameter="enter" />
                             </StackPanel>
                         </ScrollViewer>

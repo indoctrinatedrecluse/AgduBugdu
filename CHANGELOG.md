@@ -27,12 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added a styled, interactive license badge pill directly beside the "AgduBugdu" product brand in the header bar.
   - Implemented dynamic color schemes based on license tier (Admin: Gold aura, Dev: Neon blue/cyan, User: Emerald green, Trial: Slate) with click-to-manage shortcut opening the Licensing dialog.
   - Updated window title to include the license badge (`AgduBugdu v1.5.1 • [Icon Tier]`).
-- **🎮 Generalized Terminal TUI Framework & Interrupt System**:
-  - Added unbuffered raw stream transmission (`WriteRawAsync`) to `ITerminalSession` and `LocalTerminalSession` for zero-newline control characters and VT100 sequence delivery.
-  - Built generalized `TuiKeyTranslator` that mathematically maps `Ctrl+A` through `Ctrl+Z` to ASCII control characters (`\x01` through `\x1A`), and navigation keys to standard ANSI/VT100 escape sequences without any application-specific hardcoding.
-  - Added a `🎮 TUI Mode` toggle button in the terminal header with active status indicators.
-  - Integrated an interactive TUI Interrupt Bar featuring quick buttons for `^C Interrupt` (SIGINT), `^X Exit` (nano), `^O Save` (nano), `^Z Suspend`, `^D EOF`, `Esc`, `Tab`, arrow keys (`↑`, `↓`, `←`, `→`), and `↵ Enter`.
-  - Enabled direct terminal keyboard forwarding in TUI mode for full interactive navigation in `nano`, `ir ntop`, `ir edit`, `ir pmon`, `ir help`, `vim`, and other CLI tools.
+- **🎮 Generalized Terminal TUI Framework & Interrupt System (Ported from IndoctrinatedEdit)**:
+  - Replaced line-buffered process output reading with asynchronous unbuffered byte-stream reading (`ReadStreamAsync`) for real-time prompt/frame delivery without waiting for newlines.
+  - Implemented `TerminalScreenBuffer` engine with automatic alternate screen buffer detection (`\x1b[?1049h`, `\x1b[?47h`, `\x1b[?1047h`), saving normal scrollback on entry and restoring on exit (`\x1b[?1049l`).
+  - Added in-place frame clearing on `\x1b[2J` and cursor home `\x1b[H` to prevent infinite appending and screen stutter in refreshing TUIs (`ir pmon`, `ir ntop`, `ir edit`, `nano`, `htop`).
+  - Added ANSI SGR color stripping and carriage return (`\r`) line overwriting for clean text rendering.
+  - Expanded `TuiKeyTranslator` with complete `ResolveTuiAction` key mapping covering D-Pad, Navigation (`PgUp`, `PgDn`, `Home`, `End`), WASD, TUI App controls (`C (CPU)`, `M (Mem)`, `N (Name)`, `P (PID)`, `K (Kill)`, `Y (Yes)`, `R (Refresh)`, `Q (Quit)`), Control chords, and single-character passthroughs.
+  - Upgraded on-screen TUI control pad with dedicated D-Pad, Nav, WASD, App controls, and Action buttons in both single and split-terminal modes.
+  - Added Window-level accelerator tunneling in `MainWindow.axaml.cs` to prevent window shortcuts (like `Ctrl+O` open file, `Ctrl+S` save, `Ctrl+W` close tab) from stealing keystrokes when working in a TUI session.
   - Added universal `Ctrl+C` interrupt handling in both normal and TUI modes while preserving clipboard copy when text is selected.
 
 ---

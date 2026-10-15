@@ -176,4 +176,104 @@ public class TerminalTests
         Assert.False(vm.IsTuiMode);
         Assert.Equal("🎮 TUI: OFF", vm.TuiModeButtonText);
     }
+
+    [Fact]
+    public void TerminalScreenBuffer_NormalTextAndCarriageReturn_HandlesOverwritesCorrectly()
+    {
+        var buffer = new AgduBugdu.Infrastructure.Terminal.TerminalScreenBuffer();
+        buffer.Append("Downloading: [ 10% ]");
+        Assert.Equal("Downloading: [ 10% ]", buffer.GetText());
+
+        // Carriage return \r overwrites the current line
+        buffer.Append("\rDownloading: [ 50% ]");
+        Assert.Equal("Downloading: [ 50% ]", buffer.GetText());
+
+        buffer.Append(Environment.NewLine + "Finished!");
+        Assert.Contains("Downloading: [ 50% ]", buffer.GetText());
+        Assert.Contains("Finished!", buffer.GetText());
+    }
+
+    [Fact]
+    public void TerminalScreenBuffer_AlternateBuffer_EntersClearsAndRestoresNormalBuffer()
+    {
+        var buffer = new AgduBugdu.Infrastructure.Terminal.TerminalScreenBuffer();
+        bool? tuiEventState = null;
+        buffer.TuiStateChanged += (s, active) => tuiEventState = active;
+
+        // Normal output
+        buffer.Append("First Line" + Environment.NewLine + "Second Line");
+        Assert.False(buffer.InAltBuffer);
+
+        // Enter TUI alternate screen buffer (as emitted by nano, ir ntop, ir pmon, curses)
+        buffer.Append("\x1b[?1049h\x1b[H\x1b[32m[CPU: 12% Mem: 45%]\x1b[0m\n[Tasks: 180]");
+        Assert.True(buffer.InAltBuffer);
+        Assert.True(tuiEventState);
+        Assert.DoesNotContain("\x1b[32m", buffer.GetText());
+        Assert.Contains("[CPU: 12% Mem: 45%]", buffer.GetText());
+        Assert.Contains("[Tasks: 180]", buffer.GetText());
+        Assert.DoesNotContain("First Line", buffer.GetText()); // Normal buffer was preserved
+
+        // Next frame redraws in-place with clear screen \x1b[2J
+        buffer.Append("\x1b[2J\x1b[H[CPU: 18% Mem: 46%]\n[Tasks: 182]");
+        Assert.Contains("[CPU: 18% Mem: 46%]", buffer.GetText());
+        Assert.DoesNotContain("12%", buffer.GetText()); // Previous frame cleared in-place
+
+        // Exit TUI alternate screen buffer
+        buffer.Append("\x1b[?1049l");
+        Assert.False(buffer.InAltBuffer);
+        Assert.False(tuiEventState);
+        Assert.Contains("First Line", buffer.GetText()); // Normal scrollback restored!
+        Assert.Contains("Second Line", buffer.GetText());
+    }
+
+    [Fact]
+    public void TuiKeyTranslator_ResolveTuiAction_MapsAllKeysAndActions()
+    {
+        // Navigation
+        Assert.Equal("\x1b[A", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("up"));
+        Assert.Equal("\x1b[B", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("down"));
+        Assert.Equal("\x1b[D", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("left"));
+        Assert.Equal("\x1b[C", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("right"));
+        Assert.Equal("\x1b[H", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("home"));
+        Assert.Equal("\x1b[F", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("end"));
+        Assert.Equal("\x1b[5~", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("pgup"));
+        Assert.Equal("\x1b[6~", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("pgdn"));
+
+        // WASD
+        Assert.Equal("w", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("w"));
+        Assert.Equal("a", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("a"));
+        Assert.Equal("s", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("s"));
+        Assert.Equal("d", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("d"));
+
+        // App controls
+        Assert.Equal("c", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("c"));
+        Assert.Equal("m", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("m"));
+        Assert.Equal("n", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("n"));
+        Assert.Equal("p", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("p"));
+        Assert.Equal("k", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("k"));
+        Assert.Equal("y", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("y"));
+        Assert.Equal("r", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("r"));
+        Assert.Equal("q", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("q"));
+
+        // Control chords
+        Assert.Equal("\x03", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("ctrl-c"));
+        Assert.Equal("\x18", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("ctrl+x"));
+        Assert.Equal("\x0f", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("ctrl+o"));
+        Assert.Equal("\x1a", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("ctrl-z"));
+        Assert.Equal("\x04", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("ctrl+d"));
+        Assert.Equal("\x13", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("ctrl+s"));
+        Assert.Equal("\x17", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("ctrl+w"));
+
+        // Action keys
+        Assert.Equal("\r", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("enter"));
+        Assert.Equal(" ", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("space"));
+        Assert.Equal("\x1b", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("esc"));
+        Assert.Equal("\t", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("tab"));
+        Assert.Equal("\x7f", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("backspace"));
+        Assert.Equal("\x1b[Z", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("shift+tab"));
+
+        // Arbitrary single character passthrough
+        Assert.Equal("5", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("5"));
+        Assert.Equal("?", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("?"));
+    }
 }

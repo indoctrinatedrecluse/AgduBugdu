@@ -59,7 +59,7 @@ public partial class TerminalToolView : UserControl
 
             OutputBox.TextInput += (s, e) =>
             {
-                if (DataContext is TerminalToolViewModel vm && vm.IsTuiMode && vm.SelectedSession != null && !string.IsNullOrEmpty(e.Text))
+                if (DataContext is TerminalToolViewModel vm && (vm.IsTuiMode || (vm.SelectedSession?.IsTuiMode ?? false)) && vm.SelectedSession != null && !string.IsNullOrEmpty(e.Text))
                 {
                     _ = vm.SelectedSession.SendRawInputAsync(e.Text);
                     e.Handled = true;
@@ -93,12 +93,19 @@ public partial class TerminalToolView : UserControl
         }
 
         // If TUI mode is not active, let default text editing/navigation proceed
-        if (!vm.IsTuiMode)
+        if (!vm.IsTuiMode && !session.IsTuiMode)
         {
             return false;
         }
 
-        // 2. Generalized TUI control character handling: Ctrl+A through Ctrl+Z
+        // 2. Shift+Tab backtab handling
+        if (e.Key == Key.Tab && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            _ = session.SendRawInputAsync("\x1b[Z");
+            return true;
+        }
+
+        // 3. Generalized TUI control character handling: Ctrl+A through Ctrl+Z
         if (isCtrl)
         {
             if (e.Key >= Key.A && e.Key <= Key.Z)
@@ -113,7 +120,7 @@ public partial class TerminalToolView : UserControl
             }
         }
 
-        // 3. Generalized TUI navigation and editing sequences (VT100)
+        // 4. Generalized TUI navigation and editing sequences (VT100)
         var specialSeq = e.Key switch
         {
             Key.Up => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Up),
@@ -128,6 +135,9 @@ public partial class TerminalToolView : UserControl
             Key.Delete => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Delete),
             Key.Escape => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Escape),
             Key.Tab => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Tab),
+            Key.Back => TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Backspace),
+            Key.Enter or Key.Return => isOutputBox ? TuiKeyTranslator.TranslateSpecialKey(TuiSpecialKey.Enter) : null,
+            Key.Space => isOutputBox ? " " : null,
             _ => null
         };
 

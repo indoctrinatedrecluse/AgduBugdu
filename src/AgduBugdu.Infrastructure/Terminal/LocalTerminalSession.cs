@@ -42,6 +42,9 @@ public class LocalTerminalSession : ITerminalSession
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardInputEncoding = System.Text.Encoding.UTF8,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true,
             WorkingDirectory = string.IsNullOrEmpty(workingDirectory) || !Directory.Exists(workingDirectory)
@@ -51,22 +54,6 @@ public class LocalTerminalSession : ITerminalSession
 
         _process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
 
-        _process.OutputDataReceived += (s, e) =>
-        {
-            if (e.Data != null)
-            {
-                OutputReceived?.Invoke(this, e.Data + Environment.NewLine);
-            }
-        };
-
-        _process.ErrorDataReceived += (s, e) =>
-        {
-            if (e.Data != null)
-            {
-                OutputReceived?.Invoke(this, e.Data + Environment.NewLine);
-            }
-        };
-
         _process.Exited += (s, e) =>
         {
             var code = _process?.ExitCode ?? 0;
@@ -75,10 +62,34 @@ public class LocalTerminalSession : ITerminalSession
 
         _process.Start();
         _inputWriter = _process.StandardInput;
-        _process.BeginOutputReadLine();
-        _process.BeginErrorReadLine();
+        _inputWriter.AutoFlush = true;
+
+        _ = ReadStreamAsync(_process.StandardOutput.BaseStream);
+        _ = ReadStreamAsync(_process.StandardError.BaseStream);
 
         OutputReceived?.Invoke(this, $"[Terminal Started: {shell} in {startInfo.WorkingDirectory}]{Environment.NewLine}");
+    }
+
+    private async Task ReadStreamAsync(Stream stream)
+    {
+        var buffer = new byte[4096];
+        while (IsRunning)
+        {
+            int count = 0;
+            try
+            {
+                count = await stream.ReadAsync(buffer, 0, buffer.Length);
+            }
+            catch
+            {
+                break;
+            }
+
+            if (count <= 0) break;
+
+            string text = System.Text.Encoding.UTF8.GetString(buffer, 0, count);
+            OutputReceived?.Invoke(this, text);
+        }
     }
 
     public async Task WriteInputAsync(string input)

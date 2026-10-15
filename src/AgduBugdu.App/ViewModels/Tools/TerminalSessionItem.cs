@@ -56,6 +56,10 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isTuiMode;
 
+    private readonly TerminalScreenBuffer _screenBuffer = new();
+
+    public TerminalScreenBuffer ScreenBuffer => _screenBuffer;
+
     public TerminalSessionItem(
         string title,
         ShellType shellType = ShellType.PowerShell,
@@ -71,20 +75,32 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
         _workingDirectory = workingDirectory ?? Environment.CurrentDirectory;
         _icon = ResolveIcon(shellType);
 
-        _session = session ?? new LocalTerminalSession();
-        _session.OutputReceived += (s, text) =>
+        _screenBuffer.TuiStateChanged += (s, active) =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                TerminalOutput += text;
+                IsTuiMode = active;
+            });
+        };
+
+        _session = session ?? new LocalTerminalSession();
+        _session.OutputReceived += (s, text) =>
+        {
+            _screenBuffer.Append(text);
+            var formatted = _screenBuffer.GetText();
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                TerminalOutput = formatted;
             });
         };
         _session.Exited += (s, exitCode) =>
         {
+            _screenBuffer.Append($"{Environment.NewLine}[Process exited with code {exitCode}.]{Environment.NewLine}");
+            var formatted = _screenBuffer.GetText();
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 IsRunning = false;
-                TerminalOutput += $"{Environment.NewLine}[Process exited with code {exitCode}.]{Environment.NewLine}";
+                TerminalOutput = formatted;
             });
         };
 
@@ -101,6 +117,7 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
     public void Restart(string? workingDirectory = null)
     {
         _session.Stop();
+        _screenBuffer.Clear();
         TerminalOutput = string.Empty;
         if (!string.IsNullOrEmpty(workingDirectory))
         {
@@ -117,13 +134,15 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
 
         var cmd = CommandInput.Trim();
         CommandInput = string.Empty;
-        TerminalOutput += $"> {cmd}{Environment.NewLine}";
+        _screenBuffer.Append($"> {cmd}{Environment.NewLine}");
+        TerminalOutput = _screenBuffer.GetText();
 
         if (string.Equals(cmd, "exit", StringComparison.OrdinalIgnoreCase))
         {
             _session.Stop();
             IsRunning = false;
-            TerminalOutput += $"[Terminal session closed.]{Environment.NewLine}";
+            _screenBuffer.Append($"[Terminal session closed.]{Environment.NewLine}");
+            TerminalOutput = _screenBuffer.GetText();
             return;
         }
 
@@ -155,6 +174,7 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
     [RelayCommand]
     public void Clear()
     {
+        _screenBuffer.Clear();
         TerminalOutput = string.Empty;
     }
 

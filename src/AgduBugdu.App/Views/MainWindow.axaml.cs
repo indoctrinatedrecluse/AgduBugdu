@@ -2,8 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Input;
 using AgduBugdu.App.ViewModels;
+using AgduBugdu.App.Views.Tools;
+using AgduBugdu.Infrastructure.Terminal;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 
 namespace AgduBugdu.App.Views;
 
@@ -12,8 +17,71 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AddHandler(KeyDownEvent, OnWindowPreviewKeyDown, RoutingStrategies.Tunnel);
         Closed += (s, e) => { if (DataContext is IDisposable d) d.Dispose(); };
         DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnWindowPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        var terminalTool = vm.TerminalTool;
+        if (terminalTool == null) return;
+
+        var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Visual;
+        if (focused == null) return;
+
+        bool inTerminal = focused is TerminalToolView || focused.FindAncestorOfType<TerminalToolView>() != null;
+        if (!inTerminal) return;
+
+        var session = terminalTool.SelectedSession;
+        if (session == null) return;
+
+        bool isCtrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+
+        // 1. In TUI mode, bypass ALL global window accelerators and dispatch directly to terminal
+        if (terminalTool.IsTuiMode || session.IsTuiMode)
+        {
+            if (isCtrl && e.Key >= Key.A && e.Key <= Key.Z)
+            {
+                // Preserve copy if text is selected
+                if (e.Key == Key.C && focused is TextBox tb && !string.IsNullOrEmpty(tb.SelectedText))
+                {
+                    return;
+                }
+
+                char c = (char)('A' + (e.Key - Key.A));
+                var seq = TuiKeyTranslator.TranslateControlKey(c);
+                if (seq != null)
+                {
+                    _ = session.SendRawInputAsync(seq);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            if (e.Key == Key.Tab)
+            {
+                string seq = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? "\x1b[Z" : "\t";
+                _ = session.SendRawInputAsync(seq);
+                e.Handled = true;
+                return;
+            }
+        }
+        else
+        {
+            // In standard mode, Ctrl+C sends interrupt when no text is selected
+            if (isCtrl && e.Key == Key.C)
+            {
+                if (focused is TextBox tb && !string.IsNullOrEmpty(tb.SelectedText))
+                {
+                    return;
+                }
+
+                _ = session.SendRawInputAsync("\x03");
+                e.Handled = true;
+            }
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
