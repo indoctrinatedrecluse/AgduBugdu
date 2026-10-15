@@ -1,5 +1,7 @@
 using System.Linq;
+using Avalonia.Input;
 using AgduBugdu.App.ViewModels.Tools;
+using AgduBugdu.App.Views.Tools;
 using Xunit;
 
 namespace AgduBugdu.Tests;
@@ -275,5 +277,60 @@ public class TerminalTests
         // Arbitrary single character passthrough
         Assert.Equal("5", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("5"));
         Assert.Equal("?", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.ResolveTuiAction("?"));
+    }
+
+    [Fact]
+    public void TerminalScreenBuffer_CursorPositioning_PlacesTextAtAbsolutePosition()
+    {
+        var buffer = new AgduBugdu.Infrastructure.Terminal.TerminalScreenBuffer();
+        buffer.Append("\x1b[?1049h");
+        buffer.Append("\x1b[3;5HABC");
+        buffer.Append("\x1b[1;1Htop");
+
+        Assert.Equal("top\n\n    ABC", buffer.GetText());
+    }
+
+    [Fact]
+    public void TerminalScreenBuffer_EraseLineAndDisplay_RemovesContent()
+    {
+        var buffer = new AgduBugdu.Infrastructure.Terminal.TerminalScreenBuffer();
+        buffer.Append("\x1b[?1049h");
+        buffer.Append("hello world");
+        buffer.Append("\r\x1b[K"); // erase from column 0 to end of line
+        Assert.Equal(string.Empty, buffer.GetText());
+
+        buffer.Append("abc");
+        buffer.Append("\x1b[2K"); // erase whole line (cursor stays at column 3)
+        Assert.Equal(string.Empty, buffer.GetText());
+
+        buffer.Append("\x1b[1;1H"); // home
+        buffer.Append("x");
+        Assert.Equal("x", buffer.GetText());
+    }
+
+    [Fact]
+    public void TerminalScreenBuffer_CursorMovementArrowCodes_OverwriteInPlace()
+    {
+        var buffer = new AgduBugdu.Infrastructure.Terminal.TerminalScreenBuffer();
+        buffer.Append("\x1b[?1049h");
+        buffer.Append("AB");
+        buffer.Append("\x1b[D"); // left
+        buffer.Append("X");     // overwrite 'B'
+        Assert.Equal("AX", buffer.GetText());
+    }
+
+    [Fact]
+    public void TerminalKeyMapper_ToRawSequence_MapsLettersDigitsCtrlAndSpecialKeys()
+    {
+        Assert.Equal("\x03", TerminalKeyMapper.ToRawSequence(Key.C, KeyModifiers.Control));
+        Assert.Equal("\x18", TerminalKeyMapper.ToRawSequence(Key.X, KeyModifiers.Control));
+        Assert.Equal("w", TerminalKeyMapper.ToRawSequence(Key.W, KeyModifiers.None));
+        Assert.Equal("W", TerminalKeyMapper.ToRawSequence(Key.W, KeyModifiers.Shift));
+        Assert.Equal("q", TerminalKeyMapper.ToRawSequence(Key.Q, KeyModifiers.None));
+        Assert.Equal("5", TerminalKeyMapper.ToRawSequence(Key.D5, KeyModifiers.None));
+        Assert.Equal("\x1b[A", TerminalKeyMapper.ToRawSequence(Key.Up, KeyModifiers.None));
+        Assert.Equal("\r", TerminalKeyMapper.ToRawSequence(Key.Enter, KeyModifiers.None));
+        Assert.Equal("\x1b", TerminalKeyMapper.ToRawSequence(Key.Escape, KeyModifiers.None));
+        Assert.Equal(" ", TerminalKeyMapper.ToRawSequence(Key.Space, KeyModifiers.None));
     }
 }

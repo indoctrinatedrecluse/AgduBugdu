@@ -236,7 +236,7 @@
                          Foreground="#CCCCCC"
                          BorderThickness="0"
                          AcceptsReturn="True"
-                         TextWrapping="Wrap" />
+                         TextWrapping="NoWrap" />
 
                 <!-- TUI Control & Interrupt Strip -->
                 <Border Grid.Row="1"
@@ -360,6 +360,7 @@
 
                 <!-- Standard Command Input Bar -->
                 <Border Grid.Row="2"
+                        IsVisible="{Binding !IsTuiMode}"
                         Background="#181818"
                         BorderBrush="#333333"
                         BorderThickness="0,1,0,0"
@@ -398,6 +399,7 @@
                 <!-- Left / Primary Pane -->
                 <Grid Grid.Column="0" RowDefinitions="*,Auto,Auto">
                     <TextBox Grid.Row="0"
+                             x:Name="SplitOutputBox1"
                              Text="{Binding SelectedSession.TerminalOutput}"
                              IsReadOnly="True"
                              FontFamily="Cascadia Code, Consolas, Courier New, monospace"
@@ -406,7 +408,7 @@
                              Foreground="#CCCCCC"
                              BorderThickness="0"
                              AcceptsReturn="True"
-                             TextWrapping="Wrap" />
+                             TextWrapping="NoWrap" />
                     <!-- TUI Control & Interrupt Strip Left -->
                     <Border Grid.Row="1"
                             Background="#111827"
@@ -435,6 +437,7 @@
                         </ScrollViewer>
                     </Border>
                     <Border Grid.Row="2"
+                            IsVisible="{Binding !IsTuiMode}"
                             Background="#181818"
                             BorderBrush="#333333"
                             BorderThickness="0,1,0,0"
@@ -475,6 +478,7 @@
                 <!-- Right / Secondary Pane -->
                 <Grid Grid.Column="2" RowDefinitions="*,Auto,Auto">
                     <TextBox Grid.Row="0"
+                             x:Name="SplitOutputBox2"
                              Text="{Binding SplitSession.TerminalOutput}"
                              IsReadOnly="True"
                              FontFamily="Cascadia Code, Consolas, Courier New, monospace"
@@ -483,7 +487,7 @@
                              Foreground="#CCCCCC"
                              BorderThickness="0"
                              AcceptsReturn="True"
-                             TextWrapping="Wrap" />
+                             TextWrapping="NoWrap" />
                     <!-- TUI Control & Interrupt Strip Right -->
                     <Border Grid.Row="1"
                             Background="#111827"
@@ -512,6 +516,7 @@
                         </ScrollViewer>
                     </Border>
                     <Border Grid.Row="2"
+                            IsVisible="{Binding !IsTuiMode}"
                             Background="#181818"
                             BorderBrush="#333333"
                             BorderThickness="0,1,0,0"
