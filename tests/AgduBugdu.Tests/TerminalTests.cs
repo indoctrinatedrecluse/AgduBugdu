@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text;
 using Avalonia.Input;
 using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.App.Views.Tools;
@@ -332,5 +333,42 @@ public class TerminalTests
         Assert.Equal("\r", TerminalKeyMapper.ToRawSequence(Key.Enter, KeyModifiers.None));
         Assert.Equal("\x1b", TerminalKeyMapper.ToRawSequence(Key.Escape, KeyModifiers.None));
         Assert.Equal(" ", TerminalKeyMapper.ToRawSequence(Key.Space, KeyModifiers.None));
+    }
+
+    [Fact]
+    public async Task WindowsPseudoConsole_ExecutesCommandAndReadsOutput()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        using var pty = new AgduBugdu.Infrastructure.Terminal.WindowsPseudoConsole();
+        var exited = new TaskCompletionSource<int>();
+        pty.Exited += (s, c) => exited.TrySetResult(c);
+
+        pty.Start("cmd.exe", Environment.CurrentDirectory, 120, 30);
+
+        var output = new StringBuilder();
+        var readTask = Task.Run(() =>
+        {
+            var buf = new byte[4096];
+            int n;
+            while ((n = pty.OutputStream.Read(buf, 0, buf.Length)) > 0)
+            {
+                output.Append(Encoding.UTF8.GetString(buf, 0, n));
+            }
+        });
+
+        // Give the shell a moment to initialize, then drive it interactively.
+        await Task.Delay(500);
+        await pty.WriteAsync("echo CONPTY_OK\r");
+
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!output.ToString().Contains("CONPTY_OK") && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50);
+        }
+
+        Assert.True(
+            output.ToString().Contains("CONPTY_OK"),
+            $"outputLen={output.Length}, hex={Convert.ToHexString(Encoding.UTF8.GetBytes(output.ToString()))}");
     }
 }

@@ -134,8 +134,13 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
 
         var cmd = CommandInput.Trim();
         CommandInput = string.Empty;
-        _screenBuffer.Append($"> {cmd}{Environment.NewLine}");
-        TerminalOutput = _screenBuffer.GetText();
+        if (!_session.EchoesInput)
+        {
+            // With a real PTY the shell echoes the command itself; with redirected pipes
+            // there is no echo, so mirror the command into the visible buffer.
+            _screenBuffer.Append($"> {cmd}{Environment.NewLine}");
+            TerminalOutput = _screenBuffer.GetText();
+        }
 
         if (string.Equals(cmd, "exit", StringComparison.OrdinalIgnoreCase))
         {
