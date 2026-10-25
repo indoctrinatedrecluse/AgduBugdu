@@ -56,6 +56,11 @@
                   Background="Transparent"
                   IsVisible="{Binding HasWorkspace}"
                   Margin="4">
+            <TreeView.Styles>
+                <Style Selector="TreeViewItem" x:DataType="models:FileSystemItem">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                </Style>
+            </TreeView.Styles>
             <TreeView.ItemTemplate>
                 <TreeDataTemplate DataType="models:FileSystemItem" ItemsSource="{Binding Children}">
                     <StackPanel Orientation="Horizontal" Spacing="6" Margin="2,1">
@@ -78,7 +83,7 @@
                                           CommandParameter="{Binding}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>
-                        <!-- Icon (dY"? or dY",) -->
+                        <!-- Icon (📁 or 📄) -->
                         <TextBlock Text="📁"
                                    FontSize="12"
                                    VerticalAlignment="Center"

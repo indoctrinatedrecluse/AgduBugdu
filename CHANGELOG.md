@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 🚀 [1.5.3] - 2026-10-15
 
+### 🔧 Fixed
+- **📁 File Explorer Folder & Subfolder Expansion**: Fixed issue where expanding folders or subfolders in the workspace file tree got stuck showing "Loading...". Added two-way `TreeViewItem.IsExpanded` data binding and direct property change subscription so expanding nodes immediately loads directories and files, cleans up placeholder nodes, and displays contents without requiring collapse/re-open.
+
 ### ✨ Improved
 - **🎮 Interactive TUI Terminal Renderer**: Rebuilt the terminal output renderer as a full VT100/ANSI grid emulator with cursor positioning/movement, screen and line erasing, alternate-screen buffer switching, and scrollback, so full-screen TUI commands redraw correctly in place.
 - **⌨️ Direct TUI Key Routing**: All keystrokes (WASD navigation, C/Q interrupts, arrows, Escape, Ctrl chords) now route directly to the shell in TUI mode, with auto-focus of the terminal output surface and the command bar hidden while a TUI is active.

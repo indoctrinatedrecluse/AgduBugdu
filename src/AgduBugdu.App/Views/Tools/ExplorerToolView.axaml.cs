@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using AgduBugdu.App.Models;
@@ -7,6 +8,21 @@ namespace AgduBugdu.App.Views.Tools;
 
 public partial class ExplorerToolView : UserControl
 {
+    static ExplorerToolView()
+    {
+        TreeViewItem.IsExpandedProperty.Changed.Subscribe(e =>
+        {
+            if (e.Sender is TreeViewItem tvi &&
+                e.NewValue.GetValueOrDefault() &&
+                tvi.DataContext is FileSystemItem item &&
+                item.IsDirectory)
+            {
+                item.IsExpanded = true;
+                item.LoadChildren();
+            }
+        });
+    }
+
     public ExplorerToolView()
     {
         InitializeComponent();

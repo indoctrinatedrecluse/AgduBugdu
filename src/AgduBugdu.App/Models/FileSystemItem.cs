@@ -35,7 +35,7 @@ public partial class FileSystemItem : ObservableObject
             foreach (var dir in dirInfo.GetDirectories())
             {
                 // Skip hidden/system directories like .git, obj, bin
-                if (dir.Attributes.HasFlag(FileAttributes.Hidden))
+                if (dir.Attributes.HasFlag(FileAttributes.Hidden) || dir.Name.Equals(".git", StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 var item = new FileSystemItem
@@ -61,12 +61,15 @@ public partial class FileSystemItem : ObservableObject
                     IsDirectory = false
                 });
             }
-
-            _hasLoadedChildren = true;
         }
         catch (Exception)
         {
             // Handle permission/access denied gracefully
+            Children.Clear();
+        }
+        finally
+        {
+            _hasLoadedChildren = true;
         }
     }
 
