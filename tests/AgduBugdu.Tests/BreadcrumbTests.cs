@@ -122,4 +122,24 @@ public class SampleService
         Assert.Equal("Container", scope.Title);
         Assert.Equal(1, scope.LineNumber);
     }
+
+    [Fact]
+    public void ResolveBreadcrumbs_AfterClosingBrace_DoesNotIncludeClosedMethod()
+    {
+        string code = @"public class Container
+{
+    public void Run() 
+    {
+        int x = 1;
+    }
+
+    // Line 8 is outside Run
+}";
+        var items = BreadcrumbResolver.ResolveBreadcrumbs("Test.cs", code, 8);
+
+        // Should include file (Test.cs) and class (Container), but NOT Run()
+        Assert.Equal(2, items.Count);
+        Assert.Equal("Test.cs", items[0].Name);
+        Assert.Equal("Container", items[1].Name);
+    }
 }

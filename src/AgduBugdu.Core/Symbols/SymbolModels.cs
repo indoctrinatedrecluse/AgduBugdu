@@ -26,6 +26,7 @@ public class CodeSymbol
     public string Signature { get; set; } = string.Empty;
     public SymbolKind Kind { get; set; }
     public int LineNumber { get; set; }
+    public int EndLineNumber { get; set; } = int.MaxValue;
     public int Column { get; set; } = 1;
     public string? LanguageId { get; set; }
 

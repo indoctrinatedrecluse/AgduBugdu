@@ -30,7 +30,11 @@ public static class CodeLensEngine
     /// <summary>
     /// Computes CodeLens entries for a document's source text.
     /// </summary>
-    public static List<CodeLensItem> ResolveCodeLenses(string text, string? fileExtension = null)
+    public static List<CodeLensItem> ResolveCodeLenses(
+        string text,
+        string? fileExtension = null,
+        string? authorTag = null,
+        Func<string, int>? workspaceReferenceCounter = null)
     {
         var result = new List<CodeLensItem>();
         if (string.IsNullOrWhiteSpace(text))
@@ -86,10 +90,13 @@ public static class CodeLensEngine
                 }
             }
 
-            int refCount = CountReferences(text, name);
+            int refCount = workspaceReferenceCounter != null
+                ? workspaceReferenceCounter(name)
+                : CountReferences(text, name);
 
             string refText = refCount == 1 ? "1 reference" : $"{refCount} references";
-            string displayText = isTest ? $"{refText} | ▶ Run Test" : refText;
+            string authorPart = !string.IsNullOrEmpty(authorTag) ? $" • {authorTag}" : "";
+            string displayText = isTest ? $"{refText}{authorPart} | ▶ Run Test" : $"{refText}{authorPart}";
 
             result.Add(new CodeLensItem
             {
@@ -100,7 +107,7 @@ public static class CodeLensEngine
                 ReferenceCount = refCount,
                 IsTest = isTest,
                 DisplayText = displayText,
-                AuthorTag = "You, edited recently"
+                AuthorTag = authorTag ?? "Local file"
             });
         }
 

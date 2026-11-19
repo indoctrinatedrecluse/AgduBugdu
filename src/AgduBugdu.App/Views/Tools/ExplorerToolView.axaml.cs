@@ -17,8 +17,14 @@ public partial class ExplorerToolView : UserControl
                 tvi.DataContext is FileSystemItem item &&
                 item.IsDirectory)
             {
-                item.IsExpanded = true;
-                item.LoadChildren();
+                if (!item.IsExpanded)
+                {
+                    item.IsExpanded = true;
+                }
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    item.LoadChildren();
+                }, Avalonia.Threading.DispatcherPriority.Background);
             }
         });
     }

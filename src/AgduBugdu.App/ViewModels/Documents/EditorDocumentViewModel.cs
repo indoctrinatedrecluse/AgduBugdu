@@ -192,10 +192,16 @@ public partial class EditorDocumentViewModel : Document
     [ObservableProperty]
     private bool _showCodeLens = true;
 
+    private string? _cachedAuthorTag;
+    private Func<string, int>? _cachedWorkspaceRefCounter;
+
     public ObservableCollection<CodeLensItem> CodeLenses { get; } = new();
 
-    public void RefreshCodeLenses()
+    public void RefreshCodeLenses(string? authorTag = null, Func<string, int>? workspaceRefCounter = null)
     {
+        if (authorTag != null) _cachedAuthorTag = authorTag;
+        if (workspaceRefCounter != null) _cachedWorkspaceRefCounter = workspaceRefCounter;
+
         if (!ShowCodeLens || TextDocument == null)
         {
             CodeLenses.Clear();
@@ -205,7 +211,12 @@ public partial class EditorDocumentViewModel : Document
         try
         {
             var ext = !string.IsNullOrEmpty(FilePath) ? Path.GetExtension(FilePath) : ".cs";
-            var items = CodeLensEngine.ResolveCodeLenses(TextDocument.Text, ext);
+            var items = CodeLensEngine.ResolveCodeLenses(
+                TextDocument.Text,
+                ext,
+                _cachedAuthorTag,
+                _cachedWorkspaceRefCounter);
+
             CodeLenses.Clear();
             foreach (var item in items)
             {
@@ -264,6 +275,12 @@ public partial class EditorDocumentViewModel : Document
     private string _goToLinePrompt = "Go to Line:Column (e.g. 10:5)";
 
     public event EventHandler? CaretMoved;
+    public event EventHandler<string>? RunTestRequested;
+    public event EventHandler<string>? FindReferencesRequested;
+
+    public void RequestRunTest(string testName) => RunTestRequested?.Invoke(this, testName);
+    public void RequestFindReferences(string symbolName) => FindReferencesRequested?.Invoke(this, symbolName);
+
     public event EventHandler<int>? ScrollToLineRequested;
     public void ScrollToLine(int line) => ScrollToLineRequested?.Invoke(this, line);
     public event EventHandler<(int Offset, int Length)>? SelectTextRequested;

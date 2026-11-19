@@ -12,7 +12,15 @@ namespace AgduBugdu.Plugin.RestClient;
 
 public class RestClientViewModel
 {
-    private static readonly HttpClient HttpClient = new(new HttpClientHandler
+    private static readonly HttpClient DefaultHttpClient = new(new HttpClientHandler
+    {
+        AllowAutoRedirect = true
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(30)
+    };
+
+    private static readonly HttpClient InsecureHttpClient = new(new HttpClientHandler
     {
         AllowAutoRedirect = true,
         ServerCertificateCustomValidationCallback = (_, _, _, _) => true
@@ -20,6 +28,14 @@ public class RestClientViewModel
     {
         Timeout = TimeSpan.FromSeconds(30)
     };
+
+    /// <summary>
+    /// When true, SSL/TLS certificate verification is bypassed (for self-signed dev certificates).
+    /// Defaults to false for strict security.
+    /// </summary>
+    public bool AllowUntrustedCertificates { get; set; } = false;
+
+    private HttpClient HttpClient => AllowUntrustedCertificates ? InsecureHttpClient : DefaultHttpClient;
 
     public string Title => "REST API Client";
     public string Method { get; set; } = "GET";

@@ -74,7 +74,7 @@ public static class TuiKeyTranslator
             TuiSpecialKey.Escape => "\x1b",
             TuiSpecialKey.Tab => "\t",
             TuiSpecialKey.Enter => "\r",
-            TuiSpecialKey.Backspace => "\x08",
+            TuiSpecialKey.Backspace => "\x7f",
             _ => null
         };
     }

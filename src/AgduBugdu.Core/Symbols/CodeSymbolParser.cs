@@ -116,7 +116,106 @@ public static class CodeSymbolParser
             }
         }
 
+        ComputeSymbolScopes(symbols, content, ext);
         return symbols;
+    }
+
+    public static void ComputeSymbolScopes(List<CodeSymbol> symbols, string content, string ext)
+    {
+        if (symbols.Count == 0 || string.IsNullOrWhiteSpace(content))
+            return;
+
+        var lines = content.Split('\n');
+        int totalLines = lines.Length;
+
+        switch (ext)
+        {
+            case ".py":
+                for (int i = 0; i < symbols.Count; i++)
+                {
+                    var sym = symbols[i];
+                    if (sym.LineNumber < 1 || sym.LineNumber > totalLines) continue;
+                    int startIndent = GetIndent(lines[sym.LineNumber - 1]);
+                    int endLine = totalLines;
+                    for (int l = sym.LineNumber; l < totalLines; l++)
+                    {
+                        string line = lines[l];
+                        string trimmed = line.Trim();
+                        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#"))
+                            continue;
+
+                        int currentIndent = GetIndent(line);
+                        if (currentIndent <= startIndent)
+                        {
+                            endLine = l; // 1-based previous line
+                            break;
+                        }
+                    }
+                    sym.EndLineNumber = endLine;
+                }
+                break;
+
+            case ".md":
+            case ".markdown":
+                for (int i = 0; i < symbols.Count; i++)
+                {
+                    var sym = symbols[i];
+                    int nextSymLine = (i + 1 < symbols.Count) ? symbols[i + 1].LineNumber - 1 : totalLines;
+                    sym.EndLineNumber = Math.Max(sym.LineNumber, nextSymLine);
+                }
+                break;
+
+            default: // C-style brace languages (.cs, .java, .cpp, .c, .h, .hpp, .rs, .go, .js, .ts, etc.)
+                foreach (var sym in symbols)
+                {
+                    if (sym.LineNumber < 1 || sym.LineNumber > totalLines) continue;
+                    int depth = 0;
+                    bool foundOpenBrace = false;
+                    int endLine = totalLines;
+
+                    for (int l = sym.LineNumber - 1; l < totalLines; l++)
+                    {
+                        string line = lines[l];
+                        for (int c = 0; c < line.Length; c++)
+                        {
+                            char ch = line[c];
+                            if (ch == '{')
+                            {
+                                depth++;
+                                foundOpenBrace = true;
+                            }
+                            else if (ch == '}')
+                            {
+                                if (depth > 0)
+                                {
+                                    depth--;
+                                    if (depth == 0 && foundOpenBrace)
+                                    {
+                                        endLine = l + 1; // 1-based
+                                        goto FoundEnd;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                FoundEnd:
+                    sym.EndLineNumber = endLine;
+                }
+                break;
+        }
+    }
+
+    private static int GetIndent(string line)
+    {
+        int count = 0;
+        foreach (char c in line)
+        {
+            if (c == ' ') count++;
+            else if (c == '\t') count += 4;
+            else break;
+        }
+        return count;
     }
 
     private static void ParseCSharpLikeLine(string line, int lineNum, List<CodeSymbol> symbols)

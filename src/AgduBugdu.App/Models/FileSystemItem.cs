@@ -29,8 +29,14 @@ public partial class FileSystemItem : ObservableObject
 
         try
         {
-            Children.Clear();
+            if (string.IsNullOrWhiteSpace(FullPath) || !Directory.Exists(FullPath))
+            {
+                Children.Clear();
+                return;
+            }
+
             var dirInfo = new DirectoryInfo(FullPath);
+            var loadedItems = new System.Collections.Generic.List<FileSystemItem>();
 
             foreach (var dir in dirInfo.GetDirectories())
             {
@@ -46,7 +52,7 @@ public partial class FileSystemItem : ObservableObject
                 };
                 // Add dummy child so it shows expand arrow
                 item.Children.Add(new FileSystemItem { Name = "Loading..." });
-                Children.Add(item);
+                loadedItems.Add(item);
             }
 
             foreach (var file in dirInfo.GetFiles())
@@ -54,12 +60,18 @@ public partial class FileSystemItem : ObservableObject
                 if (file.Attributes.HasFlag(FileAttributes.Hidden))
                     continue;
 
-                Children.Add(new FileSystemItem
+                loadedItems.Add(new FileSystemItem
                 {
                     Name = file.Name,
                     FullPath = file.FullName,
                     IsDirectory = false
                 });
+            }
+
+            Children.Clear();
+            foreach (var item in loadedItems)
+            {
+                Children.Add(item);
             }
         }
         catch (Exception)

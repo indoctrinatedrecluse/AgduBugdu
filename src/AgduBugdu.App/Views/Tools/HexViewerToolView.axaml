@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             x:Class="AgduBugdu.App.Views.Tools.HexViewerToolView"
+             x:DataType="vm:HexViewerToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <!-- Title & Icon -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="🔢" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="HEX &amp; BINARY INSPECTOR"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                    <Border Background="#1E293B" CornerRadius="3" Padding="6,2">
+                        <TextBlock Text="{Binding FileName}" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Page Summary & Entropy Stats -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding PageSummary}" FontSize="11" Foreground="#CBD5E1" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StatsSummary}" FontSize="10" Foreground="#A78BFA" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Pagination & Offset Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Button Content="◀ Prev" Command="{Binding PreviousPageCommand}" FontSize="10" Padding="8,3" Background="#2D2D30" Foreground="#E2E8F0" />
+                    <Button Content="Next ▶" Command="{Binding NextPageCommand}" FontSize="10" Padding="8,3" Background="#2D2D30" Foreground="#E2E8F0" />
+                    <TextBox Text="{Binding TargetOffsetHex, Mode=TwoWay}" Watermark="Hex Offset (e.g. 1A0)" Width="80" Height="26" FontSize="11" FontFamily="Cascadia Code, Consolas, monospace" VerticalContentAlignment="Center" Background="#181818" Foreground="#F3E8FF" BorderBrush="#3E3E42" Margin="4,0,0,0" />
+                    <Button Content="Go" Command="{Binding GoToOffsetCommand}" FontSize="10" Padding="6,3" Background="#0284C7" Foreground="#FFFFFF" />
+                </StackPanel>
+
+                <!-- Window Actions -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Content="Reset" Command="{Binding ResetSizeCommand}" FontSize="10" Padding="6,3" Background="#2D2D30" Foreground="#CBD5E1" />
+                    <Button Content="—" Command="{Binding MinimizeCommand}" FontSize="10" Padding="6,3" Background="#2D2D30" Foreground="#CBD5E1" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Hex Output Surface -->
+        <ScrollViewer Grid.Row="1" Padding="8" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <TextBox Text="{Binding FormattedDumpText}"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     FontFamily="Cascadia Code, Consolas, monospace"
+                     FontSize="12"
+                     Background="Transparent"
+                     Foreground="#38BDF8"
+                     BorderThickness="0" />
+        </ScrollViewer>
+    </Grid>
+</UserControl>

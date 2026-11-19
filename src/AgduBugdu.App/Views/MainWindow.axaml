@@ -59,6 +59,9 @@
         <KeyBinding Gesture="Ctrl+Shift+OemCloseBrackets" Command="{Binding UnfoldCurrentBlockCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+B" Command="{Binding FocusSqlStudioCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+M" Command="{Binding FocusDiagnosticsCommand}" />
+        <KeyBinding Gesture="Ctrl+Alt+R" Command="{Binding FocusRestClientCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+H" Command="{Binding FocusHexViewerCommand}" />
+        <KeyBinding Gesture="Ctrl+Alt+C" Command="{Binding FocusColorPickerCommand}" />
         <KeyBinding Gesture="Ctrl+OemComma" Command="{Binding OpenSettingsCommand}" />
     </Window.KeyBindings>
 
@@ -193,6 +196,11 @@
                     <MenuItem Header="_Process Diagnostics &amp; Profiler" InputGesture="Ctrl+Shift+M" Command="{Binding FocusDiagnosticsCommand}" />
                     <MenuItem Header="_API Mock Server &amp; Traffic Studio" Command="{Binding FocusMockServerCommand}" />
                     <Separator />
+                    <MenuItem Header="_REST API Client" InputGesture="Ctrl+Alt+R" Command="{Binding FocusRestClientCommand}" />
+                    <MenuItem Header="Binary &amp; _Hex Inspector" InputGesture="Ctrl+Shift+H" Command="{Binding FocusHexViewerCommand}" />
+                    <MenuItem Header="_SQLite Explorer" Command="{Binding FocusSqliteExplorerCommand}" />
+                    <MenuItem Header="_Color Palette &amp; Picker" InputGesture="Ctrl+Alt+C" Command="{Binding FocusColorPickerCommand}" />
+                    <Separator />
                     <MenuItem Header="_Reset Panel to Default Sizes" Command="{Binding ResetPaneLayoutCommand}" />
                     <MenuItem Header="_Extensions..." Command="{Binding ShowExtensionsModalCommand}" />
                 </MenuItem>
@@ -316,7 +324,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                 <TextBlock Text="🌿" FontSize="11" />
                                 <TextBlock Text="{Binding GitBranchName}" FontSize="11" Foreground="{Binding StatusBarForeground}" FontWeight="SemiBold" />
-                                <Border Background="#1E293B" CornerRadius="3" Padding="4,0" Margin="2,0,0,0" IsVisible="{Binding GitChangesCount}">
+                                <Border Background="#1E293B" CornerRadius="3" Padding="4,0" Margin="2,0,0,0" IsVisible="{Binding HasGitChanges}">
                                     <TextBlock Text="{Binding GitChangesCount}" FontSize="10" Foreground="#38BDF8" />
                                 </Border>
                             </StackPanel>

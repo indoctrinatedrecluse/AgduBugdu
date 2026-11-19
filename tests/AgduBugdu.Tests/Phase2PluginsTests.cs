@@ -3,7 +3,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AgduBugdu.App.Docking;
+using AgduBugdu.App.ViewModels.Documents;
+using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.Plugin.ColorPicker;
+using AgduBugdu.Plugin.DataGridLive;
 using AgduBugdu.Plugin.HexViewer;
 using AgduBugdu.Plugin.RestClient;
 using AgduBugdu.Plugin.SqliteExplorer;
@@ -279,5 +283,172 @@ INSERT INTO Users (Username, Score) VALUES ('charlie', 92.3);
         vm.Blue = 50;
         vm.AddCustomSwatch("MyMint");
         Assert.Contains(vm.Swatches, s => s.Name == "MyMint");
+    }
+
+    // ==========================================
+    // 5. CsvDocumentViewModel & MarkdownDocumentViewModel Tests
+    // ==========================================
+    [Fact]
+    public void TestCsvDocumentViewModel_LoadAndFilter()
+    {
+        var tempCsv = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempCsv, "Id,Name,Department,Salary\n1,Alice,Engineering,120000\n2,Bob,Design,95000\n3,Charlie,Engineering,110000");
+
+            var doc = new CsvDocumentViewModel();
+            doc.LoadFile(tempCsv);
+
+            Assert.False(doc.HasError);
+            Assert.Equal(3, doc.TotalRows);
+            Assert.Equal(4, doc.TotalColumns);
+            Assert.Equal(4, doc.Headers.Count);
+            Assert.Equal(3, doc.DisplayRows.Count);
+            Assert.Contains("CSV", doc.DelimiterDisplay);
+
+            // Filter for Engineering
+            doc.SearchQuery = "Engineering";
+            Assert.Equal(2, doc.FilteredCount);
+            Assert.Equal(2, doc.DisplayRows.Count);
+
+            // Clear filter
+            doc.ClearFilterCommand.Execute(null);
+            Assert.Equal(string.Empty, doc.SearchQuery);
+            Assert.Equal(3, doc.FilteredCount);
+            Assert.Equal(3, doc.DisplayRows.Count);
+        }
+        finally
+        {
+            if (File.Exists(tempCsv))
+            {
+                try { File.Delete(tempCsv); } catch { }
+            }
+        }
+    }
+
+    [Fact]
+    public void TestMarkdownDocumentViewModel_ParseBlocks()
+    {
+        var tempMd = Path.ChangeExtension(Path.GetTempFileName(), ".md");
+        try
+        {
+            var content = @"# Main Title
+## Sub Heading
+A regular introduction paragraph.
+
+> This is a notable quote block.
+
+---
+
+- Bullet item one
+- Bullet item two
+
+```csharp
+public class Sample
+{
+    public int Value { get; set; }
+}
+```
+";
+            File.WriteAllText(tempMd, content);
+
+            var doc = new MarkdownDocumentViewModel();
+            doc.LoadFile(tempMd);
+
+            Assert.False(doc.HasError);
+            Assert.True(doc.IsVisualMode);
+            Assert.NotEmpty(doc.Blocks);
+
+            var headings = doc.Blocks.OfType<MarkdownHeadingBlock>().ToList();
+            Assert.Equal(2, headings.Count);
+            Assert.Equal("Main Title", headings[0].Text);
+            Assert.Equal(1, headings[0].Level);
+            Assert.Equal("Sub Heading", headings[1].Text);
+            Assert.Equal(2, headings[1].Level);
+
+            var paragraphs = doc.Blocks.OfType<MarkdownParagraphBlock>().ToList();
+            Assert.Contains(paragraphs, p => p.Text.Contains("regular introduction paragraph"));
+
+            var quote = doc.Blocks.OfType<MarkdownQuoteBlock>().Single();
+            Assert.Contains("notable quote block", quote.Text);
+
+            var divider = doc.Blocks.OfType<MarkdownDividerBlock>().Single();
+            Assert.NotNull(divider);
+
+            var listItems = doc.Blocks.OfType<MarkdownListItemBlock>().ToList();
+            Assert.Equal(2, listItems.Count);
+            Assert.Equal("Bullet item one", listItems[0].Text);
+
+            var codeBlock = doc.Blocks.OfType<MarkdownCodeBlock>().Single();
+            Assert.Equal("csharp", codeBlock.Language);
+            Assert.Contains("public class Sample", codeBlock.Code);
+
+            // Toggle view mode
+            doc.ToggleViewModeCommand.Execute(null);
+            Assert.False(doc.IsVisualMode);
+        }
+        finally
+        {
+            if (File.Exists(tempMd))
+            {
+                try { File.Delete(tempMd); } catch { }
+            }
+        }
+    }
+
+    // ==========================================
+    // 6. MainDockFactory Plugin Tool Windows
+    // ==========================================
+    [Fact]
+    public void TestMainDockFactory_PluginToolsRegistered()
+    {
+        var factory = new MainDockFactory();
+        factory.CreateLayout();
+
+        Assert.NotNull(factory.RestClientTool);
+        Assert.Equal("RestClient", factory.RestClientTool.Id);
+        Assert.Equal("REST Client", factory.RestClientTool.Title);
+
+        Assert.NotNull(factory.HexViewerTool);
+        Assert.Equal("HexViewer", factory.HexViewerTool.Id);
+        Assert.Equal("Hex Inspector", factory.HexViewerTool.Title);
+
+        Assert.NotNull(factory.SqliteExplorerTool);
+        Assert.Equal("SqliteExplorer", factory.SqliteExplorerTool.Id);
+        Assert.Equal("SQLite Explorer", factory.SqliteExplorerTool.Title);
+
+        Assert.NotNull(factory.ColorPickerTool);
+        Assert.Equal("ColorPicker", factory.ColorPickerTool.Id);
+        Assert.Equal("Color Picker", factory.ColorPickerTool.Title);
+    }
+
+    [Fact]
+    public void TestPluginToolViewModels_AttachModels()
+    {
+        // 1. RestClientToolViewModel
+        var restTool = new RestClientToolViewModel();
+        var restModel = new RestClientViewModel { Method = "GET", Url = "https://example.com" };
+        restTool.AttachModel(restModel);
+        Assert.Equal("GET", restTool.Method);
+        Assert.Equal("https://example.com", restTool.Url);
+
+        // 2. HexViewerToolViewModel
+        var hexTool = new HexViewerToolViewModel();
+        var hexModel = new HexViewerViewModel();
+        hexTool.AttachModel(hexModel);
+        Assert.Equal("Hex Inspector", hexTool.Title);
+
+        // 3. SqliteExplorerToolViewModel
+        var sqliteTool = new SqliteExplorerToolViewModel();
+        var sqliteModel = new SqliteExplorerViewModel();
+        sqliteTool.AttachModel(sqliteModel);
+        Assert.Equal("SQLite Explorer", sqliteTool.Title);
+
+        // 4. ColorPickerToolViewModel
+        var colorTool = new ColorPickerToolViewModel();
+        var colorModel = new ColorPickerViewModel();
+        colorTool.AttachModel(colorModel);
+        Assert.Equal("Color Picker", colorTool.Title);
+        Assert.NotEmpty(colorTool.Swatches);
     }
 }

@@ -16,6 +16,7 @@ using AvaloniaEdit.Folding;
 using System.Collections.Generic;
 using System.Linq;
 using AgduBugdu.Core.Snippets;
+using AgduBugdu.Core.Symbols;
 using AgduBugdu.Core.Text;
 using AvaloniaEdit.Document;
 
@@ -119,6 +120,9 @@ public class DebugMarkerRenderer : IBackgroundRenderer
 
 public class CodeLensRenderer : IBackgroundRenderer
 {
+    public record ClickableBadge(Rect Bounds, CodeLensItem Item);
+    public List<ClickableBadge> ActiveBadges { get; } = new();
+
     private readonly Func<EditorDocumentViewModel?> _getDoc;
     private readonly TextEditor _editor;
     private readonly Typeface _typeface = new("Inter, Segoe UI, sans-serif", FontStyle.Normal, FontWeight.SemiBold);
@@ -139,6 +143,7 @@ public class CodeLensRenderer : IBackgroundRenderer
 
     public void Draw(TextView textView, DrawingContext drawingContext)
     {
+        ActiveBadges.Clear();
         var doc = _getDoc();
         if (doc == null || !doc.ShowCodeLens || doc.CodeLenses.Count == 0 || _editor.Document == null)
             return;
@@ -176,6 +181,8 @@ public class CodeLensRenderer : IBackgroundRenderer
 
                 drawingContext.DrawRectangle(bgBrush, borderPen, pillRect, 4.0, 4.0);
                 drawingContext.DrawText(formatted, new Point(x, y));
+
+                ActiveBadges.Add(new ClickableBadge(pillRect, match));
             }
             catch
             {
@@ -290,12 +297,17 @@ public partial class EditorDocumentView : UserControl
     private TextMate.Installation? _textMateInstallation;
     private RegistryOptions? _registryOptions;
     private bool _rendererAttached;
+    private CodeLensRenderer? _codeLensRenderer;
     private FoldingManager? _foldingManager;
     private readonly MultiCaretManager _multiCaretManager = new();
+    private readonly MinimapRenderControl _minimapRender;
 
     public EditorDocumentView()
     {
         InitializeComponent();
+
+        _minimapRender = new MinimapRenderControl(this);
+        MinimapCanvas.Children.Add(_minimapRender);
 
         Editor.Options.EnableHyperlinks = true;
         Editor.Options.EnableEmailHyperlinks = true;
@@ -815,7 +827,8 @@ public partial class EditorDocumentView : UserControl
                     () => GetDebugService()
                 ));
                 Editor.TextArea.TextView.BackgroundRenderers.Add(new MultiCaretRenderer(_multiCaretManager, Editor));
-                Editor.TextArea.TextView.BackgroundRenderers.Add(new CodeLensRenderer(() => DataContext as EditorDocumentViewModel, Editor));
+                _codeLensRenderer = new CodeLensRenderer(() => DataContext as EditorDocumentViewModel, Editor);
+                Editor.TextArea.TextView.BackgroundRenderers.Add(_codeLensRenderer);
                 Editor.TextArea.TextView.BackgroundRenderers.Add(new IndentAndBracketRenderer(() => DataContext as EditorDocumentViewModel, Editor));
                 _rendererAttached = true;
             }
@@ -1224,67 +1237,87 @@ public partial class EditorDocumentView : UserControl
     private void UpdateMinimap()
     {
         if (MinimapCanvas == null || Editor.Document == null) return;
-        double canvasHeight = MinimapCanvas.Bounds.Height;
-        double canvasWidth = MinimapCanvas.Bounds.Width;
-        if (canvasHeight <= 10 || canvasWidth <= 10) return;
+        _minimapRender.Width = MinimapCanvas.Bounds.Width;
+        _minimapRender.Height = MinimapCanvas.Bounds.Height;
+        _minimapRender.InvalidateVisual();
+    }
 
-        MinimapCanvas.Children.Clear();
+    private class MinimapRenderControl : Control
+    {
+        private readonly EditorDocumentView _view;
+        private static readonly IBrush LineBrush = new SolidColorBrush(Color.FromArgb(90, 150, 150, 150));
+        private static readonly IBrush ViewportFillBrush = new SolidColorBrush(Color.FromArgb(45, 56, 189, 248));
+        private static readonly IPen ViewportPen = new Pen(new SolidColorBrush(Color.FromArgb(140, 56, 189, 248)), 1);
 
-        int totalLines = Editor.Document.LineCount;
-        if (totalLines <= 0) return;
-
-        double lineH = Math.Max(1.0, Math.Min(3.0, canvasHeight / totalLines));
-        double maxLineWidth = canvasWidth - 10;
-
-        int step = Math.Max(1, totalLines / 250);
-        for (int i = 1; i <= totalLines; i += step)
+        public MinimapRenderControl(EditorDocumentView view)
         {
-            var docLine = Editor.Document.GetLineByNumber(i);
-            int len = docLine.Length;
-            if (len == 0) continue;
-
-            double width = Math.Min(maxLineWidth, Math.Max(4, len * 0.8));
-            double y = ((double)(i - 1) / totalLines) * canvasHeight;
-
-            var lineBorder = new Border
-            {
-                Width = width,
-                Height = Math.Max(1, lineH - 0.5),
-                Background = new SolidColorBrush(Color.FromArgb(90, 150, 150, 150)),
-                CornerRadius = new CornerRadius(0.5)
-            };
-            Canvas.SetLeft(lineBorder, 4);
-            Canvas.SetTop(lineBorder, y);
-            MinimapCanvas.Children.Add(lineBorder);
+            _view = view;
+            IsHitTestVisible = false;
         }
 
-        var textView = Editor.TextArea.TextView;
-        if (textView != null && textView.DocumentHeight > 0)
+        public override void Render(DrawingContext context)
         {
-            double scrollRatio = textView.ScrollOffset.Y / Math.Max(1, textView.DocumentHeight);
-            double visibleRatio = textView.Bounds.Height / Math.Max(1, textView.DocumentHeight);
+            var editor = _view.Editor;
+            if (editor?.Document == null) return;
 
-            double viewTop = Math.Clamp(scrollRatio * canvasHeight, 0, canvasHeight - 16);
-            double viewHeight = Math.Clamp(visibleRatio * canvasHeight, 16, canvasHeight);
+            double canvasWidth = Bounds.Width;
+            double canvasHeight = Bounds.Height;
+            if (canvasWidth <= 10 || canvasHeight <= 10) return;
 
-            var viewRect = new Border
+            int totalLines = editor.Document.LineCount;
+            if (totalLines <= 0) return;
+
+            double lineH = Math.Max(1.0, Math.Min(3.0, canvasHeight / totalLines));
+            double maxLineWidth = canvasWidth - 10;
+            int step = Math.Max(1, totalLines / 250);
+
+            for (int i = 1; i <= totalLines; i += step)
             {
-                Width = canvasWidth,
-                Height = viewHeight,
-                Background = new SolidColorBrush(Color.FromArgb(45, 56, 189, 248)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(140, 56, 189, 248)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(2),
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(viewRect, 0);
-            Canvas.SetTop(viewRect, viewTop);
-            MinimapCanvas.Children.Add(viewRect);
+                var docLine = editor.Document.GetLineByNumber(i);
+                int len = docLine.Length;
+                if (len == 0) continue;
+
+                double width = Math.Min(maxLineWidth, Math.Max(4, len * 0.8));
+                double y = ((double)(i - 1) / totalLines) * canvasHeight;
+                context.DrawRectangle(LineBrush, null, new Rect(4, y, width, Math.Max(1, lineH - 0.5)), 0.5, 0.5);
+            }
+
+            var textView = editor.TextArea?.TextView;
+            if (textView != null && textView.DocumentHeight > 0)
+            {
+                double scrollRatio = textView.ScrollOffset.Y / Math.Max(1, textView.DocumentHeight);
+                double visibleRatio = textView.Bounds.Height / Math.Max(1, textView.DocumentHeight);
+
+                double viewTop = Math.Clamp(scrollRatio * canvasHeight, 0, Math.Max(0, canvasHeight - 16));
+                double viewHeight = Math.Clamp(visibleRatio * canvasHeight, 16, canvasHeight);
+
+                context.DrawRectangle(ViewportFillBrush, ViewportPen, new Rect(0, viewTop, canvasWidth, viewHeight), 2, 2);
+            }
         }
     }
 
     private void OnEditorPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // Check if clicked on a CodeLens pill badge
+        if (_codeLensRenderer != null && _codeLensRenderer.ActiveBadges.Count > 0)
+        {
+            var textPoint = e.GetPosition(Editor.TextArea.TextView);
+            var hit = _codeLensRenderer.ActiveBadges.FirstOrDefault(b => b.Bounds.Contains(textPoint));
+            if (hit != null && DataContext is EditorDocumentViewModel doc)
+            {
+                if (hit.Item.IsTest)
+                {
+                    doc.RequestRunTest(hit.Item.SymbolName);
+                }
+                else
+                {
+                    doc.RequestFindReferences(hit.Item.SymbolName);
+                }
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
         {
             var point = e.GetPosition(Editor.TextArea.TextView);

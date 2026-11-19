@@ -93,11 +93,15 @@ public class DockerCliService
         });
     }
 
+    public void ResetAvailabilityCheck()
+    {
+        _isDockerAvailable = null;
+    }
+
     public async Task<bool> CheckDockerAvailableAsync()
     {
         if (IsDemoMode)
         {
-            _isDockerAvailable = false;
             return false;
         }
 
@@ -106,14 +110,12 @@ public class DockerCliService
 
         try
         {
-            var res = await RunProcessAsync("docker", "info", 3000);
+            var res = await RunProcessAsync("docker", new[] { "info" }, 3000);
             _isDockerAvailable = res.ExitCode == 0;
-            IsDemoMode = !_isDockerAvailable.Value;
         }
         catch
         {
             _isDockerAvailable = false;
-            IsDemoMode = true;
         }
 
         return _isDockerAvailable.Value;
@@ -121,20 +123,25 @@ public class DockerCliService
 
     public async Task<List<DockerContainerItem>> GetContainersAsync(bool all = true)
     {
-        bool available = await CheckDockerAvailableAsync();
-        if (!available)
+        if (IsDemoMode)
         {
             return _mockContainers.ToList();
         }
 
-        string args = all
-            ? "ps -a --format \"{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.Ports}}\t{{.CreatedAt}}\""
-            : "ps --format \"{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.Ports}}\t{{.CreatedAt}}\"";
+        bool available = await CheckDockerAvailableAsync();
+        if (!available)
+        {
+            return new List<DockerContainerItem>();
+        }
+
+        var args = all
+            ? new[] { "ps", "-a", "--format", "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.Ports}}\t{{.CreatedAt}}" }
+            : new[] { "ps", "--format", "{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.Ports}}\t{{.CreatedAt}}" };
 
         var res = await RunProcessAsync("docker", args, 5000);
         if (res.ExitCode != 0 || string.IsNullOrWhiteSpace(res.Output))
         {
-            return _mockContainers.ToList();
+            return new List<DockerContainerItem>();
         }
 
         return ParseContainerLines(res.Output);
@@ -172,17 +179,22 @@ public class DockerCliService
 
     public async Task<List<DockerImageItem>> GetImagesAsync()
     {
-        bool available = await CheckDockerAvailableAsync();
-        if (!available)
+        if (IsDemoMode)
         {
             return _mockImages.ToList();
         }
 
-        string args = "images --format \"{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}\"";
+        bool available = await CheckDockerAvailableAsync();
+        if (!available)
+        {
+            return new List<DockerImageItem>();
+        }
+
+        var args = new[] { "images", "--format", "{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}" };
         var res = await RunProcessAsync("docker", args, 5000);
         if (res.ExitCode != 0 || string.IsNullOrWhiteSpace(res.Output))
         {
-            return _mockImages.ToList();
+            return new List<DockerImageItem>();
         }
 
         return ParseImageLines(res.Output);
@@ -229,7 +241,7 @@ public class DockerCliService
             return $"Container {id} started (demo).";
         }
 
-        var res = await RunProcessAsync("docker", $"start {id}", 10000);
+        var res = await RunProcessAsync("docker", new[] { "start", id }, 10000);
         return res.Output;
     }
 
@@ -246,7 +258,7 @@ public class DockerCliService
             return $"Container {id} stopped (demo).";
         }
 
-        var res = await RunProcessAsync("docker", $"stop {id}", 15000);
+        var res = await RunProcessAsync("docker", new[] { "stop", id }, 15000);
         return res.Output;
     }
 
@@ -263,7 +275,7 @@ public class DockerCliService
             return $"Container {id} restarted (demo).";
         }
 
-        var res = await RunProcessAsync("docker", $"restart {id}", 15000);
+        var res = await RunProcessAsync("docker", new[] { "restart", id }, 15000);
         return res.Output;
     }
 
@@ -288,7 +300,7 @@ public class DockerCliService
             return $"Toggled pause on {id} (demo).";
         }
 
-        var res = await RunProcessAsync("docker", $"pause {id}", 10000);
+        var res = await RunProcessAsync("docker", new[] { "pause", id }, 10000);
         return res.Output;
     }
 
@@ -300,8 +312,10 @@ public class DockerCliService
             return $"Container {id} removed (demo).";
         }
 
-        string forceFlag = force ? "-f" : "";
-        var res = await RunProcessAsync("docker", $"rm {forceFlag} {id}", 10000);
+        var args = force
+            ? new[] { "rm", "-f", id }
+            : new[] { "rm", id };
+        var res = await RunProcessAsync("docker", args, 10000);
         return res.Output;
     }
 
@@ -319,7 +333,7 @@ public class DockerCliService
             return sb.ToString();
         }
 
-        var res = await RunProcessAsync("docker", $"logs --tail {tailLines} {id}", 10000);
+        var res = await RunProcessAsync("docker", new[] { "logs", "--tail", tailLines.ToString(), id }, 10000);
         return string.IsNullOrWhiteSpace(res.Output) && !string.IsNullOrWhiteSpace(res.Error)
             ? res.Error
             : res.Output;
@@ -333,7 +347,7 @@ public class DockerCliService
             return $"Image {id} deleted (demo).";
         }
 
-        var res = await RunProcessAsync("docker", $"rmi -f {id}", 10000);
+        var res = await RunProcessAsync("docker", new[] { "rmi", "-f", id }, 10000);
         return res.Output;
     }
 
@@ -345,21 +359,70 @@ public class DockerCliService
             return "Pruned all stopped containers (demo).";
         }
 
-        var res = await RunProcessAsync("docker", "container prune -f", 10000);
+        var res = await RunProcessAsync("docker", new[] { "container", "prune", "-f" }, 10000);
         return res.Output;
     }
 
-    private static async Task<(int ExitCode, string Output, string Error)> RunProcessAsync(string filename, string args, int timeoutMs)
+    private static List<string> ParseCommandLineArguments(string commandLine)
+    {
+        var args = new List<string>();
+        if (string.IsNullOrWhiteSpace(commandLine))
+            return args;
+
+        var sb = new StringBuilder();
+        bool inQuotes = false;
+        char quoteChar = '\0';
+
+        for (int i = 0; i < commandLine.Length; i++)
+        {
+            char c = commandLine[i];
+            if ((c == '"' || c == '\'') && !inQuotes)
+            {
+                inQuotes = true;
+                quoteChar = c;
+            }
+            else if (inQuotes && c == quoteChar)
+            {
+                inQuotes = false;
+                quoteChar = '\0';
+            }
+            else if (!inQuotes && char.IsWhiteSpace(c))
+            {
+                if (sb.Length > 0)
+                {
+                    args.Add(sb.ToString());
+                    sb.Clear();
+                }
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+
+        if (sb.Length > 0)
+        {
+            args.Add(sb.ToString());
+        }
+
+        return args;
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunProcessAsync(string filename, IEnumerable<string> args, int timeoutMs)
     {
         var psi = new ProcessStartInfo
         {
             FileName = filename,
-            Arguments = args,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+
+        foreach (var arg in args)
+        {
+            psi.ArgumentList.Add(arg);
+        }
 
         using var process = new Process { StartInfo = psi };
         var outputBuilder = new StringBuilder();
@@ -388,5 +451,10 @@ public class DockerCliService
         {
             return (-1, string.Empty, ex.Message);
         }
+    }
+
+    private static Task<(int ExitCode, string Output, string Error)> RunProcessAsync(string filename, string args, int timeoutMs)
+    {
+        return RunProcessAsync(filename, ParseCommandLineArguments(args), timeoutMs);
     }
 }

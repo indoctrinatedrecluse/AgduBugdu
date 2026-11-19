@@ -36,6 +36,10 @@ public class MainDockFactory : Factory
     private SqlStudioToolViewModel? _sqlStudioTool;
     private ProcessDiagnosticsToolViewModel? _diagnosticsTool;
     private MockServerToolViewModel? _mockServerTool;
+    private RestClientToolViewModel? _restClientTool;
+    private HexViewerToolViewModel? _hexViewerTool;
+    private SqliteExplorerToolViewModel? _sqliteExplorerTool;
+    private ColorPickerToolViewModel? _colorPickerTool;
     private bool _isBottomPaneMinimized;
 
     public IDocumentDock? DocumentDock => _documentDock;
@@ -58,6 +62,10 @@ public class MainDockFactory : Factory
     public SqlStudioToolViewModel? SqlStudioTool => _sqlStudioTool;
     public ProcessDiagnosticsToolViewModel? DiagnosticsTool => _diagnosticsTool;
     public MockServerToolViewModel? MockServerTool => _mockServerTool;
+    public RestClientToolViewModel? RestClientTool => _restClientTool;
+    public HexViewerToolViewModel? HexViewerTool => _hexViewerTool;
+    public SqliteExplorerToolViewModel? SqliteExplorerTool => _sqliteExplorerTool;
+    public ColorPickerToolViewModel? ColorPickerTool => _colorPickerTool;
     public bool IsBottomPaneMinimized => _isBottomPaneMinimized;
     public IDockable? CurrentActiveDockable { get; private set; }
     public IDockable? ActiveDockable => CurrentActiveDockable ?? _secondaryDocumentDock?.ActiveDockable ?? _documentDock?.ActiveDockable;
@@ -84,6 +92,10 @@ public class MainDockFactory : Factory
         _sqlStudioTool ??= new SqlStudioToolViewModel();
         _diagnosticsTool ??= new ProcessDiagnosticsToolViewModel();
         _mockServerTool ??= new MockServerToolViewModel();
+        _restClientTool ??= new RestClientToolViewModel();
+        _hexViewerTool ??= new HexViewerToolViewModel();
+        _sqliteExplorerTool ??= new SqliteExplorerToolViewModel();
+        _colorPickerTool ??= new ColorPickerToolViewModel();
 
         var welcomeDoc = new AvaloniaEdit.Document.TextDocument("Welcome to AgduBugdu Editor!\n\nPress Ctrl+P or Ctrl+Shift+P to open the Command Palette.\nUse File -> Open Folder... (Ctrl+K, Ctrl+O) to load a workspace.\nDouble-click any file in the Explorer to open it in a tab.\nDock panels (Explorer, Terminal, Output, TODO Tasks, Run & Debug, Outline) are draggable and re-arrangeable.\n");
         welcomeDoc.UndoStack.MarkAsOriginalFile();
@@ -101,7 +113,7 @@ public class MainDockFactory : Factory
             Id = "LeftPane",
             Title = "Explorer",
             Proportion = 0.22,
-            VisibleDockables = CreateList<IDockable>(_explorerTool, _searchTool, _gitTool, _outlineTool),
+            VisibleDockables = CreateList<IDockable>(_explorerTool, _searchTool, _gitTool, _outlineTool, _sqliteExplorerTool, _colorPickerTool),
             ActiveDockable = _explorerTool
         };
         _leftDock = leftDock;
@@ -111,7 +123,7 @@ public class MainDockFactory : Factory
             Id = "BottomPane",
             Title = "Panel",
             Proportion = 0.28,
-            VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool, _networkSuiteTool, _dockerTool, _regexTool, _sqlStudioTool, _diagnosticsTool, _mockServerTool),
+            VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool, _networkSuiteTool, _dockerTool, _regexTool, _sqlStudioTool, _diagnosticsTool, _mockServerTool, _restClientTool, _hexViewerTool),
             ActiveDockable = _terminalTool
         };
         _bottomDock = bottomDock;
@@ -180,6 +192,8 @@ public class MainDockFactory : Factory
         _searchTool ??= new SearchToolViewModel();
         _gitTool ??= new GitToolViewModel();
         _outlineTool ??= new OutlineToolViewModel();
+        _sqliteExplorerTool ??= new SqliteExplorerToolViewModel();
+        _colorPickerTool ??= new ColorPickerToolViewModel();
 
         _leftDock.VisibleDockables ??= CreateList<IDockable>();
         if (!_leftDock.VisibleDockables.Contains(_explorerTool))
@@ -190,6 +204,10 @@ public class MainDockFactory : Factory
             _leftDock.VisibleDockables.Add(_gitTool);
         if (!_leftDock.VisibleDockables.Contains(_outlineTool))
             _leftDock.VisibleDockables.Add(_outlineTool);
+        if (!_leftDock.VisibleDockables.Contains(_sqliteExplorerTool))
+            _leftDock.VisibleDockables.Add(_sqliteExplorerTool);
+        if (!_leftDock.VisibleDockables.Contains(_colorPickerTool))
+            _leftDock.VisibleDockables.Add(_colorPickerTool);
 
         _leftDock.ActiveDockable = activeTool ?? _explorerTool;
 
@@ -358,7 +376,9 @@ public class MainDockFactory : Factory
             _sqlStudioTool ??= new SqlStudioToolViewModel();
             _diagnosticsTool ??= new ProcessDiagnosticsToolViewModel();
             _mockServerTool ??= new MockServerToolViewModel();
-            _bottomDock.VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool, _networkSuiteTool, _dockerTool, _regexTool, _sqlStudioTool, _diagnosticsTool, _mockServerTool);
+            _restClientTool ??= new RestClientToolViewModel();
+            _hexViewerTool ??= new HexViewerToolViewModel();
+            _bottomDock.VisibleDockables = CreateList<IDockable>(_terminalTool, _outputTool, _todoTool, _debuggerTool, _networkSuiteTool, _dockerTool, _regexTool, _sqlStudioTool, _diagnosticsTool, _mockServerTool, _restClientTool, _hexViewerTool);
         }
         else if (activeTool != null && !_bottomDock.VisibleDockables.Contains(activeTool))
         {
@@ -458,7 +478,11 @@ public class MainDockFactory : Factory
             ["RegexTool"] = () => _regexTool,
             ["SqlStudioTool"] = () => _sqlStudioTool,
             ["ProcessDiagnosticsTool"] = () => _diagnosticsTool,
-            ["MockServerTool"] = () => _mockServerTool
+            ["MockServerTool"] = () => _mockServerTool,
+            ["RestClient"] = () => _restClientTool,
+            ["HexViewer"] = () => _hexViewerTool,
+            ["SqliteExplorer"] = () => _sqliteExplorerTool,
+            ["ColorPicker"] = () => _colorPickerTool
         };
         DockableLocator = new Dictionary<string, System.Func<IDockable?>>
         {
@@ -479,7 +503,11 @@ public class MainDockFactory : Factory
             ["RegexTool"] = () => _regexTool,
             ["SqlStudioTool"] = () => _sqlStudioTool,
             ["ProcessDiagnosticsTool"] = () => _diagnosticsTool,
-            ["MockServerTool"] = () => _mockServerTool
+            ["MockServerTool"] = () => _mockServerTool,
+            ["RestClient"] = () => _restClientTool,
+            ["HexViewer"] = () => _hexViewerTool,
+            ["SqliteExplorer"] = () => _sqliteExplorerTool,
+            ["ColorPicker"] = () => _colorPickerTool
         };
         HostWindowLocator = new Dictionary<string, System.Func<IHostWindow?>>
         {

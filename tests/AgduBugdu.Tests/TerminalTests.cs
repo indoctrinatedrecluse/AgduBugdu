@@ -161,6 +161,7 @@ public class TerminalTests
         Assert.Equal("\x1b", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Escape));
         Assert.Equal("\t", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Tab));
         Assert.Equal("\r", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Enter));
+        Assert.Equal("\x7f", AgduBugdu.Infrastructure.Terminal.TuiKeyTranslator.TranslateSpecialKey(AgduBugdu.Infrastructure.Terminal.TuiSpecialKey.Backspace));
     }
 
     [Fact]
@@ -372,6 +373,18 @@ public class TerminalTests
         finally
         {
             if (File.Exists(markerFile)) File.Delete(markerFile);
+        }
+    }
+
+    [Fact]
+    public void TerminalSessionItem_WslNotInstalled_ShowsFriendlyNoticeWithoutCrash()
+    {
+        if (OperatingSystem.IsWindows() && !TerminalSessionItem.IsWslInstalled())
+        {
+            var item = new TerminalSessionItem("WSL 1", ShellType.Wsl);
+            Assert.False(item.IsRunning);
+            Assert.Contains("[WSL Notice]", item.TerminalOutput);
+            Assert.Contains("wsl.exe --install", item.TerminalOutput);
         }
     }
 }

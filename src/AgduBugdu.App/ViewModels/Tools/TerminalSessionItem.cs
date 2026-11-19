@@ -110,6 +110,15 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
     public void Start()
     {
         if (_session.IsRunning) return;
+
+        if (ShellType == ShellType.Wsl && OperatingSystem.IsWindows() && !IsWslInstalled())
+        {
+            IsRunning = false;
+            _screenBuffer.Append($"[WSL Notice] Windows Subsystem for Linux (WSL) is not installed on this system.{Environment.NewLine}To install WSL and a default Linux distribution (Ubuntu), run in an Administrator PowerShell:{Environment.NewLine}  wsl.exe --install{Environment.NewLine}{Environment.NewLine}For instructions, visit https://aka.ms/wslinstall{Environment.NewLine}");
+            TerminalOutput = _screenBuffer.GetText();
+            return;
+        }
+
         IsRunning = true;
         _session.Start(WorkingDirectory, ShellProgram, ShellArguments);
     }
@@ -220,5 +229,30 @@ public partial class TerminalSessionItem : ObservableObject, IDisposable
             ShellType.Wsl => "🐧",
             _ => "💻"
         };
+    }
+
+    public static bool IsWslInstalled()
+    {
+        if (!OperatingSystem.IsWindows())
+            return true;
+
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Lxss");
+            if (key != null)
+            {
+                var subKeys = key.GetSubKeyNames();
+                if (subKeys != null && subKeys.Length > 0)
+                    return true;
+                var defDistro = key.GetValue("DefaultDistribution");
+                if (defDistro != null)
+                    return true;
+            }
+        }
+        catch
+        {
+            // Fall back
+        }
+        return false;
     }
 }

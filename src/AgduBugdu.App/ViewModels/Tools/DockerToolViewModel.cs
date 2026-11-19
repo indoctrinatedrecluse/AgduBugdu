@@ -36,6 +36,18 @@ public partial class DockerToolViewModel : Tool
     private string _daemonStatus = "Checking Docker...";
 
     [ObservableProperty]
+    private string _daemonStatusColor = "#EF4444";
+
+    [ObservableProperty]
+    private bool _isDockerOnline;
+
+    [ObservableProperty]
+    private bool _isDemoMode;
+
+    [ObservableProperty]
+    private bool _isOfflineAndNotDemo;
+
+    [ObservableProperty]
     private int _selectedTabIndex; // 0 = Containers, 1 = Images
 
     public event Action<string>? OpenTerminalRequested;
@@ -48,13 +60,53 @@ public partial class DockerToolViewModel : Tool
         _ = RefreshAllAsync();
     }
 
+    [RelayCommand]
+    public async Task ToggleDemoModeAsync()
+    {
+        _dockerService.IsDemoMode = !_dockerService.IsDemoMode;
+        if (!_dockerService.IsDemoMode)
+        {
+            _dockerService.ResetAvailabilityCheck();
+        }
+        await RefreshAllAsync();
+    }
+
+    [RelayCommand]
+    public async Task RetryConnectionAsync()
+    {
+        _dockerService.IsDemoMode = false;
+        _dockerService.ResetAvailabilityCheck();
+        await RefreshAllAsync();
+    }
+
     public async Task RefreshAllAsync()
     {
         IsLoading = true;
         try
         {
-            bool available = await _dockerService.CheckDockerAvailableAsync();
-            DaemonStatus = available ? "Connected to Docker Daemon" : "Demo / Mock Mode (Docker Daemon Offline)";
+            IsDemoMode = _dockerService.IsDemoMode;
+            if (IsDemoMode)
+            {
+                IsDockerOnline = false;
+                IsOfflineAndNotDemo = false;
+                DaemonStatus = "⚡ Demo Mode (Simulated Data)";
+                DaemonStatusColor = "#8B5CF6";
+            }
+            else
+            {
+                IsDockerOnline = await _dockerService.CheckDockerAvailableAsync();
+                IsOfflineAndNotDemo = !IsDockerOnline;
+                if (IsDockerOnline)
+                {
+                    DaemonStatus = "🐳 Connected to Docker Daemon";
+                    DaemonStatusColor = "#10B981";
+                }
+                else
+                {
+                    DaemonStatus = "⚠️ Docker Daemon Offline";
+                    DaemonStatusColor = "#EF4444";
+                }
+            }
 
             await RefreshContainersAsync();
             await RefreshImagesAsync();

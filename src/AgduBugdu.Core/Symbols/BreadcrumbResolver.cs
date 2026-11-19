@@ -91,7 +91,7 @@ public static class BreadcrumbResolver
         if (!string.IsNullOrWhiteSpace(content) && currentLine >= 1)
         {
             var symbols = CodeSymbolParser.ParseSymbols(content, filePath);
-            var eligible = symbols.Where(s => s.LineNumber <= currentLine).OrderBy(s => s.LineNumber).ToList();
+            var eligible = symbols.Where(s => s.LineNumber <= currentLine && currentLine <= s.EndLineNumber).OrderBy(s => s.LineNumber).ToList();
 
             if (eligible.Count > 0)
             {
@@ -156,7 +156,7 @@ public static class BreadcrumbResolver
             return null;
 
         var symbols = CodeSymbolParser.ParseSymbols(content, filePath);
-        var eligible = symbols.Where(s => s.LineNumber < topVisibleLine).OrderBy(s => s.LineNumber).ToList();
+        var eligible = symbols.Where(s => s.LineNumber < topVisibleLine && topVisibleLine <= s.EndLineNumber).OrderBy(s => s.LineNumber).ToList();
 
         if (eligible.Count == 0)
             return null;

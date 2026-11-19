@@ -9,6 +9,7 @@ using AgduBugdu.App.Themes;
 using AgduBugdu.App.ViewModels.Documents;
 using AgduBugdu.App.ViewModels.Tools;
 using AgduBugdu.Core;
+using AgduBugdu.Core.Git;
 using AgduBugdu.Core.Licensing;
 using AgduBugdu.Core.Session;
 using AgduBugdu.Core.Snippets;
@@ -181,6 +182,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly GitHubUpdateService _updateService;
     private readonly IRecentItemsManager _recentItemsManager;
     private readonly ISessionService _sessionService;
+    private readonly IGitService _gitService;
+    private readonly HashSet<EditorDocumentViewModel> _attachedDocuments = new();
     private readonly List<string> _recentlyClosedDocuments = new();
     private MarkdownLiveExtension? _markdownExtension;
     private DataGridLiveExtension? _csvExtension;
@@ -285,6 +288,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _gitChangesCount;
 
+    public bool HasGitChanges => GitChangesCount > 0;
+
+    partial void OnGitChangesCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasGitChanges));
+    }
+
     [ObservableProperty]
     private string _currentThemeName = "Lonely Dark";
 
@@ -359,6 +369,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _recentItemsManager = new RecentItemsManager();
         _sessionService = new SessionService();
+        _gitService = new GitService();
         _settingsService = new SettingsService();
         _settingsModal = new SettingsModalViewModel(_settingsService);
         _settingsModal.SettingsApplied += (s, e) => ApplySettingsToEnvironment();
@@ -453,55 +464,59 @@ public partial class MainViewModel : ObservableObject, IDisposable
         LicenseModal.Show();
     }
 
+    private static ExtensionDisplayItem CreateExtensionDisplayItem(IExtension ext, string description, bool isPaid)
+    {
+        return new ExtensionDisplayItem
+        {
+            Id = ext.Id,
+            Name = ext.Name,
+            Version = ext.Version,
+            Description = description,
+            ExtensionInstance = ext,
+            IsActive = isPaid,
+            Status = isPaid ? "Active" : "🔒 Locked (Trial)",
+            StatusColor = isPaid ? "#34D399" : "#F59E0B",
+            StatusBgColor = isPaid ? "#064E3B" : "#451A03",
+            ActionButtonText = isPaid ? "Disable" : "Locked"
+        };
+    }
+
     private async Task InitializeExtensionsAsync()
     {
         try
         {
             ExtensionsModal.Extensions.Clear();
             bool isPaid = _licenseService.CurrentLicense.IsPaid;
-            string extStatus = isPaid ? "Active" : "🔒 Locked (Trial)";
 
             // 1. Markdown Live extension
             var mdExtension = new MarkdownLiveExtension();
             mdExtension.Initialize(_extensionContext);
             if (isPaid) await mdExtension.ActivateAsync();
             _markdownExtension = mdExtension;
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = mdExtension.Id,
-                Name = mdExtension.Name,
-                Version = mdExtension.Version,
-                Status = extStatus,
-                Description = "Provides real-time Markdown side-by-side rendering and preview."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                mdExtension,
+                "Provides real-time Markdown side-by-side rendering and preview.",
+                isPaid));
 
             // 2. CSV / TSV Data Table extension
             var csvExtension = new DataGridLiveExtension();
             csvExtension.Initialize(_extensionContext);
             if (isPaid) await csvExtension.ActivateAsync();
             _csvExtension = csvExtension;
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = csvExtension.Id,
-                Name = csvExtension.Name,
-                Version = csvExtension.Version,
-                Status = extStatus,
-                Description = "Interactive tabular viewer and search for CSV and TSV datasets."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                csvExtension,
+                "Interactive tabular viewer and search for CSV and TSV datasets.",
+                isPaid));
 
             // 3. Live PDF Viewer & Editor extension
             var pdfExtension = new PdfLiveExtension();
             pdfExtension.Initialize(_extensionContext);
             if (isPaid) await pdfExtension.ActivateAsync();
             _pdfExtension = pdfExtension;
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = pdfExtension.Id,
-                Name = pdfExtension.Name,
-                Version = pdfExtension.Version,
-                Status = extStatus,
-                Description = "High-performance PDF reader, page layout inspector, page editor, and document merger."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                pdfExtension,
+                "High-performance PDF reader, page layout inspector, page editor, and document merger.",
+                isPaid));
 
             // 4. Workspace TODO & Task Explorer extension
             var todoExtension = new TodoExplorerExtension();
@@ -515,14 +530,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     _dockFactory.TodoTool?.AttachModel(todoVm);
                 }
             }
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = todoExtension.Id,
-                Name = todoExtension.Name,
-                Version = todoExtension.Version,
-                Status = extStatus,
-                Description = "Scans workspace for TODO, FIXME, BUG, and NOTE comment markers."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                todoExtension,
+                "Scans workspace for TODO, FIXME, BUG, and NOTE comment markers.",
+                isPaid));
 
             // 5. Run & Debug Workbench extension
             var debugExtension = new DebuggerExtension();
@@ -536,144 +547,135 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     _dockFactory.DebuggerTool?.AttachModel(debugVm);
                 }
             }
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = debugExtension.Id,
-                Name = debugExtension.Name,
-                Version = debugExtension.Version,
-                Status = extStatus,
-                Description = "Interactive Run & Debugging workbench with breakpoints, variables, call stack, and console."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                debugExtension,
+                "Interactive Run & Debugging workbench with breakpoints, variables, call stack, and console.",
+                isPaid));
 
             // 6. C/C++ Language Support
             var cppExtension = new CppLanguageExtension();
             cppExtension.Initialize(_extensionContext);
             if (isPaid) await cppExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = cppExtension.Id,
-                Name = cppExtension.Name,
-                Version = cppExtension.Version,
-                Status = extStatus,
-                Description = "Syntax highlighting, language definitions, and C/C++ code snippets."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                cppExtension,
+                "Syntax highlighting, language definitions, and C/C++ code snippets.",
+                isPaid));
 
             // 7. Java Language Support
             var javaExtension = new JavaLanguageExtension();
             javaExtension.Initialize(_extensionContext);
             if (isPaid) await javaExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = javaExtension.Id,
-                Name = javaExtension.Name,
-                Version = javaExtension.Version,
-                Status = extStatus,
-                Description = "Syntax highlighting, language definitions, and Java code snippets."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                javaExtension,
+                "Syntax highlighting, language definitions, and Java code snippets.",
+                isPaid));
 
             // 8. Go Language Support
             var goExtension = new GoLanguageExtension();
             goExtension.Initialize(_extensionContext);
             if (isPaid) await goExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = goExtension.Id,
-                Name = goExtension.Name,
-                Version = goExtension.Version,
-                Status = extStatus,
-                Description = "Syntax highlighting, language definitions, and Go code snippets."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                goExtension,
+                "Syntax highlighting, language definitions, and Go code snippets.",
+                isPaid));
 
             // 9. Rust Language Support
             var rustExtension = new RustLanguageExtension();
             rustExtension.Initialize(_extensionContext);
             if (isPaid) await rustExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = rustExtension.Id,
-                Name = rustExtension.Name,
-                Version = rustExtension.Version,
-                Status = extStatus,
-                Description = "Syntax highlighting, language definitions, and Rust code snippets."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                rustExtension,
+                "Syntax highlighting, language definitions, and Rust code snippets.",
+                isPaid));
 
             // 10. Python Language Support
             var pythonExtension = new PythonLanguageExtension();
             pythonExtension.Initialize(_extensionContext);
             if (isPaid) await pythonExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = pythonExtension.Id,
-                Name = pythonExtension.Name,
-                Version = pythonExtension.Version,
-                Status = extStatus,
-                Description = "Syntax highlighting, language definitions, and Python code snippets."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                pythonExtension,
+                "Syntax highlighting, language definitions, and Python code snippets.",
+                isPaid));
 
             // 11. C# / .NET Language Support
             var csharpExtension = new CSharpLanguageExtension();
             csharpExtension.Initialize(_extensionContext);
             if (isPaid) await csharpExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
-            {
-                Id = csharpExtension.Id,
-                Name = csharpExtension.Name,
-                Version = csharpExtension.Version,
-                Status = extStatus,
-                Description = "Syntax highlighting, language definitions, and C# / .NET code snippets."
-            });
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                csharpExtension,
+                "Syntax highlighting, language definitions, and C# / .NET code snippets.",
+                isPaid));
 
             // 12. REST Client & API Runner
             var restExtension = new RestClientExtension();
             restExtension.Initialize(_extensionContext);
-            if (isPaid) await restExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            if (isPaid)
             {
-                Id = restExtension.Id,
-                Name = restExtension.Name,
-                Version = restExtension.Version,
-                Status = extStatus,
-                Description = "Interactive HTTP/.rest request runner, formatted JSON responses, and API workbench."
-            });
+                await restExtension.ActivateAsync();
+                if (restExtension.ViewModel != null)
+                {
+                    _dockFactory.RestClientTool?.AttachModel(restExtension.ViewModel);
+                }
+            }
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                restExtension,
+                "Interactive HTTP/.rest request runner, formatted JSON responses, and API workbench.",
+                isPaid));
 
             // 13. Binary & Hex Inspector
             var hexExtension = new HexViewerExtension();
             hexExtension.Initialize(_extensionContext);
-            if (isPaid) await hexExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            if (isPaid)
             {
-                Id = hexExtension.Id,
-                Name = hexExtension.Name,
-                Version = hexExtension.Version,
-                Status = extStatus,
-                Description = "High-performance hex viewer, Shannon entropy analysis, byte pattern search, and dump export."
-            });
+                await hexExtension.ActivateAsync();
+                if (hexExtension.ViewModel != null)
+                {
+                    _dockFactory.HexViewerTool?.AttachModel(hexExtension.ViewModel);
+                }
+            }
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                hexExtension,
+                "High-performance hex viewer, Shannon entropy analysis, byte pattern search, and dump export.",
+                isPaid));
 
             // 14. SQLite Database Explorer
             var sqliteExtension = new SqliteExplorerExtension();
             sqliteExtension.Initialize(_extensionContext);
-            if (isPaid) await sqliteExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            if (isPaid)
             {
-                Id = sqliteExtension.Id,
-                Name = sqliteExtension.Name,
-                Version = sqliteExtension.Version,
-                Status = extStatus,
-                Description = "SQLite database browser, table schema inspector, SQL runner, and Markdown table exporter."
-            });
+                await sqliteExtension.ActivateAsync();
+                if (sqliteExtension.ViewModel != null)
+                {
+                    _dockFactory.SqliteExplorerTool?.AttachModel(sqliteExtension.ViewModel);
+                }
+            }
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                sqliteExtension,
+                "SQLite database browser, table schema inspector, SQL runner, and Markdown table exporter.",
+                isPaid));
 
             // 15. Color Palette & Picker
             var colorExtension = new ColorPickerExtension();
             colorExtension.Initialize(_extensionContext);
-            if (isPaid) await colorExtension.ActivateAsync();
-            ExtensionsModal.Extensions.Add(new ExtensionDisplayItem
+            if (isPaid)
             {
-                Id = colorExtension.Id,
-                Name = colorExtension.Name,
-                Version = colorExtension.Version,
-                Status = extStatus,
-                Description = "Interactive color picker, RGB/Hex/HSL converter, design swatches, and editor code insertion."
-            });
+                await colorExtension.ActivateAsync();
+                if (colorExtension.ViewModel != null)
+                {
+                    _dockFactory.ColorPickerTool?.AttachModel(colorExtension.ViewModel);
+                    if (_dockFactory.ColorPickerTool != null)
+                    {
+                        _dockFactory.ColorPickerTool.InsertColorRequested += (s, color) =>
+                        {
+                            _editorService.InsertText(color);
+                        };
+                    }
+                }
+            }
+            ExtensionsModal.Extensions.Add(CreateExtensionDisplayItem(
+                colorExtension,
+                "Interactive color picker, RGB/Hex/HSL converter, design swatches, and editor code insertion.",
+                isPaid));
 
             // Sync all registered plugin commands into the Command Palette
             foreach (var cmd in _commandRegistry.GetRegisteredCommands())
@@ -869,35 +871,59 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void AttachDocumentEvents(EditorDocumentViewModel doc)
     {
-        doc.PropertyChanged += (s, e) =>
+        if (!_attachedDocuments.Contains(doc))
         {
-            if (e.PropertyName == nameof(EditorDocumentViewModel.Line) ||
-                e.PropertyName == nameof(EditorDocumentViewModel.Column))
+            _attachedDocuments.Add(doc);
+
+            doc.PropertyChanged += (s, e) =>
             {
-                CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
-                if (!string.IsNullOrEmpty(doc.FilePath))
+                if (e.PropertyName == nameof(EditorDocumentViewModel.Line) ||
+                    e.PropertyName == nameof(EditorDocumentViewModel.Column))
                 {
-                    _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
+                    CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
+                    if (!string.IsNullOrEmpty(doc.FilePath))
+                    {
+                        _editorService.SetActive(doc.FilePath, doc.Line, doc.Column);
+                    }
                 }
-            }
-            else if (e.PropertyName == nameof(EditorDocumentViewModel.WordWrap))
+                else if (e.PropertyName == nameof(EditorDocumentViewModel.WordWrap))
+                {
+                    WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
+                }
+                else if (e.PropertyName == nameof(EditorDocumentViewModel.LineEnding))
+                {
+                    LineEndingStatus = doc.LineEnding;
+                }
+                else if (e.PropertyName == nameof(EditorDocumentViewModel.TabSize) ||
+                         e.PropertyName == nameof(EditorDocumentViewModel.UseSpacesForTabs))
+                {
+                    IndentStatus = doc.UseSpacesForTabs ? $"Spaces: {doc.TabSize}" : $"Tabs: {doc.TabSize}";
+                }
+                else if (e.PropertyName == nameof(EditorDocumentViewModel.EncodingName))
+                {
+                    Encoding = doc.EncodingName;
+                }
+            };
+
+            doc.TextDocument.TextChanged += (s, e) =>
             {
-                WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
-            }
-            else if (e.PropertyName == nameof(EditorDocumentViewModel.LineEnding))
+                _dockFactory.OutlineTool?.UpdateSymbols(doc.FilePath, doc.GetText());
+                SaveCurrentSession();
+            };
+
+            doc.RunTestRequested += (s, testName) => ExecuteTestRunner(testName);
+            doc.FindReferencesRequested += (s, symbolName) =>
             {
-                LineEndingStatus = doc.LineEnding;
-            }
-            else if (e.PropertyName == nameof(EditorDocumentViewModel.TabSize) ||
-                     e.PropertyName == nameof(EditorDocumentViewModel.UseSpacesForTabs))
-            {
-                IndentStatus = doc.UseSpacesForTabs ? $"Spaces: {doc.TabSize}" : $"Tabs: {doc.TabSize}";
-            }
-            else if (e.PropertyName == nameof(EditorDocumentViewModel.EncodingName))
-            {
-                Encoding = doc.EncodingName;
-            }
-        };
+                if (_dockFactory.SearchTool != null)
+                {
+                    _dockFactory.SearchTool.Query = symbolName;
+                    _dockFactory.SearchTool.WholeWord = true;
+                    _ = _dockFactory.SearchTool.SearchAsync();
+                    FocusSearch();
+                }
+            };
+        }
+
         CursorPosition = $"Ln {doc.Line}, Col {doc.Column}";
         WordWrapStatus = doc.WordWrap ? "Wrap: On" : "Wrap: Off";
         LineEndingStatus = doc.LineEnding;
@@ -909,11 +935,121 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
 
         _dockFactory.OutlineTool?.UpdateSymbols(doc.FilePath, doc.GetText());
-        doc.TextDocument.TextChanged += (s, e) =>
+        RefreshDocumentAuthorAndCodeLens(doc);
+    }
+
+    private async void RefreshDocumentAuthorAndCodeLens(EditorDocumentViewModel doc)
+    {
+        string? author = null;
+        var wsDir = _workspaceService.CurrentDirectory;
+        if (!string.IsNullOrEmpty(doc.FilePath) && !string.IsNullOrEmpty(wsDir) && Directory.Exists(wsDir))
         {
-            _dockFactory.OutlineTool?.UpdateSymbols(doc.FilePath, doc.GetText());
-            SaveCurrentSession();
-        };
+            try
+            {
+                author = await _gitService.GetFileLastAuthorAsync(wsDir, doc.FilePath);
+            }
+            catch
+            {
+                author = null;
+            }
+        }
+
+        Func<string, int>? workspaceCounter = null;
+        if (!string.IsNullOrEmpty(wsDir) && Directory.Exists(wsDir))
+        {
+            workspaceCounter = (symbol) =>
+            {
+                try
+                {
+                    int count = 0;
+                    var files = Directory.EnumerateFiles(wsDir, "*.*", SearchOption.AllDirectories)
+                        .Where(f => !f.Contains(".git") && !f.Contains("bin") && !f.Contains("obj") && !f.Contains("node_modules"))
+                        .Take(50);
+                    foreach (var f in files)
+                    {
+                        var ext = Path.GetExtension(f).ToLowerInvariant();
+                        if (ext is ".cs" or ".cpp" or ".c" or ".h" or ".java" or ".go" or ".rs" or ".py" or ".js" or ".ts")
+                        {
+                            var content = File.ReadAllText(f);
+                            count += System.Text.RegularExpressions.Regex.Matches(content, $@"\b{System.Text.RegularExpressions.Regex.Escape(symbol)}\b").Count;
+                        }
+                    }
+                    return Math.Max(0, count - 1);
+                }
+                catch
+                {
+                    return 0;
+                }
+            };
+        }
+
+        doc.RefreshCodeLenses(author, workspaceCounter);
+    }
+
+    private async void ExecuteTestRunner(string testName)
+    {
+        var workspaceDir = _workspaceService.CurrentDirectory;
+        if (string.IsNullOrEmpty(workspaceDir) || !Directory.Exists(workspaceDir))
+        {
+            StatusMessage = $"Cannot run test '{testName}': no workspace directory opened.";
+            return;
+        }
+
+        StatusMessage = $"Running test '{testName}'...";
+        _dockFactory.OutputTool?.AppendLog($"[TestRunner] Starting: dotnet test --filter \"FullyQualifiedName~{testName.Replace("\"", "\\\"")}\"", "Info");
+        FocusOutput();
+
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"test --filter \"FullyQualifiedName~{testName.Replace("\"", "\\\"")}\"",
+                WorkingDirectory = workspaceDir,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = new System.Diagnostics.Process { StartInfo = psi };
+            process.OutputDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    _dockFactory.OutputTool?.AppendLog(e.Data, "Info");
+                }
+            };
+            process.ErrorDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    _dockFactory.OutputTool?.AppendLog(e.Data, "Error");
+                }
+            };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode == 0)
+            {
+                StatusMessage = $"Test '{testName}' PASSED";
+                _dockFactory.OutputTool?.AppendLog($"[TestRunner] Test '{testName}' PASSED (Exit Code: 0)", "Info");
+            }
+            else
+            {
+                StatusMessage = $"Test '{testName}' FAILED (Exit Code: {process.ExitCode})";
+                _dockFactory.OutputTool?.AppendLog($"[TestRunner] Test '{testName}' FAILED (Exit Code: {process.ExitCode})", "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error running test '{testName}': {ex.Message}";
+            _dockFactory.OutputTool?.AppendLog($"[TestRunner] Execution failed: {ex.Message}", "Error");
+        }
     }
 
     private void RegisterDefaultCommands()
@@ -976,6 +1112,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPalette.RegisterCommand("view.toggleSqlStudio", "View: Focus SQL & Database Studio", () => FocusDockable(_dockFactory.SqlStudioTool), "Ctrl+Shift+B");
         CommandPalette.RegisterCommand("view.toggleDiagnostics", "View: Focus Process Diagnostics & Profiler", () => FocusDockable(_dockFactory.DiagnosticsTool), "Ctrl+Shift+M");
         CommandPalette.RegisterCommand("view.toggleMockServer", "View: Focus API Mock Server & Traffic Studio", () => FocusDockable(_dockFactory.MockServerTool));
+        CommandPalette.RegisterCommand("view.toggleRestClient", "View: Focus REST Client & API Runner", () => FocusRestClient(), "Ctrl+Alt+R");
+        CommandPalette.RegisterCommand("view.toggleHexViewer", "View: Focus Binary & Hex Inspector", () => FocusHexViewer(), "Ctrl+Shift+H");
+        CommandPalette.RegisterCommand("view.toggleSqliteExplorer", "View: Focus SQLite Database Explorer", () => FocusSqliteExplorer());
+        CommandPalette.RegisterCommand("view.toggleColorPicker", "View: Focus Color Palette & Picker", () => FocusColorPicker(), "Ctrl+Alt+C");
         CommandPalette.RegisterCommand("view.toggleSearch", "View: Focus Search in Files", () => FocusSearch(), "Ctrl+Shift+F");
         CommandPalette.RegisterCommand("view.toggleGit", "View: Focus Source Control", () => FocusGit(), "Ctrl+Shift+G");
         CommandPalette.RegisterCommand("git.refresh", "Git: Refresh Status", () => { _ = _dockFactory.GitTool?.RefreshAsync(); });
@@ -1317,6 +1457,18 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void FocusMockServer() => FocusDockable(_dockFactory.MockServerTool);
 
     [RelayCommand]
+    public void FocusRestClient() => FocusDockable(_dockFactory.RestClientTool);
+
+    [RelayCommand]
+    public void FocusHexViewer() => FocusDockable(_dockFactory.HexViewerTool);
+
+    [RelayCommand]
+    public void FocusSqliteExplorer() => FocusDockable(_dockFactory.SqliteExplorerTool);
+
+    [RelayCommand]
+    public void FocusColorPicker() => FocusDockable(_dockFactory.ColorPickerTool);
+
+    [RelayCommand]
     public void ShowExtensionsModal()
     {
         ExtensionsModal.Show();
@@ -1428,7 +1580,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         if (dockable != null)
         {
-            if (dockable == _dockFactory.ExplorerTool || dockable == _dockFactory.SearchTool || dockable == _dockFactory.GitTool)
+            if (dockable == _dockFactory.ExplorerTool || dockable == _dockFactory.SearchTool ||
+                dockable == _dockFactory.GitTool || dockable == _dockFactory.OutlineTool ||
+                dockable == _dockFactory.SqliteExplorerTool || dockable == _dockFactory.ColorPickerTool)
             {
                 _dockFactory.RestoreLeftPane(dockable);
             }
@@ -1436,7 +1590,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 dockable == _dockFactory.TodoTool || dockable == _dockFactory.DebuggerTool ||
                 dockable == _dockFactory.NetworkSuiteTool || dockable == _dockFactory.DockerTool ||
                 dockable == _dockFactory.RegexTool || dockable == _dockFactory.SqlStudioTool ||
-                dockable == _dockFactory.DiagnosticsTool || dockable == _dockFactory.MockServerTool)
+                dockable == _dockFactory.DiagnosticsTool || dockable == _dockFactory.MockServerTool ||
+                dockable == _dockFactory.RestClientTool || dockable == _dockFactory.HexViewerTool)
             {
                 _dockFactory.RestoreBottomPane(dockable);
             }
@@ -1786,6 +1941,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _recentItemsManager.AddRecentFolder(folderPath);
         RefreshRecentItems();
+
+        if (_dockFactory.DocumentDock?.VisibleDockables != null)
+        {
+            foreach (var doc in _dockFactory.DocumentDock.VisibleDockables.OfType<EditorDocumentViewModel>())
+            {
+                RefreshDocumentAuthorAndCodeLens(doc);
+            }
+        }
+        if (_dockFactory.SecondaryDocumentDock?.VisibleDockables != null)
+        {
+            foreach (var doc in _dockFactory.SecondaryDocumentDock.VisibleDockables.OfType<EditorDocumentViewModel>())
+            {
+                RefreshDocumentAuthorAndCodeLens(doc);
+            }
+        }
     }
 
     public void OpenFile(string filePath)
@@ -1874,31 +2044,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var previewHtml = _markdownExtension?.GetPreviewDocument(filePath);
         var previewTitle = $"Preview: {Path.GetFileName(filePath)}";
         var existing = _dockFactory.DocumentDock?.VisibleDockables?
-            .OfType<EditorDocumentViewModel>()
-            .FirstOrDefault(d => d.Title == previewTitle);
+            .OfType<MarkdownDocumentViewModel>()
+            .FirstOrDefault(d => d.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase) || d.Title == previewTitle);
 
         if (existing != null)
         {
+            existing.Reload();
             _dockFactory.SetActiveDockable(existing);
             return;
         }
 
-        var textContent = previewHtml ?? File.ReadAllText(filePath);
-        var previewDoc = new EditorDocumentViewModel
-        {
-            FileName = previewTitle,
-            Title = previewTitle,
-            FilePath = filePath,
-            IsReadOnly = true,
-            TextDocument = new AvaloniaEdit.Document.TextDocument(textContent)
-        };
-        AttachDocumentEvents(previewDoc);
+        var previewDoc = new MarkdownDocumentViewModel();
+        previewDoc.LoadFile(filePath);
         _dockFactory.AddDockable(_dockFactory.DocumentDock!, previewDoc);
         _dockFactory.SetActiveDockable(previewDoc);
-        StatusMessage = $"Opened Markdown Preview for {Path.GetFileName(filePath)}";
+        StatusMessage = $"Opened Visual Markdown Preview for {Path.GetFileName(filePath)}";
     }
 
     public void OpenCsvPreview(string filePath)
@@ -1911,32 +2073,23 @@ public partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var tableVm = new CsvTableViewModel();
-        tableVm.LoadFile(filePath);
-        var formatted = tableVm.ToFormattedText();
-        var previewTitle = $"Data Table: {Path.GetFileName(filePath)}";
+        var previewTitle = $"Table: {Path.GetFileName(filePath)}";
         var existing = _dockFactory.DocumentDock?.VisibleDockables?
-            .OfType<EditorDocumentViewModel>()
-            .FirstOrDefault(d => d.Title == previewTitle);
+            .OfType<CsvDocumentViewModel>()
+            .FirstOrDefault(d => d.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase) || d.Title == previewTitle);
 
         if (existing != null)
         {
+            existing.Reload();
             _dockFactory.SetActiveDockable(existing);
             return;
         }
 
-        var previewDoc = new EditorDocumentViewModel
-        {
-            FileName = previewTitle,
-            Title = previewTitle,
-            FilePath = filePath,
-            IsReadOnly = true,
-            TextDocument = new AvaloniaEdit.Document.TextDocument(formatted)
-        };
-        AttachDocumentEvents(previewDoc);
+        var previewDoc = new CsvDocumentViewModel();
+        previewDoc.LoadFile(filePath);
         _dockFactory.AddDockable(_dockFactory.DocumentDock!, previewDoc);
         _dockFactory.SetActiveDockable(previewDoc);
-        StatusMessage = $"Opened Data Table for {Path.GetFileName(filePath)}";
+        StatusMessage = $"Opened Interactive Data Table for {Path.GetFileName(filePath)}";
     }
 
     public void OpenPdfPreview(string filePath)

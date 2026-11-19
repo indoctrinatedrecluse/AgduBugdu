@@ -107,28 +107,67 @@ public class MarkdownPreviewViewModel
 
     private static string ConvertMarkdownToHtml(string md)
     {
-        // Lightweight, self-contained Markdown-to-HTML parser
+        // Lightweight, self-contained Markdown-to-HTML parser with XSS protection
         var lines = md.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
         var sb = new System.Text.StringBuilder();
+        bool inCodeBlock = false;
 
-        foreach (var line in lines)
+        foreach (var rawLine in lines)
         {
-            var trimmed = line.Trim();
-            if (trimmed.StartsWith("### "))
+            var trimmed = rawLine.Trim();
+
+            // Code block toggle
+            if (trimmed.StartsWith("```"))
             {
-                sb.AppendLine($"<h3>{trimmed.Substring(4)}</h3>");
+                if (!inCodeBlock)
+                {
+                    inCodeBlock = true;
+                    var lang = System.Net.WebUtility.HtmlEncode(trimmed.Length > 3 ? trimmed.Substring(3).Trim() : string.Empty);
+                    sb.AppendLine($"<pre><code class=\"{lang}\">");
+                }
+                else
+                {
+                    inCodeBlock = false;
+                    sb.AppendLine("</code></pre>");
+                }
+                continue;
+            }
+
+            if (inCodeBlock)
+            {
+                sb.AppendLine(System.Net.WebUtility.HtmlEncode(rawLine));
+                continue;
+            }
+
+            if (trimmed.StartsWith("#### "))
+            {
+                var content = System.Net.WebUtility.HtmlEncode(trimmed.Substring(5));
+                sb.AppendLine($"<h4>{content}</h4>");
+            }
+            else if (trimmed.StartsWith("### "))
+            {
+                var content = System.Net.WebUtility.HtmlEncode(trimmed.Substring(4));
+                sb.AppendLine($"<h3>{content}</h3>");
             }
             else if (trimmed.StartsWith("## "))
             {
-                sb.AppendLine($"<h2>{trimmed.Substring(3)}</h2>");
+                var content = System.Net.WebUtility.HtmlEncode(trimmed.Substring(3));
+                sb.AppendLine($"<h2>{content}</h2>");
             }
             else if (trimmed.StartsWith("# "))
             {
-                sb.AppendLine($"<h1>{trimmed.Substring(2)}</h1>");
+                var content = System.Net.WebUtility.HtmlEncode(trimmed.Substring(2));
+                sb.AppendLine($"<h1>{content}</h1>");
+            }
+            else if (trimmed.StartsWith("> "))
+            {
+                var content = System.Net.WebUtility.HtmlEncode(trimmed.Substring(2));
+                sb.AppendLine($"<blockquote>{content}</blockquote>");
             }
             else if (trimmed.StartsWith("- ") || trimmed.StartsWith("* "))
             {
-                sb.AppendLine($"<li>{trimmed.Substring(2)}</li>");
+                var content = System.Net.WebUtility.HtmlEncode(trimmed.Substring(2));
+                sb.AppendLine($"<li>{content}</li>");
             }
             else if (string.IsNullOrWhiteSpace(trimmed))
             {
@@ -136,11 +175,17 @@ public class MarkdownPreviewViewModel
             }
             else
             {
+                var encoded = System.Net.WebUtility.HtmlEncode(trimmed);
                 // Simple bold and code formatting
-                var parsed = Regex.Replace(trimmed, @"\*\*(.+?)\*\*", "<b>$1</b>");
+                var parsed = Regex.Replace(encoded, @"\*\*(.+?)\*\*", "<b>$1</b>");
                 parsed = Regex.Replace(parsed, @"`(.+?)`", "<code>$1</code>");
                 sb.AppendLine($"<p>{parsed}</p>");
             }
+        }
+
+        if (inCodeBlock)
+        {
+            sb.AppendLine("</code></pre>");
         }
 
         return sb.ToString();

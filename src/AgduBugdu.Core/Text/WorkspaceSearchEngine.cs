@@ -289,7 +289,14 @@ public static class WorkspaceSearchEngine
         }
 
         string regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
-        return Regex.IsMatch(input, regexPattern, RegexOptions.IgnoreCase);
+        try
+        {
+            return Regex.IsMatch(input, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return false;
+        }
     }
 
     private static bool IsLikelyBinary(string filePath)

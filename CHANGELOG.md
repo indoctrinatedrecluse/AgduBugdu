@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 🚀 [1.6.0] - 2026-11-19
+
+### 🛡️ Security Hardening
+- **🔒 TLS Validation Opt-in**: Replaced hardcoded certificate validation bypasses in the REST Client extension with an explicit `AllowUntrustedCertificates` user setting (defaults to false for strict security).
+- **🛡️ Process Argument Injection Defense**: Migrated CLI execution across `GitService` and `DockerCliService` from raw string formatting to structured `ProcessStartInfo.ArgumentList` calls, neutralizing command injection vulnerabilities.
+- **⏱️ ReDoS Safeguards**: Added mandatory 2-second regex evaluation timeouts across `SearchEngine` and `WorkspaceSearchEngine` to prevent regular expression denial-of-service hangs on malformed patterns.
+- **🧼 Safe HTML Output in Markdown**: Enforced HTML-encoding on all raw markdown text nodes before applying formatting syntax rules in `MarkdownLiveExtension`.
+
+### 🧩 Docking & Rich Viewers
+- **🪟 Plugin Tool Docking**: Docked and registered dedicated tool panels for `HexViewer`, `RestClient`, `SqliteExplorer`, and `ColorPicker` in `MainDockFactory`, View menu, and keyboard shortcuts (`Ctrl+Alt+R`, `Ctrl+Shift+H`, `Ctrl+Alt+C`).
+- **📊 Interactive Tabular CSV/TSV Viewer**: Added native `CsvDocumentViewModel` and `CsvDocumentView` tab with real-time text filter search, responsive column grid, delimiter auto-detection, and row count metrics.
+- **📖 Visual Markdown Viewer**: Built formatted visual rendering tab (`MarkdownDocumentViewModel` / `MarkdownDocumentView`) with AST block parser, headings, blockquotes, syntax-colored code blocks, and toggleable raw source mode.
+
+### ⚙️ Real Systems Integration
+- **🐳 Live Docker Daemon Control**: Eliminated silent mockup fallback masquerading in `DockerCliService`. Added explicit Live Daemon vs. Demo Mode toggle, detailed "Docker Offline" state card, retry connection command, and status color badges.
+- **🐞 Native Process & Script Debugger Engine**: Built real CLI process execution runner (`DebugProcessRunner`) supporting .NET (`dotnet run`), Python, Node/TypeScript, Go, Rust, PowerShell, and Bash. Added real process lifecycle tracking (PID, exit code, elapsed runtime), regex runtime stack trace extraction, and live watch variable evaluator (`PID`, memory, threads, environment variables, expressions).
+
+### 🧠 Extensibility & Semantic Intelligence
+- **⚡ Dynamic Extensions Modal**: Upgraded `ExtensionsModalViewModel` to support runtime extension activation and deactivation (`ToggleExtensionAsync`) with live status badges and enable/disable buttons.
+- **🌿 Git Author & Workspace CodeLens**: Integrated `_gitService.GetFileLastAuthorAsync` (`git log -1 --format="%an, %cr"`) and workspace reference counting into CodeLens inlay pills.
+- **▶️ Interactive Test Runner Bridge**: CodeLens "▶ Run Test" badges now execute `dotnet test --filter FullyQualifiedName~{testName}` and stream output live to the Output tool window. Clicking reference badges directly navigates to Search in Files.
+
+### 🔧 Bugfixes & Polish
+- **📁 File Explorer Subfolder Expansion**: Resolved the issue where expanding folders briefly showed "Loading..." and got stuck. Child loading is now deferred to `DispatcherPriority.Background` and collections update atomically.
+- **📜 Output Tool View Auto-Scroll**: Output log now automatically scrolls to the end as build output and test runner logs stream in.
+- **🔍 Regex Replace Capture Group Expansion**: `SearchEngine.ReplaceAll` now correctly expands regex substitution capture groups (`$1`, `${name}`) when `UseRegex` is enabled.
+- **📊 Status Bar Git Binding**: Fixed XAML binding type mismatch by adding a dedicated `HasGitChanges` boolean property in `MainViewModel`.
+- **🐧 WSL Resilience**: Added zero-overhead WSL registry detection in `TerminalSessionItem`; systems without WSL installed now display a friendly installation notice instead of an abrupt process crash.
+
+---
+
 ## 🚀 [1.5.3] - 2026-10-15
 
 ### 🔧 Fixed

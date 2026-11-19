@@ -34,7 +34,7 @@ public static class SearchEngine
                 if (options.WholeWord)
                     pattern = $@"\b(?:{pattern})\b";
 
-                var matches = Regex.Matches(text, pattern, regexOpts);
+                var matches = Regex.Matches(text, pattern, regexOpts, TimeSpan.FromSeconds(2));
                 foreach (Match match in matches)
                 {
                     if (match.Success && match.Length > 0)
@@ -124,6 +124,31 @@ public static class SearchEngine
     {
         if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(options.Query))
             return (text, 0);
+
+        if (options.UseRegex)
+        {
+            try
+            {
+                var regexOpts = RegexOptions.Multiline;
+                if (!options.MatchCase)
+                    regexOpts |= RegexOptions.IgnoreCase;
+
+                string pattern = options.Query;
+                if (options.WholeWord)
+                    pattern = $@"\b(?:{pattern})\b";
+
+                var regex = new Regex(pattern, regexOpts, TimeSpan.FromSeconds(2));
+                int count = regex.Matches(text).Count;
+                if (count == 0) return (text, 0);
+
+                string replaced = regex.Replace(text, replacement ?? string.Empty);
+                return (replaced, count);
+            }
+            catch
+            {
+                return (text, 0);
+            }
+        }
 
         var matches = FindAll(text, options);
         if (matches.Count == 0)

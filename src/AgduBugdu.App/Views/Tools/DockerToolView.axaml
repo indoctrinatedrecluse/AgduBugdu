@@ -39,11 +39,19 @@
 
                 <!-- Daemon Status -->
                 <Border Grid.Column="2" Background="#181818" CornerRadius="3" Padding="6,2" Margin="0,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding DaemonStatus}" FontSize="10" Foreground="#00D26A" />
+                    <TextBlock Text="{Binding DaemonStatus}" FontSize="10" Foreground="{Binding DaemonStatusColor}" FontWeight="SemiBold" />
                 </Border>
 
                 <!-- Action Buttons -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Content="⚡ Demo Mode"
+                            Command="{Binding ToggleDemoModeCommand}"
+                            Background="#2A2438"
+                            Foreground="#C4B5FD"
+                            FontSize="10"
+                            Padding="8,4"
+                            CornerRadius="3"
+                            ToolTip.Tip="Toggle Simulated Demo Mode on/off" />
                     <Button Content="🔄 Refresh" Command="{Binding RefreshContainersCommand}" Background="#333333" Foreground="#CCCCCC" FontSize="10" Padding="8,4" CornerRadius="3" />
                     <Button Content="🧹 Prune Stopped" Command="{Binding PruneContainersCommand}" Background="#333333" Foreground="#EF4444" FontSize="10" Padding="8,4" CornerRadius="3" />
                 </StackPanel>
@@ -52,8 +60,56 @@
 
         <!-- Main Body -->
         <Grid Grid.Row="1">
-            <!-- 1. Containers Tab View -->
-            <Grid ColumnDefinitions="*,4,*" IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}">
+            <!-- Offline State Overlay -->
+            <Border IsVisible="{Binding IsOfflineAndNotDemo}"
+                    Background="#181818"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Padding="32">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="480">
+                    <TextBlock Text="🐳" FontSize="44" HorizontalAlignment="Center" />
+                    <TextBlock Text="Docker Daemon Offline" FontSize="16" FontWeight="Bold" Foreground="#F87171" HorizontalAlignment="Center" />
+                    <TextBlock Text="Cannot connect to the Docker daemon at the standard engine socket/pipe. Ensure Docker Desktop or dockerd is running, or switch to Demo Mode to explore with simulated containers."
+                               Foreground="#AAAAAA"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,8,0,0">
+                        <Button Content="🔄 Retry Connection"
+                                Command="{Binding RetryConnectionCommand}"
+                                Background="#2563EB"
+                                Foreground="#FFFFFF"
+                                FontWeight="SemiBold"
+                                Padding="12,6"
+                                CornerRadius="4" />
+                        <Button Content="⚡ Explore Demo Mode"
+                                Command="{Binding ToggleDemoModeCommand}"
+                                Background="#374151"
+                                Foreground="#E5E7EB"
+                                Padding="12,6"
+                                CornerRadius="4" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Active Viewport (Online or Demo Mode) -->
+            <Grid IsVisible="{Binding !IsOfflineAndNotDemo}" RowDefinitions="Auto,*">
+                <!-- Demo Mode Warning Banner -->
+                <Border Grid.Row="0"
+                        IsVisible="{Binding IsDemoMode}"
+                        Background="#2E1065"
+                        Padding="8,4"
+                        BorderBrush="#581C87"
+                        BorderThickness="0,0,0,1">
+                    <TextBlock Text="⚡ Demo Mode Active: Displaying simulated containers and mock logs. Real containers are unaffected."
+                               FontSize="10"
+                               Foreground="#DDD6FE"
+                               HorizontalAlignment="Center" />
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <!-- 1. Containers Tab View -->
+                    <Grid ColumnDefinitions="*,4,*" IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}">
                 <!-- Left: Container List Pane -->
                 <Grid Grid.Column="0" RowDefinitions="Auto,*">
                     <!-- Search & Filter Bar -->
@@ -152,6 +208,8 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+            </Grid>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

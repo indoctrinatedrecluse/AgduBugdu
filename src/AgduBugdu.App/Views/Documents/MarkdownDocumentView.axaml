@@ -1,0 +1,183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:AgduBugdu.App.ViewModels.Documents"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="AgduBugdu.App.Views.Documents.MarkdownDocumentView"
+             x:DataType="vm:MarkdownDocumentViewModel"
+             Background="#1E1E1E">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Control Toolbar -->
+        <Border Grid.Row="0"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Text="📖" FontSize="16" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center" />
+
+                    <Button Command="{Binding ToggleViewModeCommand}"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            BorderBrush="#444444"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            ToolTip.Tip="Toggle Visual / Raw Source">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="👁️" FontSize="12" VerticalAlignment="Center" />
+                            <TextBlock Text="View Mode: " FontSize="12" Foreground="#888888" VerticalAlignment="Center" />
+                            <TextBlock Text="Visual" IsVisible="{Binding IsVisualMode}" FontWeight="Bold" FontSize="12" Foreground="#4EC9B0" VerticalAlignment="Center" />
+                            <TextBlock Text="Raw Source" IsVisible="{Binding !IsVisualMode}" FontWeight="Bold" FontSize="12" Foreground="#9CDCFE" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding ReloadCommand}"
+                            Background="#333333"
+                            Foreground="#EEEEEE"
+                            BorderBrush="#444444"
+                            Padding="8,4"
+                            CornerRadius="4"
+                            ToolTip.Tip="Reload Markdown">
+                        <TextBlock Text="↻ Refresh" FontSize="12" />
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border Background="#2D2D30" CornerRadius="4" Padding="8,4">
+                        <TextBlock Text="{Binding StatusSummary}"
+                                   FontSize="12"
+                                   Foreground="#CCCCCC"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Viewport -->
+        <Grid Grid.Row="1">
+            <!-- Error Banner -->
+            <Border IsVisible="{Binding HasError}"
+                    Background="#3A1D1D"
+                    BorderBrush="#F44336"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Margin="24"
+                    Padding="16"
+                    VerticalAlignment="Top">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF6B6B" TextWrapping="Wrap" />
+            </Border>
+
+            <!-- Visual Formatted Mode -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="{Binding IsVisualMode}">
+                <Border MaxWidth="850" HorizontalAlignment="Left" Margin="24,16,24,32">
+                    <ItemsControl ItemsSource="{Binding Blocks}">
+                        <ItemsControl.DataTemplates>
+                            <!-- Heading Template -->
+                            <DataTemplate DataType="vm:MarkdownHeadingBlock">
+                                <SelectableTextBlock Text="{Binding Text}"
+                                                     FontSize="{Binding FontSize}"
+                                                     FontWeight="{Binding Weight}"
+                                                     Foreground="{Binding Color}"
+                                                     Margin="{Binding Margin}"
+                                                     TextWrapping="Wrap" />
+                            </DataTemplate>
+
+                            <!-- Paragraph Template -->
+                            <DataTemplate DataType="vm:MarkdownParagraphBlock">
+                                <SelectableTextBlock Text="{Binding Text}"
+                                                     FontSize="13"
+                                                     Foreground="#CCCCCC"
+                                                     LineHeight="20"
+                                                     Margin="0,4,0,8"
+                                                     TextWrapping="Wrap" />
+                            </DataTemplate>
+
+                            <!-- Code Block Template -->
+                            <DataTemplate DataType="vm:MarkdownCodeBlock">
+                                <Border Background="#161616"
+                                        BorderBrush="#2C2C2C"
+                                        BorderThickness="1"
+                                        CornerRadius="5"
+                                        Padding="14,10"
+                                        Margin="0,8,0,12">
+                                    <Grid RowDefinitions="Auto,*">
+                                        <TextBlock Grid.Row="0"
+                                                   Text="{Binding Language}"
+                                                   FontSize="11"
+                                                   Foreground="#707070"
+                                                   HorizontalAlignment="Right"
+                                                   Margin="0,0,0,4" />
+                                        <SelectableTextBlock Grid.Row="1"
+                                                             Text="{Binding Code}"
+                                                             FontFamily="Consolas,Cascadia Code,Courier New,monospace"
+                                                             FontSize="12"
+                                                             Foreground="#D4D4D4"
+                                                             LineHeight="18"
+                                                             TextWrapping="Wrap" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+
+                            <!-- Blockquote Template -->
+                            <DataTemplate DataType="vm:MarkdownQuoteBlock">
+                                <Border BorderBrush="#007ACC"
+                                        BorderThickness="3,0,0,0"
+                                        Background="#18202A"
+                                        Padding="12,8"
+                                        Margin="0,6,0,10"
+                                        CornerRadius="0,4,4,0">
+                                    <SelectableTextBlock Text="{Binding Text}"
+                                                         FontStyle="Italic"
+                                                         Foreground="#9CDCFE"
+                                                         FontSize="13"
+                                                         LineHeight="19"
+                                                         TextWrapping="Wrap" />
+                                </Border>
+                            </DataTemplate>
+
+                            <!-- List Item Template -->
+                            <DataTemplate DataType="vm:MarkdownListItemBlock">
+                                <StackPanel Orientation="Horizontal" Margin="8,2,0,4">
+                                    <TextBlock Text="{Binding Marker}"
+                                               Foreground="#4EC9B0"
+                                               FontWeight="Bold"
+                                               Width="24" />
+                                    <SelectableTextBlock Text="{Binding Text}"
+                                                         Foreground="#CCCCCC"
+                                                         FontSize="13"
+                                                         TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DataTemplate>
+
+                            <!-- Divider Template -->
+                            <DataTemplate DataType="vm:MarkdownDividerBlock">
+                                <Border Height="1"
+                                        Background="#333333"
+                                        Margin="0,14,0,14" />
+                            </DataTemplate>
+                        </ItemsControl.DataTemplates>
+                    </ItemsControl>
+                </Border>
+            </ScrollViewer>
+
+            <!-- Raw Source Mode -->
+            <TextBox IsVisible="{Binding !IsVisualMode}"
+                     Text="{Binding RawMarkdown}"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     TextWrapping="NoWrap"
+                     FontFamily="Consolas,Cascadia Code,Courier New,monospace"
+                     FontSize="12"
+                     Background="#1A1A1A"
+                     Foreground="#D4D4D4"
+                     BorderThickness="0"
+                     Padding="16" />
+        </Grid>
+    </Grid>
+</UserControl>

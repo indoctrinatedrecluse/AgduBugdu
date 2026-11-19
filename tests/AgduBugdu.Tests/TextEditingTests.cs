@@ -128,6 +128,17 @@ public class TextEditingTests
     }
 
     [Fact]
+    public void SearchEngine_ReplaceAll_RegexWithCaptureGroups()
+    {
+        string text = "item_123, item_456, item_789";
+        var options = new SearchOptions(@"item_(\d+)", UseRegex: true);
+
+        var (newText, count) = SearchEngine.ReplaceAll(text, options, "elem_$1");
+        Assert.Equal(3, count);
+        Assert.Equal("elem_123, elem_456, elem_789", newText);
+    }
+
+    [Fact]
     public void EditorDocumentViewModel_SearchCommands_And_Navigation()
     {
         var doc = new EditorDocumentViewModel

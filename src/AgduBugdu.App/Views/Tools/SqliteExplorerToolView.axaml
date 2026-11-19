@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:sqlite="using:AgduBugdu.Plugin.SqliteExplorer"
+             x:Class="AgduBugdu.App.Views.Tools.SqliteExplorerToolView"
+             x:DataType="vm:SqliteExplorerToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <!-- Title & DB Name -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="🗄️" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="SQLITE EXPLORER"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                    <Border Background="#1E293B" CornerRadius="3" Padding="6,2">
+                        <TextBlock Text="{Binding DatabaseName}" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Status Message -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding StatusMessage}"
+                           FontSize="11"
+                           Foreground="#10B981"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+
+                <!-- Action Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Button Content="▶ Run SQL" Command="{Binding RunQueryCommand}" FontWeight="Bold" FontSize="11" Padding="10,3" Background="#0284C7" Foreground="#FFFFFF" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Content="Reset" Command="{Binding ResetSizeCommand}" FontSize="10" Padding="6,3" Background="#2D2D30" Foreground="#CBD5E1" />
+                    <Button Content="—" Command="{Binding MinimizeCommand}" FontSize="10" Padding="6,3" Background="#2D2D30" Foreground="#CBD5E1" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Body: Tables Tree (Left) vs Query & Results (Right) -->
+        <Grid Grid.Row="1" ColumnDefinitions="220,1,*">
+            <!-- Left: Table list -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*" Margin="6">
+                <TextBlock Grid.Row="0" Text="TABLES &amp; VIEWS" FontSize="10" FontWeight="Bold" Foreground="#94A3B8" Margin="0,0,0,4" />
+                <ListBox Grid.Row="1"
+                         ItemsSource="{Binding Tables}"
+                         SelectedItem="{Binding SelectedTable, Mode=TwoWay}"
+                         Background="#252526"
+                         BorderBrush="#3E3E42"
+                         BorderThickness="1"
+                         CornerRadius="4">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="sqlite:SqliteTableSchema">
+                            <Button Command="{Binding ((vm:SqliteExplorerToolViewModel)DataContext).SelectTableCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                    CommandParameter="{Binding}"
+                                    HorizontalAlignment="Stretch"
+                                    Background="Transparent"
+                                    Padding="4,2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Vertical">
+                                        <TextBlock Text="{Binding TableName}" FontSize="11" FontWeight="SemiBold" Foreground="#F8FAFC" />
+                                        <TextBlock Text="{Binding Columns.Count, StringFormat='{}{0} cols'}" FontSize="9" Foreground="#94A3B8" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding RowCount, StringFormat='{}{0} rows'}" FontSize="9" Foreground="#38BDF8" VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Background="#333333" Width="1" />
+
+            <!-- Right: Query Editor & Markdown Results -->
+            <Grid Grid.Column="2" RowDefinitions="80,1,*" Margin="6">
+                <TextBox Grid.Row="0"
+                         Text="{Binding QueryText, Mode=TwoWay}"
+                         AcceptsReturn="True"
+                         FontFamily="Cascadia Code, Consolas, monospace"
+                         FontSize="12"
+                         Background="#252526"
+                         Foreground="#F3E8FF"
+                         BorderBrush="#3E3E42"
+                         Watermark="Enter SQL query (e.g. SELECT * FROM users;)..." />
+
+                <GridSplitter Grid.Row="1" Background="#333333" Height="1" Margin="0,4" />
+
+                <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding ResultFormattedText}"
+                             IsReadOnly="True"
+                             AcceptsReturn="True"
+                             FontFamily="Cascadia Code, Consolas, monospace"
+                             FontSize="12"
+                             Background="#1E1E1E"
+                             Foreground="#38BDF8"
+                             BorderThickness="0" />
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,231 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:rest="using:AgduBugdu.Plugin.RestClient"
+             x:Class="AgduBugdu.App.Views.Tools.RestClientToolView"
+             x:DataType="vm:RestClientToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <!-- Title & Icon -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="🌐" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="REST CLIENT &amp; API RUNNER"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Status Summary -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding ResponseStatus}"
+                           FontSize="11"
+                           Foreground="#38BDF8"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+
+                <!-- Insecure TLS Toggle -->
+                <CheckBox Grid.Column="2"
+                          IsChecked="{Binding AllowUntrustedCertificates, Mode=TwoWay}"
+                          Content="Allow Untrusted TLS"
+                          ToolTip.Tip="When checked, bypasses SSL certificate verification for self-signed certificates"
+                          FontSize="10"
+                          Foreground="#E2E8F0"
+                          Margin="0,0,12,0"
+                          VerticalAlignment="Center" />
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Content="Clear History"
+                            Command="{Binding ClearHistoryCommand}"
+                            FontSize="10"
+                            Padding="8,3"
+                            Background="#2D2D30"
+                            Foreground="#CBD5E1" />
+                    <Button Content="Reset"
+                            Command="{Binding ResetSizeCommand}"
+                            FontSize="10"
+                            Padding="6,3"
+                            Background="#2D2D30"
+                            Foreground="#CBD5E1" />
+                    <Button Content="—"
+                            Command="{Binding MinimizeCommand}"
+                            FontSize="10"
+                            Padding="6,3"
+                            Background="#2D2D30"
+                            Foreground="#CBD5E1" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Body: Request Bar + Split Panes (Request / Response / History) -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="8">
+            <!-- URL & Method Bar -->
+            <Border Grid.Row="0"
+                    Background="#252526"
+                    BorderBrush="#3E3E42"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="6"
+                    Margin="0,0,0,8">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <!-- Method Selector -->
+                    <ComboBox Grid.Column="0"
+                              ItemsSource="{Binding AvailableMethods}"
+                              SelectedItem="{Binding Method, Mode=TwoWay}"
+                              Width="105"
+                              Height="30"
+                              FontWeight="Bold"
+                              Foreground="#38BDF8"
+                              Margin="0,0,8,0" />
+
+                    <!-- URL Input Box -->
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Url, Mode=TwoWay}"
+                             Watermark="https://api.example.com/v1/resource"
+                             FontFamily="Cascadia Code, Consolas, monospace"
+                             FontSize="12"
+                             Height="30"
+                             VerticalContentAlignment="Center"
+                             Background="#1E1E1E"
+                             Foreground="#FFFFFF"
+                             BorderBrush="#3E3E42"
+                             Margin="0,0,8,0" />
+
+                    <!-- Send Button -->
+                    <Button Grid.Column="2"
+                            Content="▶ Send Request"
+                            Command="{Binding SendRequestCommand}"
+                            IsEnabled="{Binding !IsSending}"
+                            FontWeight="Bold"
+                            FontSize="12"
+                            Padding="14,4"
+                            Height="30"
+                            Background="#0284C7"
+                            Foreground="#FFFFFF" />
+                </Grid>
+            </Border>
+
+            <!-- Split Panes: Request Details (Left) vs Response Output (Right) -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,1,*,1,160">
+                <!-- Left: Request Headers & Body Tabs -->
+                <Grid Grid.Column="0" RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0"
+                               Text="REQUEST CONFIGURATION"
+                               FontSize="10"
+                               FontWeight="Bold"
+                               Foreground="#94A3B8"
+                               Margin="0,0,0,4" />
+                    <TabControl Grid.Row="1" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4">
+                        <!-- Headers Tab -->
+                        <TabItem Header="Headers" FontSize="11">
+                            <TextBox Text="{Binding HeadersText, Mode=TwoWay}"
+                                     AcceptsReturn="True"
+                                     FontFamily="Cascadia Code, Consolas, monospace"
+                                     FontSize="11"
+                                     Background="#1E1E1E"
+                                     Foreground="#E2E8F0"
+                                     BorderThickness="0"
+                                     Watermark="Header: Value (one per line)" />
+                        </TabItem>
+
+                        <!-- Body Tab -->
+                        <TabItem Header="Body (JSON / Text)" FontSize="11">
+                            <TextBox Text="{Binding BodyText, Mode=TwoWay}"
+                                     AcceptsReturn="True"
+                                     FontFamily="Cascadia Code, Consolas, monospace"
+                                     FontSize="11"
+                                     Background="#1E1E1E"
+                                     Foreground="#E2E8F0"
+                                     BorderThickness="0"
+                                     Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+
+                <GridSplitter Grid.Column="1" Background="#333333" Width="1" />
+
+                <!-- Middle: Response Output -->
+                <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+                        <TextBlock Text="RESPONSE OUTPUT"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="#94A3B8"
+                                   VerticalAlignment="Center" />
+                        <Border Background="#064E3B" CornerRadius="3" Padding="4,1" IsVisible="{Binding StatusCode, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <TextBlock Text="{Binding StatusCode}" FontSize="10" FontWeight="Bold" Foreground="#34D399" />
+                        </Border>
+                        <TextBlock Text="{Binding ElapsedMs, StringFormat='{}{0} ms'}" FontSize="10" Foreground="#A78BFA" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <TabControl Grid.Row="1" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4">
+                        <TabItem Header="Body" FontSize="11">
+                            <TextBox Text="{Binding ResponseBody}"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     FontFamily="Cascadia Code, Consolas, monospace"
+                                     FontSize="11"
+                                     Background="#1E1E1E"
+                                     Foreground="#CBD5E1"
+                                     BorderThickness="0" />
+                        </TabItem>
+                        <TabItem Header="Headers" FontSize="11">
+                            <TextBox Text="{Binding ResponseHeaders}"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     FontFamily="Cascadia Code, Consolas, monospace"
+                                     FontSize="11"
+                                     Background="#1E1E1E"
+                                     Foreground="#CBD5E1"
+                                     BorderThickness="0" />
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+
+                <GridSplitter Grid.Column="3" Background="#333333" Width="1" />
+
+                <!-- Right: History List -->
+                <Grid Grid.Column="4" RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0"
+                               Text="RECENT HISTORY"
+                               FontSize="10"
+                               FontWeight="Bold"
+                               Foreground="#94A3B8"
+                               Margin="4,0,0,4" />
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding History}"
+                             Background="#252526"
+                             BorderBrush="#3E3E42"
+                             BorderThickness="1"
+                             CornerRadius="4">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="rest:HttpResponseModel">
+                                <Button Command="{Binding ((vm:RestClientToolViewModel)DataContext).LoadFromHistoryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        CommandParameter="{Binding}"
+                                        HorizontalAlignment="Stretch"
+                                        Background="Transparent"
+                                        Padding="4,2">
+                                    <StackPanel Orientation="Vertical">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="{Binding StatusCode}" FontWeight="Bold" FontSize="10" Foreground="#34D399" />
+                                            <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat='{}{0}ms'}" FontSize="9" Foreground="#94A3B8" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding StatusDescription}" FontSize="9" Foreground="#CBD5E1" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

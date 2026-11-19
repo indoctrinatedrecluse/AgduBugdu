@@ -39,6 +39,7 @@ public interface IGitService
     Task<(bool Success, string Message)> PushAsync(string workspaceRoot);
     Task<GitCommitDetail?> GetCommitDetailAsync(string workspaceRoot, string commitHash);
     Task<string?> GetHeadFileContentAsync(string workspaceRoot, string relativePath);
+    Task<string?> GetFileLastAuthorAsync(string workspaceRoot, string relativeOrAbsolutePath, CancellationToken cancellationToken = default);
     DiffFileModel ParseDiff(string rawDiff);
 }
 
@@ -52,7 +53,7 @@ public class GitService : IGitService
     {
         try
         {
-            var (exitCode, _) = await RunGitCommandAsync(null, "--version");
+            var (exitCode, _) = await RunGitCommandAsync(null, new[] { "--version" });
             return exitCode == 0;
         }
         catch
@@ -66,7 +67,7 @@ public class GitService : IGitService
         if (string.IsNullOrWhiteSpace(workspaceRoot) || !Directory.Exists(workspaceRoot))
             return GitStatusResult.NotARepository();
 
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, "status --porcelain=v1 -b -uall", cancellationToken);
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, new[] { "status", "--porcelain=v1", "-b", "-uall" }, cancellationToken);
         if (exitCode != 0)
         {
             return GitStatusResult.NotARepository();
@@ -77,32 +78,32 @@ public class GitService : IGitService
 
     public async Task<bool> StageFileAsync(string workspaceRoot, string relativePath)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"add -- \"{EscapeArg(relativePath)}\"");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "add", "--", relativePath });
         return exitCode == 0;
     }
 
     public async Task<bool> StageAllAsync(string workspaceRoot)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, "add -A");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "add", "-A" });
         return exitCode == 0;
     }
 
     public async Task<bool> UnstageFileAsync(string workspaceRoot, string relativePath)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"restore --staged -- \"{EscapeArg(relativePath)}\"");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "restore", "--staged", "--", relativePath });
         if (exitCode != 0)
         {
-            (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"reset HEAD -- \"{EscapeArg(relativePath)}\"");
+            (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "reset", "HEAD", "--", relativePath });
         }
         return exitCode == 0;
     }
 
     public async Task<bool> UnstageAllAsync(string workspaceRoot)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, "restore --staged .");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "restore", "--staged", "." });
         if (exitCode != 0)
         {
-            (exitCode, _) = await RunGitCommandAsync(workspaceRoot, "reset HEAD");
+            (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "reset", "HEAD" });
         }
         return exitCode == 0;
     }
@@ -112,10 +113,10 @@ public class GitService : IGitService
         string fullPath = Path.Combine(workspaceRoot, relativePath);
 
         // Try git restore for tracked files
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"restore -- \"{EscapeArg(relativePath)}\"");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "restore", "--", relativePath });
         if (exitCode != 0)
         {
-            (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"checkout -- \"{EscapeArg(relativePath)}\"");
+            (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "checkout", "--", relativePath });
         }
 
         // If it was untracked, clean it
@@ -140,15 +141,15 @@ public class GitService : IGitService
         if (string.IsNullOrWhiteSpace(message) && !amend)
             return new GitCommitResult(false, null, string.Empty, "Commit message cannot be empty.");
 
-        string cmd = "commit";
-        if (amend) cmd += " --amend";
+        var args = new List<string> { "commit" };
+        if (amend) args.Add("--amend");
         if (!string.IsNullOrWhiteSpace(message))
         {
-            string sanitized = message.Replace("\"", "\\\"");
-            cmd += $" -m \"{sanitized}\"";
+            args.Add("-m");
+            args.Add(message);
         }
 
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, cmd);
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, args);
 
         if (exitCode == 0)
         {
@@ -167,17 +168,27 @@ public class GitService : IGitService
 
     public async Task<string> GetDiffAsync(string workspaceRoot, string? relativePath = null, bool staged = false)
     {
-        string cmd = "diff";
-        if (staged) cmd += " --cached";
-        if (!string.IsNullOrWhiteSpace(relativePath)) cmd += $" -- \"{EscapeArg(relativePath)}\"";
+        var args = new List<string> { "diff" };
+        if (staged) args.Add("--cached");
+        if (!string.IsNullOrWhiteSpace(relativePath))
+        {
+            args.Add("--");
+            args.Add(relativePath);
+        }
 
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, cmd);
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, args);
         return exitCode == 0 ? stdout : string.Empty;
     }
 
     public async Task<IReadOnlyList<GitLogEntry>> GetRecentCommitsAsync(string workspaceRoot, int maxCount = 25)
     {
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, $"log -n {maxCount} --format=format:%H%x7c%h%x7c%an%x7c%ad%x7c%s --date=short");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, new[]
+        {
+            "log",
+            $"-n{maxCount}",
+            "--format=format:%H%x7c%h%x7c%an%x7c%ad%x7c%s",
+            "--date=short"
+        });
         if (exitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             return Array.Empty<GitLogEntry>();
 
@@ -203,7 +214,7 @@ public class GitService : IGitService
 
     public async Task<IReadOnlyList<GitBranch>> GetBranchesAsync(string workspaceRoot)
     {
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, "branch -a -v --no-color");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, new[] { "branch", "-a", "-v", "--no-color" });
         if (exitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             return Array.Empty<GitBranch>();
 
@@ -243,33 +254,35 @@ public class GitService : IGitService
 
     public async Task<bool> CreateBranchAsync(string workspaceRoot, string branchName, bool checkout = true)
     {
-        string cmd = checkout ? $"checkout -b \"{EscapeArg(branchName)}\"" : $"branch \"{EscapeArg(branchName)}\"";
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, cmd);
+        var args = checkout
+            ? new[] { "checkout", "-b", branchName }
+            : new[] { "branch", branchName };
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, args);
         return exitCode == 0;
     }
 
     public async Task<bool> CheckoutBranchAsync(string workspaceRoot, string branchName)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"checkout \"{EscapeArg(branchName)}\"");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "checkout", branchName });
         return exitCode == 0;
     }
 
     public async Task<bool> DeleteBranchAsync(string workspaceRoot, string branchName, bool force = false)
     {
         string flag = force ? "-D" : "-d";
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"branch {flag} \"{EscapeArg(branchName)}\"");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "branch", flag, branchName });
         return exitCode == 0;
     }
 
     public async Task<bool> MergeBranchAsync(string workspaceRoot, string branchName)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"merge \"{EscapeArg(branchName)}\"");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "merge", branchName });
         return exitCode == 0;
     }
 
     public async Task<IReadOnlyList<GitTag>> GetTagsAsync(string workspaceRoot)
     {
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, "tag -l -n1");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, new[] { "tag", "-l", "-n1" });
         if (exitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             return Array.Empty<GitTag>();
 
@@ -291,23 +304,29 @@ public class GitService : IGitService
 
     public async Task<bool> CreateTagAsync(string workspaceRoot, string tagName, string? message = null)
     {
-        string cmd = string.IsNullOrWhiteSpace(message)
-            ? $"tag \"{EscapeArg(tagName)}\""
-            : $"tag -a \"{EscapeArg(tagName)}\" -m \"{EscapeArg(message)}\"";
+        var args = new List<string> { "tag" };
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            args.AddRange(new[] { "-a", tagName, "-m", message });
+        }
+        else
+        {
+            args.Add(tagName);
+        }
 
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, cmd);
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, args);
         return exitCode == 0;
     }
 
     public async Task<bool> DeleteTagAsync(string workspaceRoot, string tagName)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"tag -d \"{EscapeArg(tagName)}\"");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "tag", "-d", tagName });
         return exitCode == 0;
     }
 
     public async Task<IReadOnlyList<GitStash>> GetStashesAsync(string workspaceRoot)
     {
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, "stash list");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, new[] { "stash", "list" });
         if (exitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             return Array.Empty<GitStash>();
 
@@ -330,52 +349,60 @@ public class GitService : IGitService
 
     public async Task<bool> StashSaveAsync(string workspaceRoot, string? message = null)
     {
-        string cmd = string.IsNullOrWhiteSpace(message)
-            ? "stash push"
-            : $"stash push -m \"{EscapeArg(message)}\"";
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, cmd);
+        var args = new List<string> { "stash", "push" };
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            args.AddRange(new[] { "-m", message });
+        }
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, args);
         return exitCode == 0;
     }
 
     public async Task<bool> StashPopAsync(string workspaceRoot, int index = 0)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"stash pop stash@{{{index}}}");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "stash", "pop", $"stash@{{{index}}}" });
         return exitCode == 0;
     }
 
     public async Task<bool> StashApplyAsync(string workspaceRoot, int index = 0)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"stash apply stash@{{{index}}}");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "stash", "apply", $"stash@{{{index}}}" });
         return exitCode == 0;
     }
 
     public async Task<bool> StashDropAsync(string workspaceRoot, int index = 0)
     {
-        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, $"stash drop stash@{{{index}}}");
+        var (exitCode, _) = await RunGitCommandAsync(workspaceRoot, new[] { "stash", "drop", $"stash@{{{index}}}" });
         return exitCode == 0;
     }
 
     public async Task<(bool Success, string Message)> FetchAsync(string workspaceRoot)
     {
-        var (exitCode, output) = await RunGitCommandAsync(workspaceRoot, "fetch --all --prune");
+        var (exitCode, output) = await RunGitCommandAsync(workspaceRoot, new[] { "fetch", "--all", "--prune" });
         return (exitCode == 0, output.Trim());
     }
 
     public async Task<(bool Success, string Message)> PullAsync(string workspaceRoot)
     {
-        var (exitCode, output) = await RunGitCommandAsync(workspaceRoot, "pull");
+        var (exitCode, output) = await RunGitCommandAsync(workspaceRoot, new[] { "pull" });
         return (exitCode == 0, output.Trim());
     }
 
     public async Task<(bool Success, string Message)> PushAsync(string workspaceRoot)
     {
-        var (exitCode, output) = await RunGitCommandAsync(workspaceRoot, "push");
+        var (exitCode, output) = await RunGitCommandAsync(workspaceRoot, new[] { "push" });
         return (exitCode == 0, output.Trim());
     }
 
     public async Task<GitCommitDetail?> GetCommitDetailAsync(string workspaceRoot, string commitHash)
     {
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, $"show --numstat --format=format:%H%x7c%h%x7c%an%x7c%ae%x7c%ad%x7c%s%n%b%n---AGDU_DIVIDER--- {EscapeArg(commitHash)}");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, new[]
+        {
+            "show",
+            "--numstat",
+            "--format=format:%H%x7c%h%x7c%an%x7c%ae%x7c%ad%x7c%s%n%b%n---AGDU_DIVIDER---",
+            commitHash
+        });
         if (exitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             return null;
 
@@ -434,7 +461,7 @@ public class GitService : IGitService
     public async Task<string?> GetHeadFileContentAsync(string workspaceRoot, string relativePath)
     {
         string normalized = relativePath.Replace('\\', '/');
-        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, $"show \"HEAD:{normalized}\"");
+        var (exitCode, stdout) = await RunGitCommandAsync(workspaceRoot, new[] { "show", $"HEAD:{normalized}" });
         return exitCode == 0 ? stdout : null;
     }
 
@@ -618,22 +645,71 @@ public class GitService : IGitService
         _ => GitFileStatusType.Unknown
     };
 
-    private static string EscapeArg(string arg) => arg.Replace("\"", "\\\"");
+    private static List<string> ParseCommandLineArguments(string commandLine)
+    {
+        var args = new List<string>();
+        if (string.IsNullOrWhiteSpace(commandLine))
+            return args;
+
+        var sb = new System.Text.StringBuilder();
+        bool inQuotes = false;
+        char quoteChar = '\0';
+
+        for (int i = 0; i < commandLine.Length; i++)
+        {
+            char c = commandLine[i];
+            if ((c == '"' || c == '\'') && !inQuotes)
+            {
+                inQuotes = true;
+                quoteChar = c;
+            }
+            else if (inQuotes && c == quoteChar)
+            {
+                inQuotes = false;
+                quoteChar = '\0';
+            }
+            else if (!inQuotes && char.IsWhiteSpace(c))
+            {
+                if (sb.Length > 0)
+                {
+                    args.Add(sb.ToString());
+                    sb.Clear();
+                }
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+
+        if (sb.Length > 0)
+        {
+            args.Add(sb.ToString());
+        }
+
+        return args;
+    }
 
     private static async Task<(int ExitCode, string Output)> RunGitCommandAsync(
         string? workingDir,
-        string arguments,
+        IEnumerable<string> arguments,
         CancellationToken cancellationToken = default)
     {
         var psi = new ProcessStartInfo
         {
             FileName = "git",
-            Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        psi.Environment["GIT_PAGER"] = "cat";
+        psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
+
+        foreach (var arg in arguments)
+        {
+            psi.ArgumentList.Add(arg);
+        }
 
         if (!string.IsNullOrEmpty(workingDir) && Directory.Exists(workingDir))
         {
@@ -641,22 +717,60 @@ public class GitService : IGitService
         }
 
         using var process = new Process { StartInfo = psi };
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(5));
+        var linkedToken = cts.Token;
+
         try
         {
             process.Start();
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-            var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(linkedToken);
+            var stderrTask = process.StandardError.ReadToEndAsync(linkedToken);
 
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(linkedToken);
             string stdout = await stdoutTask;
             string stderr = await stderrTask;
 
             string combined = !string.IsNullOrWhiteSpace(stdout) ? stdout : stderr;
             return (process.ExitCode, combined);
         }
+        catch (OperationCanceledException)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { }
+            return (-1, "Git operation timed out.");
+        }
         catch (Exception ex)
         {
             return (-1, ex.Message);
         }
+    }
+
+    public async Task<string?> GetFileLastAuthorAsync(string workspaceRoot, string relativeOrAbsolutePath, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(workspaceRoot) || !Directory.Exists(workspaceRoot))
+                return null;
+
+            var (exitCode, stdout) = await RunGitCommandAsync(
+                workspaceRoot,
+                new[] { "--no-pager", "log", "-1", "--format=%an, %cr", "--", relativeOrAbsolutePath },
+                cancellationToken);
+
+            if (exitCode == 0 && !string.IsNullOrWhiteSpace(stdout))
+            {
+                return stdout.Trim();
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    private static Task<(int ExitCode, string Output)> RunGitCommandAsync(
+        string? workingDir,
+        string arguments,
+        CancellationToken cancellationToken = default)
+    {
+        return RunGitCommandAsync(workingDir, ParseCommandLineArguments(arguments), cancellationToken);
     }
 }

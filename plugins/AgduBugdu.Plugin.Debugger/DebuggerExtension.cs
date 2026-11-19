@@ -36,10 +36,12 @@ public class DebuggerViewModel
     {
         _context = context;
 
-        // Populate default environment watch items
-        _watches.Add(new DebugWatchItem("OS", Environment.OSVersion.ToString(), "OperatingSystem"));
-        _watches.Add(new DebugWatchItem(".NET", Environment.Version.ToString(), "Version"));
-        _watches.Add(new DebugWatchItem("Processors", Environment.ProcessorCount.ToString(), "int"));
+        // Populate default environment and process watch items
+        _watches.Add(DebugProcessRunner.EvaluateExpression("OS", null, null));
+        _watches.Add(DebugProcessRunner.EvaluateExpression(".NET", null, null));
+        _watches.Add(DebugProcessRunner.EvaluateExpression("Processors", null, null));
+        _watches.Add(DebugProcessRunner.EvaluateExpression("PID", null, null));
+        _watches.Add(DebugProcessRunner.EvaluateExpression("Memory", null, null));
 
         _context.DebugService.BreakpointChanged += (s, e) =>
         {
@@ -65,7 +67,9 @@ public class DebuggerViewModel
         StatusText = e.NewState switch
         {
             DebugSessionState.Starting => "Starting debugger...",
-            DebugSessionState.Running => "Running...",
+            DebugSessionState.Running => _runningProcess != null && !_runningProcess.HasExited
+                ? $"Running (PID {_runningProcess.Id})"
+                : "Running...",
             DebugSessionState.Paused => $"Paused at Ln {e.CurrentLine ?? 1} in {Path.GetFileName(e.CurrentFilePath ?? "file")}",
             DebugSessionState.Stopped => "Debugging stopped",
             _ => "Debugger Idle"
@@ -87,26 +91,116 @@ public class DebuggerViewModel
         _consoleOutput.Clear();
         _callStack.Clear();
 
+        await _context.DebugService.StartDebuggingAsync(CurrentTarget);
+
         if (targetFile != null && File.Exists(targetFile))
         {
             _callStack.Add(new CallStackFrame("Main", targetFile, 1));
-            _watches.Add(new DebugWatchItem("args", "string[0]", "string[]"));
-            _watches.Add(new DebugWatchItem("activeFile", Path.GetFileName(targetFile), "string"));
-        }
 
-        await _context.DebugService.StartDebuggingAsync(CurrentTarget);
+            // Check if there are active breakpoints
+            var bpList = _context.DebugService.Breakpoints
+                .Where(b => b.IsEnabled && string.Equals(b.FilePath, targetFile, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-        // Check if there is a breakpoint at beginning or in active file
-        if (targetFile != null)
-        {
-            var firstBp = _context.DebugService.Breakpoints.FirstOrDefault(b =>
-                b.IsEnabled && string.Equals(b.FilePath, targetFile, StringComparison.OrdinalIgnoreCase));
-
-            if (firstBp != null)
+            if (bpList.Count > 0)
             {
-                await Task.Delay(100);
-                await PauseAtLocationAsync(firstBp.FilePath, firstBp.Line);
+                var bpLines = string.Join(", ", bpList.Select(b => b.Line));
+                _context.DebugService.AppendOutput($"[Debugger] {bpList.Count} breakpoint(s) configured for {Path.GetFileName(targetFile)} (Lines: {bpLines})\n");
             }
+
+            try
+            {
+                var (command, arguments, workingDir) = DebugProcessRunner.ResolveTargetCommand(targetFile, workspace);
+                _context.DebugService.AppendOutput($"[Debugger] Launching: {command} {string.Join(" ", arguments)}\n");
+                _context.DebugService.AppendOutput($"[Debugger] Working Directory: {workingDir}\n");
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = command,
+                    WorkingDirectory = workingDir,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    RedirectStandardInput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                foreach (var arg in arguments)
+                {
+                    psi.ArgumentList.Add(arg);
+                }
+
+                _runningProcess = new Process { StartInfo = psi, EnableRaisingEvents = true };
+                var sw = Stopwatch.StartNew();
+
+                _runningProcess.OutputDataReceived += (s, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        HandleProcessOutput(e.Data);
+                    }
+                };
+
+                _runningProcess.ErrorDataReceived += (s, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        HandleProcessOutput(e.Data, isError: true);
+                    }
+                };
+
+                _runningProcess.Exited += (s, e) =>
+                {
+                    sw.Stop();
+                    int exitCode = -1;
+                    try { exitCode = _runningProcess?.ExitCode ?? -1; } catch { }
+                    _context.DebugService.AppendOutput($"\n[Debugger] Process exited with code {exitCode} ({sw.ElapsedMilliseconds}ms)\n");
+                    RefreshWatches();
+                    _ = _context.DebugService.StopDebuggingAsync();
+                };
+
+                if (_runningProcess.Start())
+                {
+                    _runningProcess.BeginOutputReadLine();
+                    _runningProcess.BeginErrorReadLine();
+                    _context.DebugService.AppendOutput($"[Debugger] Process started successfully with PID: {_runningProcess.Id}\n\n");
+                    RefreshWatches();
+
+                    // If a breakpoint is configured at line 1, pause immediately
+                    var line1Bp = bpList.FirstOrDefault(b => b.Line == 1);
+                    if (line1Bp != null)
+                    {
+                        await PauseAtLocationAsync(line1Bp.FilePath, line1Bp.Line);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _context.DebugService.AppendOutput($"[Debugger] Process launch failed: {ex.Message}\n");
+                RefreshWatches();
+            }
+        }
+    }
+
+    private void HandleProcessOutput(string line, bool isError = false)
+    {
+        _context.DebugService.AppendOutput(line + "\n");
+
+        // Parse any runtime stack trace frames from exceptions/panics/tracebacks
+        var frames = DebugProcessRunner.ParseStackTrace(line);
+        if (frames.Count > 0)
+        {
+            foreach (var frame in frames)
+            {
+                if (!_callStack.Any(f => f.FilePath == frame.FilePath && f.LineNumber == frame.LineNumber))
+                {
+                    _callStack.Insert(0, frame);
+                }
+            }
+
+            var primary = frames[0];
+            _context.EditorService.OpenFile(primary.FilePath, primary.LineNumber);
+            StateChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -179,6 +273,7 @@ public class DebuggerViewModel
         catch { }
 
         _callStack.Clear();
+        RefreshWatches();
         await _context.DebugService.StopDebuggingAsync();
     }
 
@@ -203,7 +298,20 @@ public class DebuggerViewModel
     public void AddWatch(string expression)
     {
         if (string.IsNullOrWhiteSpace(expression)) return;
-        _watches.Add(new DebugWatchItem(expression.Trim(), "(evaluated)", "dynamic"));
+        var evaluated = DebugProcessRunner.EvaluateExpression(expression.Trim(), _runningProcess, CurrentTarget);
+        _watches.Add(evaluated);
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void RefreshWatches()
+    {
+        for (int i = 0; i < _watches.Count; i++)
+        {
+            var old = _watches[i];
+            var evaluated = DebugProcessRunner.EvaluateExpression(old.Name, _runningProcess, CurrentTarget);
+            old.Value = evaluated.Value;
+            old.Type = evaluated.Type;
+        }
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 

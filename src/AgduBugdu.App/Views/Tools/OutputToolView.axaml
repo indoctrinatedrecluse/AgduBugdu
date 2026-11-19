@@ -46,6 +46,7 @@
 
         <!-- Log Display -->
         <TextBox Grid.Row="1"
+                 x:Name="OutputTextBox"
                  IsReadOnly="True"
                  FontFamily="Cascadia Code, Consolas, Courier New, monospace"
                  FontSize="12"

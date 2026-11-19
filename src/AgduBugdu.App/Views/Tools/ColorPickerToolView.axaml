@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AgduBugdu.App.ViewModels.Tools"
+             xmlns:color="using:AgduBugdu.Plugin.ColorPicker"
+             x:Class="AgduBugdu.App.Views.Tools.ColorPickerToolView"
+             x:DataType="vm:ColorPickerToolViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#1E1E1E">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Background="#252526"
+                BorderBrush="#333333"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Title & Icon -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="🎨" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="COLOR PALETTE &amp; PICKER"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="#AAAAAA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Content="Reset" Command="{Binding ResetSizeCommand}" FontSize="10" Padding="6,3" Background="#2D2D30" Foreground="#CBD5E1" />
+                    <Button Content="—" Command="{Binding MinimizeCommand}" FontSize="10" Padding="6,3" Background="#2D2D30" Foreground="#CBD5E1" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Body -->
+        <ScrollViewer Grid.Row="1" Padding="10">
+            <StackPanel Spacing="10">
+                <!-- Color Preview Box & Current Values -->
+                <Grid ColumnDefinitions="60,*" Margin="0,0,0,4">
+                    <!-- Live Color Preview Box -->
+                    <Border Grid.Column="0"
+                            Height="60"
+                            Background="{Binding ColorPreviewHex}"
+                            BorderBrush="#4B5563"
+                            BorderThickness="2"
+                            CornerRadius="6" />
+
+                    <!-- Formats and Copy/Insert Buttons -->
+                    <StackPanel Grid.Column="1" Spacing="4" Margin="10,0,0,0">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0" Text="{Binding Hex6}" IsReadOnly="True" FontSize="11" FontFamily="Cascadia Code, Consolas, monospace" Height="24" VerticalContentAlignment="Center" Background="#252526" Foreground="#38BDF8" BorderBrush="#3E3E42" Margin="0,0,4,0" />
+                            <Button Grid.Column="1" Content="Insert Hex" Command="{Binding InsertColorCommand}" CommandParameter="hex" FontSize="10" Padding="8,2" Background="#0284C7" Foreground="#FFFFFF" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox Grid.Column="0" Text="{Binding RgbText}" IsReadOnly="True" FontSize="11" FontFamily="Cascadia Code, Consolas, monospace" Height="24" VerticalContentAlignment="Center" Background="#252526" Foreground="#CBD5E1" BorderBrush="#3E3E42" Margin="0,0,4,0" />
+                            <Button Grid.Column="1" Content="Insert RGB" Command="{Binding InsertColorCommand}" CommandParameter="rgb" FontSize="10" Padding="8,2" Background="#2D2D30" Foreground="#CBD5E1" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
+                <!-- RGBA Sliders -->
+                <Border Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4" Padding="8">
+                    <StackPanel Spacing="6">
+                        <!-- Red -->
+                        <Grid ColumnDefinitions="30,*,40">
+                            <TextBlock Grid.Column="0" Text="R" FontWeight="Bold" Foreground="#EF4444" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Red, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Red}" Foreground="#E2E8F0" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <!-- Green -->
+                        <Grid ColumnDefinitions="30,*,40">
+                            <TextBlock Grid.Column="0" Text="G" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Green, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Green}" Foreground="#E2E8F0" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <!-- Blue -->
+                        <Grid ColumnDefinitions="30,*,40">
+                            <TextBlock Grid.Column="0" Text="B" FontWeight="Bold" Foreground="#3B82F6" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Blue, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Blue}" Foreground="#E2E8F0" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <!-- Alpha -->
+                        <Grid ColumnDefinitions="30,*,40">
+                            <TextBlock Grid.Column="0" Text="A" FontWeight="Bold" Foreground="#A855F7" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Alpha, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Alpha}" Foreground="#E2E8F0" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Preset Swatches Grid -->
+                <TextBlock Text="PALETTE PRESETS" FontSize="10" FontWeight="Bold" Foreground="#94A3B8" Margin="0,4,0,0" />
+                <ItemsControl ItemsSource="{Binding Swatches}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="color:ColorPaletteSwatch">
+                            <Button Command="{Binding ((vm:ColorPickerToolViewModel)DataContext).SelectSwatchCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    Width="24"
+                                    Height="24"
+                                    Margin="2"
+                                    Padding="0"
+                                    ToolTip.Tip="{Binding Name}"
+                                    Background="{Binding HexCode}"
+                                    BorderBrush="#333333"
+                                    BorderThickness="1"
+                                    CornerRadius="3" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
